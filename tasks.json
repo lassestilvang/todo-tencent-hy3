@@ -5,22 +5,41 @@
       "name": "Inbox",
       "color": "#6366f1",
       "emoji": "📥",
-      "created_at": "2026-04-25T17:17:15.171Z",
-      "updated_at": "2026-04-25T17:17:15.171Z"
+      "created_at": "2026-04-25T17:22:37.466Z",
+      "updated_at": "2026-04-25T17:22:37.466Z"
     }
   ],
   "labels": [],
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "42facefc-667d-4a0d-87db-dc5be9cd4ae9",
+      "name": "Buy groceries",
+      "description": "Milk",
+      "date": null,
+      "deadline": null,
+      "estimate": null,
+      "actual_time": 0,
+      "priority": "none",
+      "recurring": null,
+      "list_id": null,
+      "parent_task_id": null,
+      "completed": 0,
+      "completed_at": null,
+      "position": 0,
+      "created_at": "2026-04-25T17:22:37.466Z",
+      "updated_at": "2026-04-25T17:22:37.466Z"
+    }
+  ],
   "task_labels": [],
   "task_attachments": [],
   "task_reminders": [],
   "task_logs": [
     {
-      "id": "08c979e3-3806-452a-aadb-349c2164e3d0",
-      "task_id": "9a18b656-896e-4229-a7cb-1a06249e3b53",
+      "id": "dc7e88fd-3073-45f3-a61e-b96ae317a79b",
+      "task_id": "42facefc-667d-4a0d-87db-dc5be9cd4ae9",
       "action": "created",
-      "details": "Task \"Delete Me\" created",
-      "created_at": "2026-04-25T17:17:15.171Z"
+      "details": "Task \"Buy groceries\" created",
+      "created_at": "2026-04-25T17:22:37.466Z"
     }
   ]
 }
