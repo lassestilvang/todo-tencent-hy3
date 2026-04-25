@@ -184,3 +184,13 @@ export function closeDb() {
     db = null
   }
 }
+
+export function resetDb() {
+  try {
+    if (fs.existsSync(dbPath)) {
+      fs.unlinkSync(dbPath)
+    }
+  } catch(e) {}
+  // Force reload on next getDb() call
+  db = null
+}
