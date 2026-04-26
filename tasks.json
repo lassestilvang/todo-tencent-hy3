@@ -5,16 +5,32 @@
       "name": "Inbox",
       "color": "#6366f1",
       "emoji": "📥",
-      "created_at": "2026-04-25T17:22:37.466Z",
-      "updated_at": "2026-04-25T17:22:37.466Z"
+      "created_at": "2026-04-26T21:27:40.230Z",
+      "updated_at": "2026-04-26T21:27:40.230Z"
+    },
+    {
+      "id": "b9a7e2b4-a20c-4bac-8716-79565f8c0afe",
+      "name": "Work",
+      "color": "#6366f1",
+      "emoji": "💼",
+      "created_at": "2026-04-26T21:27:40.235Z",
+      "updated_at": "2026-04-26T21:27:40.235Z"
     }
   ],
-  "labels": [],
+  "labels": [
+    {
+      "id": "7e9b79d8-b11c-4e30-8082-74e9b52ad0ab",
+      "name": "Urgent",
+      "color": "#ef4444",
+      "icon": "🚨",
+      "created_at": "2026-04-26T21:27:40.235Z"
+    }
+  ],
   "tasks": [
     {
-      "id": "42facefc-667d-4a0d-87db-dc5be9cd4ae9",
-      "name": "Buy groceries",
-      "description": "Milk",
+      "id": "0553164f-9437-4bd2-a757-624a691a980d",
+      "name": "Test Task",
+      "description": null,
       "date": null,
       "deadline": null,
       "estimate": null,
@@ -26,20 +42,32 @@
       "completed": 0,
       "completed_at": null,
       "position": 0,
-      "created_at": "2026-04-25T17:22:37.466Z",
-      "updated_at": "2026-04-25T17:22:37.466Z"
+      "created_at": "2026-04-26T21:27:40.230Z",
+      "updated_at": "2026-04-26T21:27:40.230Z"
     }
   ],
-  "task_labels": [],
+  "task_labels": [
+    {
+      "task_id": "0553164f-9437-4bd2-a757-624a691a980d",
+      "label_id": "7e9b79d8-b11c-4e30-8082-74e9b52ad0ab"
+    }
+  ],
   "task_attachments": [],
   "task_reminders": [],
   "task_logs": [
     {
-      "id": "dc7e88fd-3073-45f3-a61e-b96ae317a79b",
-      "task_id": "42facefc-667d-4a0d-87db-dc5be9cd4ae9",
+      "id": "2aa33c61-f0a3-456e-96b2-a2a51f12b5c5",
+      "task_id": "0553164f-9437-4bd2-a757-624a691a980d",
       "action": "created",
-      "details": "Task \"Buy groceries\" created",
-      "created_at": "2026-04-25T17:22:37.466Z"
+      "details": "Task \"Test Task\" created",
+      "created_at": "2026-04-26T21:27:40.232Z"
+    },
+    {
+      "id": "44a1e83e-714a-47f3-b234-f26eb3ec1e5f",
+      "task_id": "0553164f-9437-4bd2-a757-624a691a980d",
+      "action": "label_added",
+      "details": "Label 7e9b79d8-b11c-4e30-8082-74e9b52ad0ab added",
+      "created_at": "2026-04-26T21:27:40.235Z"
     }
   ]
 }
