@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { searchTasks } from "@/lib/tasks"
 import { Checkbox } from "@/components/ui/checkbox"
+import { formatDisplayDate } from "@/lib/utils"
 
 export async function SearchResults({ query }: { query: string }) {
   if (!query || query.length < 2) {
@@ -10,7 +11,7 @@ export async function SearchResults({ query }: { query: string }) {
   const results = searchTasks(query)
 
   if (results.length === 0) {
-    return <p className="text-center py-12 text-muted-foreground">No tasks found matching "{query}"</p>
+    return <p className="text-center py-12 text-muted-foreground">No tasks found matching &quot;{query}&quot;</p>
   }
 
   return (
@@ -27,7 +28,7 @@ export async function SearchResults({ query }: { query: string }) {
               {task.name}
             </p>
             {task.date && (
-              <p className="text-xs text-muted-foreground">{new Date(task.date).toLocaleDateString()}</p>
+              <p className="text-xs text-muted-foreground">{formatDisplayDate(task.date)}</p>
             )}
           </div>
         </Link>
