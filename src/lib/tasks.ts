@@ -90,7 +90,7 @@ export function getTasks(options?: {
         tasks = tasks.filter(t => t.date && t.date >= today && t.date <= next7)
         break
       case 'upcoming':
-        tasks = tasks.filter(t => t.date >= today || t.date === null)
+        tasks = tasks.filter(t => t.date && t.date >= today)
         break
     }
   }
