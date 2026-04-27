@@ -1,9 +1,7 @@
 import { describe, test, expect, beforeEach } from 'bun:test'
 import { resetDb } from '@/lib/db'
-import { createTask, getTasks, getTask, updateTask, toggleTaskComplete, deleteTask,
-  createList, getLists, createLabel, addTaskLabel, removeTaskLabel,
-  addTaskAttachment, removeTaskAttachment, getTaskAttachments,
-  addTaskReminder, removeTaskReminder, getTaskReminders,
+import { createTask, getTask, toggleTaskComplete,
+  addTaskAttachment, getTaskAttachments,
   getOverdueTasks, searchTasks,
 } from '@/lib/tasks'
 
