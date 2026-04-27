@@ -1,16 +1,10 @@
 import { describe, test, expect, beforeEach } from 'bun:test'
-import { getDb, closeDb } from '@/lib/db'
+import { resetDb } from '@/lib/db'
 import { createList, getLists, updateList, deleteList } from '@/lib/tasks'
 
 describe('List Tests', () => {
   beforeEach(() => {
-    closeDb()
-    const fs = require('fs')
-    const path = require('path')
-    const dbPath = process.env.TEST_DB_PATH || path.join(__dirname, '../../tasks.json')
-    if (fs.existsSync(dbPath)) {
-      fs.unlinkSync(dbPath)
-    }
+    resetDb()
   })
 
   test('should create list', () => {
