@@ -22,6 +22,16 @@ export function parseTimeToMinutes(time: string): number {
   return hrs * 60 + mins
 }
 
-export function formatDate(date: string | Date): string {
-  return new Date(date).toISOString().split('T')[0]
+export function formatDate(date: string | Date | null): string {
+  if (!date) return ''
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return ''
+  return d.toISOString().split('T')[0]
+}
+
+export function formatDisplayDate(date: string | Date | null): string {
+  if (!date) return 'Not set'
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return 'Invalid date'
+  return d.toLocaleDateString()
 }

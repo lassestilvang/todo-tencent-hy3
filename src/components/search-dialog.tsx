@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import type { Task } from "@/types"
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
+import { cn, formatDisplayDate } from "@/lib/utils"
 
 export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [query, setQuery] = useState('')
@@ -49,7 +50,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                     {task.name}
                   </p>
                   {task.date && (
-                    <p className="text-xs text-muted-foreground">{new Date(task.date).toLocaleDateString()}</p>
+                    <p className="text-xs text-muted-foreground">{formatDisplayDate(task.date)}</p>
                   )}
                 </div>
               </Link>
@@ -62,8 +63,4 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
       </DialogContent>
     </Dialog>
   )
-}
-
-function cn(...args: any[]) {
-  return args.filter(Boolean).join(' ')
 }

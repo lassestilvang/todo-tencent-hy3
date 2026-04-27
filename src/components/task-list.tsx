@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Plus, GripVertical, Check, Clock, AlertTriangle, ChevronDown, ChevronRight, Paperclip, MessageSquare } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, formatDisplayDate } from "@/lib/utils"
 import { getTasks } from "@/lib/tasks"
 import { handleToggle, handleDelete } from "@/lib/actions"
 import type { Task } from "@/types"
@@ -104,7 +104,7 @@ function TaskItem({ task }: { task: Task }) {
             )}
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-            {task.date && <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(task.date).toLocaleDateString()}</span>}
+            {task.date && <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {formatDisplayDate(task.date)}</span>}
             {task.deadline && new Date(task.deadline) < new Date() && !task.completed && (
               <span className="text-destructive flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Overdue</span>
             )}

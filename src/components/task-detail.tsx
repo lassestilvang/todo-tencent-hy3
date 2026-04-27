@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { PriorityIcon } from "@/components/priority-icon"
 import { handleToggle, handleDelete } from "@/lib/actions"
-import { cn } from "@/lib/utils"
+import { cn, formatDisplayDate } from "@/lib/utils"
 
 export function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () => void }) {
   const task = getTask(taskId)
@@ -38,7 +38,7 @@ export function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () 
           <span className="capitalize">{task.priority}</span>
           {task.date && <>
             <Clock className="w-3 h-3" />
-            <span>{new Date(task.date).toLocaleDateString()}</span>
+            <span>{formatDisplayDate(task.date)}</span>
           </>}
           {task.list && <>
             <ListTodo className="w-3 h-3" />
@@ -56,7 +56,7 @@ export function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs text-muted-foreground">Date</label>
-            <p>{task.date ? new Date(task.date).toLocaleDateString() : 'Not set'}</p>
+            <p>{formatDisplayDate(task.date)}</p>
           </div>
           <div>
             <label className="text-xs text-muted-foreground">Priority</label>
