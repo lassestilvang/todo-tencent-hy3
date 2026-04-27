@@ -55,10 +55,10 @@ export function deleteLabel(id: string): void {
   deleteLabelInDb(id)
 }
 
-function getTaskWithRelations(task: any): Task {
+function getTaskWithRelations(task: Task): Task {
   return {
     ...task,
-    list: task.list_id ? getDb().lists.find((l: any) => l.id === task.list_id) : undefined,
+    list: task.list_id ? getDb().lists.find((l: List) => l.id === task.list_id) : undefined,
     labels: getTaskLabels(task.id),
     sub_tasks: getSubTasks(task.id),
     attachments: getTaskAttachments(task.id),
@@ -108,9 +108,9 @@ export function getTasks(options?: {
   }
 
   return tasks
-    .sort((a: any, b: any) => {
+    .sort((a: Task, b: Task) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1
-      const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2, none: 3 }
+      const priorityOrder: Record<string, number> = { high:0, medium: 1, low: 2, none: 3 }
       if (a.priority !== b.priority) return (priorityOrder[a.priority] || 0) - (priorityOrder[b.priority] || 0)
       return (a.position || 0) - (b.position || 0)
     })
@@ -185,7 +185,7 @@ export function deleteTask(id: string): void {
 
 function getSubTasks(parentId: string): Task[] {
   return queryTasks(t => t.parent_task_id === parentId)
-    .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
+    .sort((a: Task, b: Task) => (a.position || 0) - (b.position || 0))
     .map(getTaskWithRelations)
 }
 
@@ -223,7 +223,7 @@ export function addTaskAttachment(taskId: string, fileName: string, filePath: st
 
 export function removeTaskAttachment(attachmentId: string): void {
   const db = getDb()
-  const att = db.task_attachments.find((a: any) => a.id === attachmentId)
+  const att = db.task_attachments.find((a: TaskAttachment) => a.id === attachmentId)
   if (att) {
     deleteAttachment(attachmentId)
     logTaskAction(att.task_id, 'attachment_removed', `File "${att.file_name}" removed`)
@@ -268,7 +268,7 @@ function logTaskAction(taskId: string, action: string, details: string): void {
 export function getOverdueTasks(): Task[] {
   const today = new Date().toISOString().split('T')[0]
   return queryTasks(t => t.date < today && !t.completed && !t.parent_task_id)
-    .sort((a: any, b: any) => a.date.localeCompare(b.date))
+    .sort((a: Task, b: Task) => a.date.localeCompare(b.date))
     .map(getTaskWithRelations)
 }
 
@@ -277,7 +277,7 @@ export function searchTasks(query: string): Task[] {
     t.name.toLowerCase().includes(query.toLowerCase()) ||
     (t.description && t.description.toLowerCase().includes(query.toLowerCase()))
   )
-    .sort((a: any, b: any) => b.created_at.localeCompare(a.created_at))
+    .sort((a: Task, b: Task) => b.created_at.localeCompare(a.created_at))
     .slice(0, 50)
     .map(getTaskWithRelations)
 }
