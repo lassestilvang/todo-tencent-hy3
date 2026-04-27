@@ -14,7 +14,6 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
   useEffect(() => {
     if (query.length < 2) {
-      setResults([])
       return
     }
     const timer = setTimeout(async () => {
@@ -31,7 +30,12 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         <Input
           placeholder="Search tasks..."
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={e => {
+            setQuery(e.target.value)
+            if (e.target.value.length < 2) {
+              setResults([])
+            }
+          }}
           autoFocus
           className="text-lg h-12"
         />
