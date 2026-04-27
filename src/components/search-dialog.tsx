@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { searchTasks } from "@/lib/tasks"
 import type { Task } from "@/types"
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
@@ -17,8 +16,10 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
       setResults([])
       return
     }
-    const timer = setTimeout(() => {
-      setResults(searchTasks(query))
+    const timer = setTimeout(async () => {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
+      const data = await response.json()
+      setResults(data)
     }, 300)
     return () => clearTimeout(timer)
   }, [query])
