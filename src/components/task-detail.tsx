@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { PriorityIcon } from "@/components/priority-icon"
 import { handleToggle, handleDelete } from "@/lib/actions"
-import { cn, formatDisplayDate } from "@/lib/utils"
+import { cn, formatDisplayDate, formatDateTime } from "@/lib/utils"
 
 export function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () => void }) {
   const task = getTask(taskId)
@@ -117,7 +117,7 @@ export function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () 
             <div className="mt-1 space-y-1 max-h-32 overflow-auto">
               {task.logs.map(log => (
                 <div key={log.id} className="text-xs text-muted-foreground p-1">
-                  {new Date(log.created_at).toLocaleString()} - {log.action}
+                  {formatDateTime(log.created_at)} - {log.action}
                 </div>
               ))}
             </div>

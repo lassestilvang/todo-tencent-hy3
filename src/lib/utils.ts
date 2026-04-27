@@ -35,3 +35,10 @@ export function formatDisplayDate(date: string | Date | null): string {
   if (isNaN(d.getTime())) return 'Invalid date'
   return d.toLocaleDateString()
 }
+
+export function formatDateTime(date: string | Date | null): string {
+  if (!date) return ''
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return 'Invalid date'
+  return d.toLocaleString()
+}
