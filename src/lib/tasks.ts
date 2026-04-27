@@ -278,7 +278,7 @@ export function getOverdueTasks(): Task[] {
 export function searchTasks(query: string): Task[] {
   return queryTasks(t =>
     t.name.toLowerCase().includes(query.toLowerCase()) ||
-    (t.description && t.description.toLowerCase().includes(query.toLowerCase()))
+    (t.description !== null && t.description.toLowerCase().includes(query.toLowerCase()))
   )
     .sort((a: Task, b: Task) => b.created_at.localeCompare(a.created_at))
     .slice(0, 50)
