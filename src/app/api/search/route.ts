@@ -9,6 +9,11 @@ export async function GET(request: Request) {
     return NextResponse.json([])
   }
 
-  const results = searchTasks(q)
-  return NextResponse.json(results)
+  try {
+    const results = searchTasks(q)
+    return NextResponse.json(results)
+  } catch (error) {
+    console.error('Search error:', error)
+    return NextResponse.json({ error: 'Search failed' }, { status: 500 })
+  }
 }
