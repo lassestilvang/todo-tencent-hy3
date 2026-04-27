@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach } from 'bun:test'
 import { getDb } from '@/lib/db'
+import type { List } from '@/types'
 
 describe('Database Test', () => {
   beforeEach(() => {
@@ -20,7 +21,7 @@ describe('Database Test', () => {
 
   test('should have inbox list', () => {
     const db = getDb()
-    const inbox = db.lists.find((l: any) => l.id === 'inbox')
+    const inbox = db.lists.find((l: List) => l.id === 'inbox')
     expect(inbox).toBeDefined()
     expect(inbox?.name).toBe('Inbox')
   })
