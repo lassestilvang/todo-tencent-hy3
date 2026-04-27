@@ -267,7 +267,7 @@ function logTaskAction(taskId: string, action: string, details: string): void {
 
 export function getOverdueTasks(): Task[] {
   const today = new Date().toISOString().split('T')[0]
-  return queryTasks(t => t.date && t.date < today && !t.completed && !t.parent_task_id)
+  return queryTasks(t => t.date !== null && t.date < today && !t.completed && !t.parent_task_id)
     .sort((a: Task, b: Task) => {
       if (!a.date || !b.date) return 0
       return a.date.localeCompare(b.date)
