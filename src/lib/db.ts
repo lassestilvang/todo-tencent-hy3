@@ -1,24 +1,30 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import type { List, Label, Task, TaskLabel, TaskAttachment, TaskReminder, TaskLog } from '@/types'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const dbPath = process.env.TEST_DB_PATH || path.join(__dirname, '../../tasks.json')
 
 interface Database {
-  lists: any[]
-  labels: any[]
-  tasks: any[]
-  task_labels: any[]
-  task_attachments: any[]
-  task_reminders: any[]
-  task_logs: any[]
+  lists: List[]
+  labels: Label[]
+  tasks: Task[]
+  task_labels: TaskLabel[]
+  task_attachments: TaskAttachment[]
+  task_reminders: TaskReminder[]
+  task_logs: TaskLog[]
 }
 
 export function getDb(): Database {
   if (fs.existsSync(dbPath)) {
-    const data = fs.readFileSync(dbPath, 'utf-8')
-    return JSON.parse(data)
+    try {
+      const data = fs.readFileSync(dbPath, 'utf-8')
+      return JSON.parse(data)
+    } catch (e) {
+      console.error('Failed to parse database file:', e)
+      // Return default database on parse error
+    }
   }
   // Return default database
   return {
@@ -33,7 +39,12 @@ export function getDb(): Database {
 }
 
 export function saveDb(db: Database) {
-  fs.writeFileSync(dbPath, JSON.stringify(db, null, 2))
+  try {
+    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2))
+  } catch (e) {
+    console.error('Failed to save database:', e)
+    throw e
+  }
 }
 
 export function resetDb() {
@@ -41,7 +52,9 @@ export function resetDb() {
     if (fs.existsSync(dbPath)) {
       fs.unlinkSync(dbPath)
     }
-  } catch(e) {}
+  } catch(e) {
+    console.error('Failed to reset database:', e)
+  }
 }
 
 // Helper functions for tasks
