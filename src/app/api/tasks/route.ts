@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server"
-import { getTasks, createTask, toggleTaskComplete, deleteTask, getTask } from "@/lib/tasks"
-import type { Task } from "@/types"
+import { getTasks, createTask, toggleTaskComplete, deleteTask } from "@/lib/tasks"
+import type { View } from "@/types"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const view = searchParams.get('view') as Task['priority'] | null
+  const view = searchParams.get('view') as View['type'] | null
   const listId = searchParams.get('listId')
   const completed = searchParams.get('completed')
 
   const tasks = getTasks({
-    view: view as any,
+    view: view || undefined,
     listId: listId || undefined,
     completed: completed === 'true' ? true : completed === 'false' ? false : undefined,
   })
@@ -24,16 +24,15 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const { id, ...data } = await request.json()
-  const { toggleTaskComplete: toggle, deleteTask: del } = await import('@/lib/tasks')
+  const { id, action } = await request.json()
 
-  if (data.action === 'toggle') {
-    toggle(id)
+  if (action === 'toggle') {
+    toggleTaskComplete(id)
     return NextResponse.json({ success: true })
   }
 
-  if (data.action === 'delete') {
-    del(id)
+  if (action === 'delete') {
+    deleteTask(id)
     return NextResponse.json({ success: true })
   }
 
