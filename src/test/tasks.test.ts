@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'bun:test'
-import { getDb, resetDb } from '@/lib/db'
+import { resetDb } from '@/lib/db'
 import { createTask, getTasks, getTask, updateTask, toggleTaskComplete, deleteTask } from '@/lib/tasks'
 
 describe('Task Tests', () => {
