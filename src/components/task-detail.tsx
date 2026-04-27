@@ -1,7 +1,5 @@
-import Link from "next/link"
-import { X, Paperclip, Trash2, Clock, Calendar, Tag, ListTodo, FileText } from "lucide-react"
+import { X, Paperclip, Trash2, Clock, ListTodo, FileText } from "lucide-react"
 import { getTask } from "@/lib/tasks"
-import type { Task, Label } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"

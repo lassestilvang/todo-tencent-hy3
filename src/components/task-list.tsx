@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Plus, GripVertical, Check, Clock, AlertTriangle, ChevronDown, ChevronRight, Paperclip, MessageSquare } from "lucide-react"
+import { Plus, Clock, AlertTriangle, Paperclip, MessageSquare } from "lucide-react"
 import { cn, formatDisplayDate } from "@/lib/utils"
 import { getTasks } from "@/lib/tasks"
 import { handleToggle, handleDelete } from "@/lib/actions"
@@ -14,12 +14,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 interface TaskListProps {
   view?: 'today' | 'next7' | 'upcoming' | 'all'
   listId?: string
-  labelId?: string
   title: string
   searchQuery?: string;
 }
 
-export async function TaskList({ view, listId, labelId, title, searchQuery }: TaskListProps) {
+export async function TaskList({ view, listId, title, searchQuery }: TaskListProps) {
   const tasks = getTasks({ view, listId, completed: undefined, search: searchQuery })
 
   return (
@@ -70,7 +69,6 @@ export async function TaskList({ view, listId, labelId, title, searchQuery }: Ta
 }
 
 function TaskItem({ task }: { task: Task }) {
-  const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2, none: 3 }
   const sorted = task.sub_tasks ? [...task.sub_tasks].sort((a, b) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1
     return (a.position || 0) - (b.position || 0)
