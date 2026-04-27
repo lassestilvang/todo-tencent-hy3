@@ -1,6 +1,6 @@
 import { getDb, queryTasks, insertTask, updateTask as updateTaskInDb, deleteTask as deleteTaskInDb,
-  queryLists, insertList, updateList as updateListInDb, deleteList as deleteListInDb,
-  queryLabels, insertLabel, deleteLabel as deleteLabelInDb,
+  insertList, updateList as updateListInDb, deleteList as deleteListInDb,
+  insertLabel, deleteLabel as deleteLabelInDb,
   insertTaskLabel, deleteTaskLabel, getTaskLabels as getTaskLabelsFromDb,
   insertAttachment, deleteAttachment, getTaskAttachments as getTaskAttachmentsFromDb,
   insertReminder, deleteReminder, getTaskReminders as getTaskRemindersFromDb,
@@ -13,11 +13,11 @@ export function getLists(): List[] {
   const db = getDb()
   const lists = db.lists;
 
-  return lists.map((l: any) => {
+  return lists.map((l: List) => {
     const taskCount = queryTasks(t => t.list_id === l.id).length
     const incompleteCount = queryTasks(t => t.list_id === l.id && !t.completed).length
     return { ...l, task_count: taskCount, incomplete_count: incompleteCount }
-  }).sort((a: any, b: any) => {
+  }).sort((a: List, b: List) => {
     if (a.id === 'inbox') return -1
     if (b.id === 'inbox') return 1
     return a.name.localeCompare(b.name)
@@ -41,7 +41,7 @@ export function deleteList(id: string): void {
 
 export function getLabels(): Label[] {
   const db = getDb()
-  return db.labels.sort((a: any, b: any) => a.name.localeCompare(b.name))
+  return db.labels.sort((a: Label, b: Label) => a.name.localeCompare(b.name))
 }
 
 export function createLabel(name: string, color: string, icon: string): Label {
