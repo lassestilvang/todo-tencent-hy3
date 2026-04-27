@@ -1,12 +1,9 @@
 import Link from "next/link"
-import { Inbox, CalendarDays, Calendar, Clock, ListTodo, Tag, Plus, Search } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { CalendarDays, Calendar, Clock, ListTodo, Plus, Search } from "lucide-react"
 import { getLists, getLabels, getOverdueTasks } from "@/lib/tasks"
-import type { List, Label } from "@/types"
 import { Button } from "@/components/ui/button"
 import { CreateListForm } from "@/components/create-list-form"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { SearchDialog } from "@/components/search-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 export async function Sidebar() {
@@ -93,7 +90,7 @@ export async function Sidebar() {
   )
 }
 
-function SidebarLink({ href, icon: Icon, label, badge }: { href: string; icon: any; label: string; badge?: number }) {
+function SidebarLink({ href, icon: Icon, label, badge }: { href: string; icon: React.ComponentType<{ className?: string }>; label: string; badge?: number }) {
   return (
     <Link
       href={href}
