@@ -1,7 +1,8 @@
 import Link from "next/link"
 import { Plus, GripVertical, Check, Clock, AlertTriangle, ChevronDown, ChevronRight, Paperclip, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getTasks, toggleTaskComplete, deleteTask } from "@/lib/tasks"
+import { getTasks } from "@/lib/tasks"
+import { handleToggle, handleDelete } from "@/lib/actions"
 import type { Task } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -81,7 +82,7 @@ function TaskItem({ task }: { task: Task }) {
         "group flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent/50 transition-colors",
         task.completed && "opacity-60"
       )}>
-        <form action={`/api/tasks/${task.id}/toggle`} method="POST">
+        <form action={handleToggle.bind(null, task.id)}>
           <button type="submit">
             <Checkbox checked={task.completed === 1} />
           </button>
@@ -123,8 +124,8 @@ function TaskItem({ task }: { task: Task }) {
             {task.list.emoji} {task.list.name}
           </span>
         )}
-        <form action={`/api/tasks/${task.id}/delete`} method="POST">
-          <Button variant="ghost" size="icon" className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity">
+        <form action={handleDelete.bind(null, task.id)}>
+          <Button variant="ghost" size="icon" className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity" type="submit">
             ×
           </Button>
         </form>
@@ -133,7 +134,7 @@ function TaskItem({ task }: { task: Task }) {
         <div className="ml-8 space-y-1">
           {sorted.map(sub => (
             <div key={sub.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent/50">
-              <form action={`/api/tasks/${sub.id}/toggle`} method="POST">
+              <form action={handleToggle.bind(null, sub.id)}>
                 <button type="submit">
                   <Checkbox checked={sub.completed === 1} />
                 </button>
