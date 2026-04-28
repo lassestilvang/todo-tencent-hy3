@@ -4,7 +4,7 @@ import { getLists, getLabels, getOverdueTasks } from "@/lib/tasks"
 import { Button } from "@/components/ui/button"
 import { CreateListForm } from "@/components/create-list-form"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 export async function Sidebar() {
   const lists = getLists()
@@ -42,6 +42,7 @@ export async function Sidebar() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create New List</DialogTitle>
+                  <DialogDescription>Add a new list to organize your tasks</DialogDescription>
                 </DialogHeader>
                 <CreateListForm />
               </DialogContent>
