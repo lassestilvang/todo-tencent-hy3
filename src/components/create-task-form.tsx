@@ -20,6 +20,7 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
       <Input
         name="name"
         placeholder="Task name"
+        aria-label="Task name"
         autoFocus
         required
       />
@@ -27,6 +28,7 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
       <Textarea
         name="description"
         placeholder="Description (optional)"
+        aria-label="Task description"
         rows={3}
       />
       <div className="grid grid-cols-2 gap-3">
