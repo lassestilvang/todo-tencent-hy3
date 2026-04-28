@@ -18,23 +18,31 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const data = await request.json()
-  const task = createTask(data)
-  return NextResponse.json(task)
+  try {
+    const data = await request.json()
+    const task = createTask(data)
+    return NextResponse.json(task)
+  } catch (error) {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  }
 }
 
 export async function PATCH(request: Request) {
-  const { id, action } = await request.json()
+  try {
+    const { id, action } = await request.json()
 
-  if (action === 'toggle') {
-    toggleTaskComplete(id)
-    return NextResponse.json({ success: true })
+    if (action === 'toggle') {
+      toggleTaskComplete(id)
+      return NextResponse.json({ success: true })
+    }
+
+    if (action === 'delete') {
+      deleteTask(id)
+      return NextResponse.json({ success: true })
+    }
+
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+  } catch (error) {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
-
-  if (action === 'delete') {
-    deleteTask(id)
-    return NextResponse.json({ success: true })
-  }
-
-  return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 }
