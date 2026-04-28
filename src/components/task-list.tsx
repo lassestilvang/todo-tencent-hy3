@@ -122,8 +122,8 @@ function TaskItem({ task }: { task: Task }) {
           </span>
         )}
         <form action={handleDelete.bind(null, task.id)}>
-          <Button variant="ghost" size="icon" className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity" type="submit">
-            ×
+          <Button variant="ghost" size="icon" aria-label="Delete task" className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity" type="submit">
+            <span aria-hidden="true">×</span>
           </Button>
         </form>
       </div>
