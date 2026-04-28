@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { PriorityIcon } from "@/components/priority-icon"
 import { CreateTaskForm } from "@/components/create-task-form"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 interface TaskListProps {
   view?: 'today' | 'next7' | 'upcoming' | 'all'
@@ -36,6 +36,7 @@ export async function TaskList({ view, listId, title, searchQuery }: TaskListPro
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create New Task</DialogTitle>
+                  <DialogDescription>Add a new task to your todo list</DialogDescription>
                 </DialogHeader>
                 <CreateTaskFormWrapper />
               </DialogContent>
