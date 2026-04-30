@@ -31,12 +31,13 @@ export async function createTaskAction(formData: FormData) {
   }
 
   const { name, description, date, priority, listId } = result.data
+  const validPriority: Priority = priority && validPriorities.includes(priority) ? priority : 'none'
 
   createTask({
     name: name.trim(),
     description: description || undefined,
     date: date || undefined,
-    priority: validPriorities.includes(priority) ? priority : 'none',
+    priority: validPriority,
     list_id: listId || undefined,
   })
 
