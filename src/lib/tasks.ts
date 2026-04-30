@@ -55,14 +55,27 @@ export function deleteLabel(id: string): void {
   deleteLabelInDb(id)
 }
 
-function getTaskWithRelations(task: Task): Task {
+function getTaskWithRelations(task: Task, db: ReturnType<typeof getDb>): Task {
+  const lists = db.lists
+  const taskLabels = db.task_labels
+  const labels = db.labels
+  const taskAttachments = db.task_attachments
+  const taskReminders = db.task_reminders
+  const allTasks = db.tasks
+
   return {
     ...task,
-    list: task.list_id ? getDb().lists.find((l: List) => l.id === task.list_id) : undefined,
-    labels: getTaskLabels(task.id),
-    sub_tasks: getSubTasks(task.id),
-    attachments: getTaskAttachments(task.id),
-    reminders: getTaskReminders(task.id),
+    list: task.list_id ? lists.find((l: List) => l.id === task.list_id) : undefined,
+    labels: taskLabels
+      .filter((tl: { task_id: string; label_id: string }) => tl.task_id === task.id)
+      .map((tl: { task_id: string; label_id: string }) => labels.find((l: Label) => l.id === tl.label_id))
+      .filter((l: Label | undefined): l is Label => l !== undefined),
+    sub_tasks: allTasks
+      .filter((t: Task) => t.parent_task_id === task.id)
+      .sort((a: Task, b: Task) => (a.position || 0) - (b.position || 0))
+      .map(t => getTaskWithRelations(t, db)),
+    attachments: taskAttachments.filter((a: TaskAttachment) => a.task_id === task.id),
+    reminders: taskReminders.filter((r: TaskReminder) => r.task_id === task.id),
   }
 }
 
@@ -107,6 +120,7 @@ export function getTasks(options?: {
     )
   }
 
+  const db = getDb()
   return tasks
     .sort((a: Task, b: Task) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1
@@ -114,14 +128,15 @@ export function getTasks(options?: {
       if (a.priority !== b.priority) return (priorityOrder[a.priority] || 0) - (priorityOrder[b.priority] || 0)
       return (a.position || 0) - (b.position || 0)
     })
-    .map(getTaskWithRelations)
+    .map(t => getTaskWithRelations(t, db))
 }
 
 export function getTask(id: string): Task | undefined {
+  const db = getDb()
   const task = queryTasks(t => t.id === id)[0]
   if (!task) return undefined;
 
-  return getTaskWithRelations(task)
+  return getTaskWithRelations(task, db)
 }
 
 export function createTask(data: Partial<Task>): Task {
@@ -266,21 +281,25 @@ function logTaskAction(taskId: string, action: string, details: string): void {
 }
 
 export function getOverdueTasks(): Task[] {
+  const db = getDb()
   const today = new Date().toISOString().split('T')[0]
-  return queryTasks(t => t.date !== null && t.date < today && !t.completed && !t.parent_task_id)
+  return db.tasks
+    .filter((t: Task) => t.date !== null && t.date < today && !t.completed && !t.parent_task_id)
     .sort((a: Task, b: Task) => {
       if (!a.date || !b.date) return 0
       return a.date.localeCompare(b.date)
     })
-    .map(getTaskWithRelations)
+    .map(t => getTaskWithRelations(t, db))
 }
 
 export function searchTasks(query: string): Task[] {
-  return queryTasks(t =>
-    t.name.toLowerCase().includes(query.toLowerCase()) ||
-    (t.description !== null && t.description.toLowerCase().includes(query.toLowerCase()))
-  )
+  const db = getDb()
+  return db.tasks
+    .filter(t =>
+      t.name.toLowerCase().includes(query.toLowerCase()) ||
+      (t.description !== null && t.description.toLowerCase().includes(query.toLowerCase()))
+    )
     .sort((a: Task, b: Task) => b.created_at.localeCompare(a.created_at))
     .slice(0, 50)
-    .map(getTaskWithRelations)
+    .map(t => getTaskWithRelations(t, db))
 }
