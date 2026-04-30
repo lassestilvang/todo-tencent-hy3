@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const data = await request.json()
     const task = createTask(data)
     return NextResponse.json(task)
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }
@@ -42,7 +42,7 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }

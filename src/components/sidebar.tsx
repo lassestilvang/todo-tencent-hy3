@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { CalendarDays, Calendar, Clock, ListTodo, Plus, Search } from "lucide-react"
+import { CalendarDays, Calendar, Clock, ListTodo, Plus } from "lucide-react"
 import { getLists, getLabels, getOverdueTasks } from "@/lib/tasks"
 import { Button } from "@/components/ui/button"
 import { CreateListForm } from "@/components/create-list-form"
