@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { Sidebar } from "@/components/sidebar"
 import { ThemeProvider } from "@/components/theme-provider"
+import { SearchWrapper } from "@/components/search-wrapper"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
             <main className="flex-1 overflow-auto">
               {children}
             </main>
+            <SearchWrapper />
           </div>
         </ThemeProvider>
       </body>

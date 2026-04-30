@@ -19,10 +19,6 @@ export async function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-auto p-3 space-y-6">
-        <div>
-          <SearchDialogWrapper />
-        </div>
-
         <nav className="space-y-1">
           <SidebarLink href="/today" icon={CalendarDays} label="Today" badge={overdue.length > 0 ? overdue.length : undefined} />
           <SidebarLink href="/next7" icon={Clock} label="Next 7 Days" />
@@ -105,21 +101,5 @@ function SidebarLink({ href, icon: Icon, label, badge }: { href: string; icon: R
         </span>
       )}
     </Link>
-  )
-}
-
-async function SearchDialogWrapper() {
-  return (
-    <div>
-      <form action="/search" method="GET">
-        <button
-          type="submit"
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-accent rounded-md transition-colors"
-        >
-          <Search className="w-4 h-4" />
-          Search tasks...
-        </button>
-      </form>
-    </div>
   )
 }
