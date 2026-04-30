@@ -6,15 +6,6 @@ import type { List, Label, Task, TaskLabel, TaskAttachment, TaskReminder, TaskLo
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const dbPath = process.env.TEST_DB_PATH || path.join(__dirname, '../../tasks.json')
 
-// Simple in-memory cache for database reads
-let cachedDb: Database | null = null
-let cacheTime = 0
-const CACHE_TTL = 5000 // 5 seconds TTL
-
-function isCacheValid(): boolean {
-  return cachedDb !== null && (Date.now() - cacheTime) < CACHE_TTL
-}
-
 interface Database {
   lists: List[]
   labels: Label[]
@@ -26,23 +17,17 @@ interface Database {
 }
 
 export function getDb(): Database {
-  if (isCacheValid()) {
-    return cachedDb!
-  }
   if (fs.existsSync(dbPath)) {
     try {
       const data = fs.readFileSync(dbPath, 'utf-8')
-      const db = JSON.parse(data)
-      cachedDb = db
-      cacheTime = Date.now()
-      return db
+      return JSON.parse(data)
     } catch (e) {
       console.error('Failed to parse database file:', e)
       // Return default database on parse error
     }
   }
   // Return default database
-  const defaultDb = {
+  return {
     lists: [{ id: 'inbox', name: 'Inbox', color: '#6366f1', emoji: '📥', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }],
     labels: [],
     tasks: [],
@@ -51,9 +36,6 @@ export function getDb(): Database {
     task_reminders: [],
     task_logs: []
   }
-  cachedDb = defaultDb
-  cacheTime = Date.now()
-  return defaultDb
 }
 
 export function saveDb(db: Database) {
