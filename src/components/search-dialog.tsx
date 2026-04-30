@@ -7,19 +7,26 @@ import type { Task } from "@/types"
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import { cn, formatDisplayDate } from "@/lib/utils"
+import { Loader2 } from "lucide-react"
 
 export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Task[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     if (query.length < 2) {
       return
     }
     const timer = setTimeout(async () => {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
-      const data = await response.json()
-      setResults(data)
+      setIsLoading(true)
+      try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
+        const data = await response.json()
+        setResults(data)
+      } finally {
+        setIsLoading(false)
+      }
     }, 300)
     return () => clearTimeout(timer)
   }, [query])
@@ -39,6 +46,11 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           autoFocus
           className="text-lg h-12"
         />
+        {isLoading && (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
         {results.length > 0 && (
           <div className="max-h-96 overflow-auto space-y-1 mt-4">
             {results.map(task => (
