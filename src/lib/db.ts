@@ -41,8 +41,6 @@ export function getDb(): Database {
 export function saveDb(db: Database) {
   try {
     fs.writeFileSync(dbPath, JSON.stringify(db, null, 2))
-    cachedDb = db
-    cacheTime = Date.now()
   } catch (e) {
     console.error('Failed to save database:', e)
     throw e
