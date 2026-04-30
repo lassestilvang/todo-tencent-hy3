@@ -198,12 +198,6 @@ export function deleteTask(id: string): void {
   deleteTaskInDb(id)
 }
 
-function getSubTasks(parentId: string): Task[] {
-  return queryTasks(t => t.parent_task_id === parentId)
-    .sort((a: Task, b: Task) => (a.position || 0) - (b.position || 0))
-    .map(getTaskWithRelations)
-}
-
 export function getTaskLabels(taskId: string): Label[] {
   return getTaskLabelsFromDb(taskId)
 }
