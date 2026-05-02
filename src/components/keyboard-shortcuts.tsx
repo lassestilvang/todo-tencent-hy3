@@ -1,8 +1,14 @@
-"use client"
+'use client'
 
-import { useEffect } from "react"
+import { useEffect } from 'react'
 
-export function KeyboardShortcuts({ onSearchOpen }: { onSearchOpen: () => void }) {
+export function KeyboardShortcuts({
+  onSearchOpen,
+  onNewTask,
+}: {
+  onSearchOpen: () => void
+  onNewTask?: () => void
+}) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl+K or Cmd+K to open search
@@ -10,11 +16,19 @@ export function KeyboardShortcuts({ onSearchOpen }: { onSearchOpen: () => void }
         e.preventDefault()
         onSearchOpen()
       }
+      // 'n' to open new task dialog (when not in input/textarea)
+      if (
+        e.key === 'n' &&
+        !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)
+      ) {
+        e.preventDefault()
+        onNewTask?.()
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onSearchOpen])
+  }, [onSearchOpen, onNewTask])
 
   return null
 }
