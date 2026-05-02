@@ -18,6 +18,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TaskFlow - Daily Task Planner",
   description: "A modern, professional daily task planner",
+  icons: {
+    icon: '/file.svg',
+    apple: '/file.svg',
+  },
 }
 
 export default function RootLayout({
