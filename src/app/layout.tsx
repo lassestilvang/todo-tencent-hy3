@@ -33,6 +33,7 @@ export const metadata: Metadata = {
     title: 'TaskFlow - Daily Task Planner',
     description: 'A modern, professional daily task planner',
   },
+  manifest: '/manifest.json',
 }
 
 export default function RootLayout({
