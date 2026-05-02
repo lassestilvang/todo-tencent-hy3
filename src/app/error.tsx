@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
-import type { ErrorProps } from 'next'
 
-export default function Error({ error, reset }: ErrorProps) {
+export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error(error)
   }, [error])

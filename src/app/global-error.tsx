@@ -1,9 +1,8 @@
 'use client'
 
-import type { GlobalErrorProps } from 'next'
 import NextError from 'next/error'
 
-export default function GlobalError({ error, reset }: GlobalErrorProps) {
+export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <html>
       <body>
