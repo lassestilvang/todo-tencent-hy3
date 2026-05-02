@@ -1,12 +1,36 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { createListAction } from "@/lib/actions"
+import { useState } from 'react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { createListAction } from '@/lib/actions'
 
-const EMOJIS = ['📋', '🏠', '💼', '🎯', '📚', '🎨', '💻', '🏃', '🍽️', '✈️', '🛒', '🎵']
-const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6']
+const EMOJIS = [
+  '📋',
+  '🏠',
+  '💼',
+  '🎯',
+  '📚',
+  '🎨',
+  '💻',
+  '🏃',
+  '🍽️',
+  '✈️',
+  '🛒',
+  '🎵',
+]
+const COLORS = [
+  '#6366f1',
+  '#8b5cf6',
+  '#ec4899',
+  '#ef4444',
+  '#f97316',
+  '#eab308',
+  '#22c55e',
+  '#14b8a6',
+  '#06b6d4',
+  '#3b82f6',
+]
 
 export function CreateListForm() {
   const [name, setName] = useState('')
@@ -27,19 +51,20 @@ export function CreateListForm() {
         placeholder="List name"
         aria-label="List name"
         value={name}
-        onChange={e => setName(e.target.value)}
+        onChange={(e) => setName(e.target.value)}
         autoFocus
         required
       />
       <div className="space-y-2">
         <label className="text-sm font-medium">Emoji</label>
         <div className="flex flex-wrap gap-1">
-          {EMOJIS.map(e => (
+          {EMOJIS.map((e) => (
             <button
               key={e}
               type="button"
+              aria-label={`Select emoji ${e}`}
               onClick={() => setEmoji(e)}
-              className={`w-8 h-8 flex items-center justify-center rounded text-lg hover:bg-accent ${emoji === e ? 'bg-accent ring-2 ring-primary' : ''}`}
+              className={`hover:bg-accent flex h-8 w-8 items-center justify-center rounded text-lg ${emoji === e ? 'bg-accent ring-primary ring-2' : ''}`}
             >
               {e}
             </button>
@@ -49,18 +74,21 @@ export function CreateListForm() {
       <div className="space-y-2">
         <label className="text-sm font-medium">Color</label>
         <div className="flex flex-wrap gap-1">
-          {COLORS.map(c => (
+          {COLORS.map((c) => (
             <button
               key={c}
               type="button"
+              aria-label={`Select color ${c}`}
               onClick={() => setColor(c)}
-              className={`w-8 h-8 rounded-full ${color === c ? 'ring-2 ring-offset-2 ring-offset-background' : ''}`}
+              className={`h-8 w-8 rounded-full ${color === c ? 'ring-offset-background ring-2 ring-offset-2' : ''}`}
               style={{ backgroundColor: c }}
             />
           ))}
         </div>
       </div>
-      <Button type="submit" className="w-full">Create List</Button>
+      <Button type="submit" className="w-full">
+        Create List
+      </Button>
     </form>
   )
 }
