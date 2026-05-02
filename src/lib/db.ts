@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url'
 import type { List, Label, Task, TaskLabel, TaskAttachment, TaskReminder, TaskLog } from '@/types'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const dbPath = process.env.TEST_DB_PATH || path.join(__dirname, '../../tasks.json')
+const dbPath = process.env.TEST_DB_PATH || path.join(/*turbopackIgnore: true*/ process.cwd(), 'tasks.json')
 
 interface Database {
   lists: List[]
