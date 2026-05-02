@@ -1,6 +1,20 @@
-import { NextResponse } from "next/server"
-import { getTasks, createTask, toggleTaskComplete, deleteTask } from "@/lib/tasks"
-import type { View } from "@/types"
+import { NextResponse } from 'next/server'
+import {
+  getTasks,
+  createTask,
+  toggleTaskComplete,
+  deleteTask,
+} from '@/lib/tasks'
+import type { View } from '@/types'
+import { z } from 'zod'
+
+const createTaskSchema = z.object({
+  name: z.string().min(1).max(500),
+  description: z.string().max(5000).optional(),
+  date: z.string().optional(),
+  priority: z.enum(['high', 'medium', 'low', 'none']).optional(),
+  listId: z.string().optional(),
+})
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -11,7 +25,8 @@ export async function GET(request: Request) {
   const tasks = getTasks({
     view: view || undefined,
     listId: listId || undefined,
-    completed: completed === 'true' ? true : completed === 'false' ? false : undefined,
+    completed:
+      completed === 'true' ? true : completed === 'false' ? false : undefined,
   })
 
   return NextResponse.json(tasks)
@@ -19,8 +34,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const data = await request.json()
-    const task = createTask(data)
+    const body = await request.json()
+    const result = createTaskSchema.safeParse(body)
+    if (!result.success) {
+      return NextResponse.json(
+        { error: 'Invalid request data' },
+        { status: 400 }
+      )
+    }
+    const task = createTask(result.data)
     return NextResponse.json(task)
   } catch {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
