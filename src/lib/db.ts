@@ -1,8 +1,19 @@
 import fs from 'fs'
 import path from 'path'
-import type { List, Label, Task, TaskLabel, TaskAttachment, TaskReminder, TaskLog } from '@/types'
+import type {
+  List,
+  Label,
+  Task,
+  TaskLabel,
+  TaskAttachment,
+  TaskReminder,
+  TaskLog,
+} from '@/types'
+import { env } from './env'
 
-const dbPath = process.env.TEST_DB_PATH || path.join(/*turbopackIgnore: true*/ process.cwd(), 'tasks.json')
+const dbPath =
+  env.TEST_DB_PATH ||
+  path.join(/*turbopackIgnore: true*/ process.cwd(), 'tasks.json')
 
 interface Database {
   lists: List[]
@@ -26,13 +37,22 @@ export function getDb(): Database {
   }
   // Return default database
   return {
-    lists: [{ id: 'inbox', name: 'Inbox', color: '#6366f1', emoji: '📥', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }],
+    lists: [
+      {
+        id: 'inbox',
+        name: 'Inbox',
+        color: '#6366f1',
+        emoji: '📥',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ],
     labels: [],
     tasks: [],
     task_labels: [],
     task_attachments: [],
     task_reminders: [],
-    task_logs: []
+    task_logs: [],
   }
 }
 
@@ -50,7 +70,7 @@ export function resetDb() {
     if (fs.existsSync(dbPath)) {
       fs.unlinkSync(dbPath)
     }
-  } catch(e) {
+  } catch (e) {
     console.error('Failed to reset database:', e)
   }
 }
@@ -75,14 +95,20 @@ export function updateTask(id: string, data: Partial<Task>) {
   const db = getDb()
   const index = db.tasks.findIndex((t: Task) => t.id === id)
   if (index !== -1) {
-    db.tasks[index] = { ...db.tasks[index], ...data, updated_at: new Date().toISOString() }
+    db.tasks[index] = {
+      ...db.tasks[index],
+      ...data,
+      updated_at: new Date().toISOString(),
+    }
     saveDb(db)
   }
 }
 
 export function deleteTask(id: string) {
   const db = getDb()
-  db.tasks = db.tasks.filter((t: Task) => t.id !== id && t.parent_task_id !== id)
+  db.tasks = db.tasks.filter(
+    (t: Task) => t.id !== id && t.parent_task_id !== id
+  )
   saveDb(db)
 }
 
@@ -102,7 +128,11 @@ export function updateList(id: string, data: Partial<List>) {
   const db = getDb()
   const index = db.lists.findIndex((l: List) => l.id === id)
   if (index !== -1) {
-    db.lists[index] = { ...db.lists[index], ...data, updated_at: new Date().toISOString() }
+    db.lists[index] = {
+      ...db.lists[index],
+      ...data,
+      updated_at: new Date().toISOString(),
+    }
     saveDb(db)
   }
 }
@@ -134,7 +164,11 @@ export function deleteLabel(id: string) {
 // Task labels
 export function insertTaskLabel(taskId: string, labelId: string) {
   const db = getDb()
-  if (!db.task_labels.find((tl: TaskLabel) => tl.task_id === taskId && tl.label_id === labelId)) {
+  if (
+    !db.task_labels.find(
+      (tl: TaskLabel) => tl.task_id === taskId && tl.label_id === labelId
+    )
+  ) {
     db.task_labels.push({ task_id: taskId, label_id: labelId })
     saveDb(db)
   }
@@ -142,7 +176,9 @@ export function insertTaskLabel(taskId: string, labelId: string) {
 
 export function deleteTaskLabel(taskId: string, labelId: string) {
   const db = getDb()
-  db.task_labels = db.task_labels.filter((tl: TaskLabel) => !(tl.task_id === taskId && tl.label_id === labelId))
+  db.task_labels = db.task_labels.filter(
+    (tl: TaskLabel) => !(tl.task_id === taskId && tl.label_id === labelId)
+  )
   saveDb(db)
 }
 
@@ -163,7 +199,9 @@ export function insertAttachment(att: TaskAttachment) {
 
 export function deleteAttachment(id: string) {
   const db = getDb()
-  db.task_attachments = db.task_attachments.filter((a: TaskAttachment) => a.id !== id)
+  db.task_attachments = db.task_attachments.filter(
+    (a: TaskAttachment) => a.id !== id
+  )
   saveDb(db)
 }
 
