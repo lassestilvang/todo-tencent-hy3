@@ -22,6 +22,17 @@ export const metadata: Metadata = {
     icon: '/file.svg',
     apple: '/file.svg',
   },
+  openGraph: {
+    title: 'TaskFlow - Daily Task Planner',
+    description: 'A modern, professional daily task planner',
+    type: 'website',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'TaskFlow - Daily Task Planner',
+    description: 'A modern, professional daily task planner',
+  },
 }
 
 export default function RootLayout({
