@@ -108,6 +108,7 @@ function TaskItem({ task }: { task: Task }) {
           'group hover:bg-accent/50 flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors',
           task.completed && 'opacity-60'
         )}
+        suppressHydrationWarning
       >
         <form action={handleToggle.bind(null, task.id)}>
           <button type="submit">
