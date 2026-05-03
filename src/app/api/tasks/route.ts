@@ -17,19 +17,27 @@ const createTaskSchema = z.object({
 })
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const view = searchParams.get('view') as View['type'] | null
-  const listId = searchParams.get('listId')
-  const completed = searchParams.get('completed')
+  try {
+    const { searchParams } = new URL(request.url)
+    const view = searchParams.get('view') as View['type'] | null
+    const listId = searchParams.get('listId')
+    const completed = searchParams.get('completed')
 
-  const tasks = getTasks({
-    view: view || undefined,
-    listId: listId || undefined,
-    completed:
-      completed === 'true' ? true : completed === 'false' ? false : undefined,
-  })
+    const tasks = getTasks({
+      view: view || undefined,
+      listId: listId || undefined,
+      completed:
+        completed === 'true' ? true : completed === 'false' ? false : undefined,
+    })
 
-  return NextResponse.json(tasks)
+    return NextResponse.json(tasks)
+  } catch (error) {
+    console.error('Failed to fetch tasks:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch tasks' },
+      { status: 500 }
+    )
+  }
 }
 
 export async function POST(request: Request) {
