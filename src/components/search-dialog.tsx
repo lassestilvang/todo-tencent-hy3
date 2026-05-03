@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import useSWR from 'swr'
+import { useState } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import type { Task } from '@/types'
@@ -8,6 +9,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import Link from 'next/link'
 import { cn, formatDisplayDate } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 export function SearchDialog({
   open,
@@ -17,27 +20,12 @@ export function SearchDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<Task[]>([])
-  const [isLoading, setIsLoading] = useState(false)
 
-  useEffect(() => {
-    if (query.length < 2) {
-      return
-    }
-    const timer = setTimeout(async () => {
-      setIsLoading(true)
-      try {
-        const response = await fetch(
-          `/api/search?q=${encodeURIComponent(query)}`
-        )
-        const data = await response.json()
-        setResults(data)
-      } finally {
-        setIsLoading(false)
-      }
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [query])
+  const { data: results = [], isLoading } = useSWR<Task[]>(
+    query.length >= 2 ? `/api/search?q=${encodeURIComponent(query)}` : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -45,12 +33,7 @@ export function SearchDialog({
         <Input
           placeholder="Search tasks..."
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value)
-            if (e.target.value.length < 2) {
-              setResults([])
-            }
-          }}
+          onChange={(e) => setQuery(e.target.value)}
           className="h-12 text-lg"
         />
         {isLoading && (
@@ -87,7 +70,7 @@ export function SearchDialog({
             ))}
           </div>
         )}
-        {query.length >= 2 && results.length === 0 && (
+        {query.length >= 2 && !isLoading && results.length === 0 && (
           <p className="text-muted-foreground py-8 text-center">
             No tasks found
           </p>
