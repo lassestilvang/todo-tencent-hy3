@@ -18,6 +18,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'TaskFlow - Daily Task Planner',
   description: 'A modern, professional daily task planner',
+  keywords: ['task planner', 'daily tasks', 'productivity', 'todo app'],
+  authors: [{ name: 'TaskFlow Team' }],
+  robots: { index: true, follow: true },
   icons: {
     icon: '/file.svg',
     apple: '/file.svg',
