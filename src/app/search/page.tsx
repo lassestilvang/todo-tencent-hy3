@@ -1,4 +1,10 @@
+import type { Metadata } from 'next'
 import { SearchResults } from '@/components/search-results'
+
+export const metadata: Metadata = {
+  title: 'Search Tasks - TaskFlow',
+  description: 'Search and find tasks by name or description',
+}
 
 export default async function SearchPage({
   searchParams,
