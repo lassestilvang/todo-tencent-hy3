@@ -18,7 +18,6 @@ export default async function SearchPage({
           placeholder="Search by name or description..."
           defaultValue={query}
           className="bg-background w-full rounded-lg border px-4 py-2"
-          autoFocus
         />
       </form>
       <SearchResults query={query} />

@@ -1,15 +1,21 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import type { Task } from "@/types"
-import { Checkbox } from "@/components/ui/checkbox"
-import Link from "next/link"
-import { cn, formatDisplayDate } from "@/lib/utils"
-import { Loader2 } from "lucide-react"
+import { useState, useEffect } from 'react'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import type { Task } from '@/types'
+import { Checkbox } from '@/components/ui/checkbox'
+import Link from 'next/link'
+import { cn, formatDisplayDate } from '@/lib/utils'
+import { Loader2 } from 'lucide-react'
 
-export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function SearchDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Task[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -21,7 +27,9 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     const timer = setTimeout(async () => {
       setIsLoading(true)
       try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(query)}`
+        )
         const data = await response.json()
         setResults(data)
       } finally {
@@ -37,36 +45,42 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         <Input
           placeholder="Search tasks..."
           value={query}
-          onChange={e => {
+          onChange={(e) => {
             setQuery(e.target.value)
             if (e.target.value.length < 2) {
               setResults([])
             }
           }}
-          autoFocus
-          className="text-lg h-12"
+          className="h-12 text-lg"
         />
         {isLoading && (
           <div className="flex justify-center py-4">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
           </div>
         )}
         {results.length > 0 && (
-          <div className="max-h-96 overflow-auto space-y-1 mt-4">
-            {results.map(task => (
+          <div className="mt-4 max-h-96 space-y-1 overflow-auto">
+            {results.map((task) => (
               <Link
                 key={task.id}
                 href={`/task/${task.id}`}
-                className="flex items-center gap-3 p-3 hover:bg-accent rounded-lg"
+                className="hover:bg-accent flex items-center gap-3 rounded-lg p-3"
                 onClick={() => onOpenChange(false)}
               >
                 <Checkbox checked={task.completed === 1} />
-                <div className="flex-1 min-w-0">
-                  <p className={cn("truncate", task.completed && "line-through opacity-60")}>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={cn(
+                      'truncate',
+                      task.completed && 'line-through opacity-60'
+                    )}
+                  >
                     {task.name}
                   </p>
                   {task.date && (
-                    <p className="text-xs text-muted-foreground">{formatDisplayDate(task.date)}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {formatDisplayDate(task.date)}
+                    </p>
                   )}
                 </div>
               </Link>
@@ -74,7 +88,9 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           </div>
         )}
         {query.length >= 2 && results.length === 0 && (
-          <p className="text-center py-8 text-muted-foreground">No tasks found</p>
+          <p className="text-muted-foreground py-8 text-center">
+            No tasks found
+          </p>
         )}
       </DialogContent>
     </Dialog>

@@ -52,7 +52,6 @@ export function CreateListForm() {
         aria-label="List name"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        autoFocus
         required
       />
       <div className="space-y-2">
