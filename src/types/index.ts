@@ -1,5 +1,12 @@
 export type Priority = 'high' | 'medium' | 'low' | 'none'
-export type RecurringType = 'every_day' | 'every_week' | 'every_weekday' | 'every_month' | 'every_year' | 'custom' | null
+export type RecurringType =
+  | 'every_day'
+  | 'every_week'
+  | 'every_weekday'
+  | 'every_month'
+  | 'every_year'
+  | 'custom'
+  | null
 
 export interface List {
   id: string
@@ -82,5 +89,3 @@ export interface View {
   icon: string
   type: 'today' | 'next7' | 'upcoming' | 'all'
 }
-
-export type Theme = 'light' | 'dark' | 'system'
