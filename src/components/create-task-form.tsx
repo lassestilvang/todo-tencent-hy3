@@ -48,11 +48,15 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
       />
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-muted-foreground text-xs">Date</label>
-          <Input name="date" type="date" />
+          <label htmlFor="date" className="text-muted-foreground text-xs">
+            Date
+          </label>
+          <Input id="date" name="date" type="date" />
         </div>
         <div className="space-y-1">
-          <label className="text-muted-foreground text-xs">Priority</label>
+          <label htmlFor="priority" className="text-muted-foreground text-xs">
+            Priority
+          </label>
           <Select name="priority" defaultValue="none">
             <SelectTrigger>
               <SelectValue />
