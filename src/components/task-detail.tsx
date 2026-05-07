@@ -75,8 +75,16 @@ export function TaskDetail({
             <p>{formatDisplayDate(task.date)}</p>
           </div>
           <div>
+            <span className="text-muted-foreground text-xs">Deadline</span>
+            <p>{formatDisplayDate(task.deadline) || '—'}</p>
+          </div>
+          <div>
             <span className="text-muted-foreground text-xs">Priority</span>
             <p className="capitalize">{task.priority}</p>
+          </div>
+          <div>
+            <span className="text-muted-foreground text-xs">Estimate</span>
+            <p>{task.estimate ? `${task.estimate} min` : '—'}</p>
           </div>
         </div>
 
