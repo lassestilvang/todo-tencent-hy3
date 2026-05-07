@@ -9,10 +9,10 @@ import { cn, formatDisplayDate, formatDateTime } from '@/lib/utils'
 
 export function TaskDetail({
   taskId,
-  onUpdate,
+  onClose,
 }: {
   taskId: string
-  onUpdate: () => void
+  onClose: () => void
 }) {
   const task = getTask(taskId)
 
@@ -37,7 +37,7 @@ export function TaskDetail({
             {task.name}
           </h2>
         </div>
-        <Button variant="ghost" size="icon" onClick={onUpdate}>
+        <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
