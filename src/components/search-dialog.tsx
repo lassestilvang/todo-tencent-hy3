@@ -1,7 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import type { Task } from '@/types'
@@ -12,6 +12,8 @@ import { Loader2 } from 'lucide-react'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
+const DEBOUNCE_MS = 300
+
 export function SearchDialog({
   open,
   onOpenChange,
@@ -20,9 +22,17 @@ export function SearchDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [query])
 
   const { data: results = [], isLoading } = useSWR<Task[]>(
-    query.length >= 2 ? `/api/search?q=${encodeURIComponent(query)}` : null,
+    debouncedQuery.length >= 2
+      ? `/api/search?q=${encodeURIComponent(debouncedQuery)}`
+      : null,
     fetcher,
     { revalidateOnFocus: false }
   )
@@ -70,7 +80,7 @@ export function SearchDialog({
             ))}
           </div>
         )}
-        {query.length >= 2 && !isLoading && results.length === 0 && (
+        {debouncedQuery.length >= 2 && !isLoading && results.length === 0 && (
           <p className="text-muted-foreground py-8 text-center">
             No tasks found
           </p>
