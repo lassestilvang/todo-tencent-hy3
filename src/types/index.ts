@@ -64,7 +64,9 @@ export interface Task {
   description: string | null
   date: string | null
   deadline: string | null
+  /** Estimated time in minutes */
   estimate: number | null
+  /** Actual time spent in minutes */
   actual_time: number
   priority: Priority
   recurring: RecurringType
