@@ -34,13 +34,13 @@ import { generateId } from './utils'
 export function getLists(): List[] {
   const db = getDb()
   const lists = db.lists
+  const tasks = db.tasks || []
 
   return lists
     .map((l: List) => {
-      const taskCount = queryTasks((t) => t.list_id === l.id).length
-      const incompleteCount = queryTasks(
-        (t) => t.list_id === l.id && !t.completed
-      ).length
+      const listTasks = tasks.filter((t: Task) => t.list_id === l.id)
+      const taskCount = listTasks.length
+      const incompleteCount = listTasks.filter((t: Task) => !t.completed).length
       return { ...l, task_count: taskCount, incomplete_count: incompleteCount }
     })
     .sort((a: List, b: List) => {
