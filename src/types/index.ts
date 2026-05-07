@@ -46,7 +46,7 @@ export interface TaskReminder {
   id: string
   task_id: string
   reminder_time: string
-  sent: number
+  sent: boolean
   created_at: string
 }
 

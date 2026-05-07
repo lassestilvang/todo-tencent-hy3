@@ -37,6 +37,13 @@ export function getDb(): Database {
           completed: !!t.completed,
         }))
       }
+      // Convert reminder.sent from number (0/1) to boolean
+      if (db.task_reminders) {
+        db.task_reminders = db.task_reminders.map((r: TaskReminder) => ({
+          ...r,
+          sent: !!r.sent,
+        }))
+      }
       return db
     } catch (e) {
       console.error('Failed to parse database file:', e)

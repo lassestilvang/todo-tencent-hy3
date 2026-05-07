@@ -324,7 +324,7 @@ export function addTaskReminder(taskId: string, reminderTime: string): void {
     id,
     task_id: taskId,
     reminder_time: reminderTime,
-    sent: 0,
+    sent: false,
     created_at: new Date().toISOString(),
   })
   logTaskAction(taskId, 'reminder_added', `Reminder set for ${reminderTime}`)
