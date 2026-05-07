@@ -54,6 +54,14 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
           <Input id="date" name="date" type="date" />
         </div>
         <div className="space-y-1">
+          <label htmlFor="deadline" className="text-muted-foreground text-xs">
+            Deadline
+          </label>
+          <Input id="deadline" name="deadline" type="date" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
           <label htmlFor="priority" className="text-muted-foreground text-xs">
             Priority
           </label>
@@ -69,6 +77,19 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="estimate" className="text-muted-foreground text-xs">
+            Estimate (min)
+          </label>
+          <Input
+            id="estimate"
+            name="estimate"
+            type="number"
+            min="1"
+            max="9999"
+            placeholder="60"
+          />
         </div>
       </div>
       <SubmitButton />

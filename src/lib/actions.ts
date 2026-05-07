@@ -20,6 +20,7 @@ const createTaskSchema = z.object({
     .max(500, 'Task name is too long'),
   description: z.string().max(5000, 'Description is too long').optional(),
   date: z.string().optional(),
+  deadline: z.string().optional(),
   priority: z.enum(['high', 'medium', 'low', 'none']).optional(),
   listId: z.string().optional(),
   estimate: z.coerce
@@ -34,6 +35,7 @@ export async function createTaskAction(formData: FormData) {
     name: formData.get('name') as string,
     description: formData.get('description') as string,
     date: formData.get('date') as string,
+    deadline: formData.get('deadline') as string,
     priority: formData.get('priority') as Priority,
     listId: formData.get('listId') as string,
     estimate: formData.get('estimate') as string,
@@ -44,7 +46,8 @@ export async function createTaskAction(formData: FormData) {
     throw new Error('Invalid task data - please check your input')
   }
 
-  const { name, description, date, priority, listId, estimate } = result.data
+  const { name, description, date, deadline, priority, listId, estimate } =
+    result.data
   const validPriority: Priority =
     priority && validPriorities.includes(priority) ? priority : 'none'
 
@@ -52,6 +55,7 @@ export async function createTaskAction(formData: FormData) {
     name: name.trim(),
     description: description || undefined,
     date: date || undefined,
+    deadline: deadline || undefined,
     priority: validPriority,
     list_id: listId || undefined,
     estimate: estimate || undefined,
