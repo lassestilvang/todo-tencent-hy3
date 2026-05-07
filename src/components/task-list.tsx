@@ -112,7 +112,7 @@ function TaskItem({ task }: { task: Task }) {
       >
         <form action={handleToggle.bind(null, task.id)}>
           <button type="submit">
-            <Checkbox checked={task.completed === 1} />
+            <Checkbox checked={task.completed} />
           </button>
         </form>
         <div className="min-w-0 flex-1">
@@ -197,7 +197,7 @@ function TaskItem({ task }: { task: Task }) {
             >
               <form action={handleToggle.bind(null, sub.id)}>
                 <button type="submit">
-                  <Checkbox checked={sub.completed === 1} />
+                  <Checkbox checked={sub.completed} />
                 </button>
               </form>
               <span

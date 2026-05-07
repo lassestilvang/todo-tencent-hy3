@@ -1,37 +1,73 @@
-import { getDb, queryTasks, insertTask, updateTask as updateTaskInDb, deleteTask as deleteTaskInDb,
-  insertList, updateList as updateListInDb, deleteList as deleteListInDb,
-  insertLabel, deleteLabel as deleteLabelInDb,
-  insertTaskLabel, deleteTaskLabel, getTaskLabels as getTaskLabelsFromDb,
-  insertAttachment, deleteAttachment, getTaskAttachments as getTaskAttachmentsFromDb,
-  insertReminder, deleteReminder, getTaskReminders as getTaskRemindersFromDb,
-  insertLog, getTaskLogs as getTaskLogsFromDb,
+import {
+  getDb,
+  queryTasks,
+  insertTask,
+  updateTask as updateTaskInDb,
+  deleteTask as deleteTaskInDb,
+  insertList,
+  updateList as updateListInDb,
+  deleteList as deleteListInDb,
+  insertLabel,
+  deleteLabel as deleteLabelInDb,
+  insertTaskLabel,
+  deleteTaskLabel,
+  getTaskLabels as getTaskLabelsFromDb,
+  insertAttachment,
+  deleteAttachment,
+  getTaskAttachments as getTaskAttachmentsFromDb,
+  insertReminder,
+  deleteReminder,
+  getTaskReminders as getTaskRemindersFromDb,
+  insertLog,
+  getTaskLogs as getTaskLogsFromDb,
 } from './db'
-import type { Task, List, Label, TaskAttachment, TaskReminder, TaskLog } from '@/types'
+import type {
+  Task,
+  List,
+  Label,
+  TaskAttachment,
+  TaskReminder,
+  TaskLog,
+} from '@/types'
 import { generateId } from './utils'
 
 export function getLists(): List[] {
   const db = getDb()
-  const lists = db.lists;
+  const lists = db.lists
 
-  return lists.map((l: List) => {
-    const taskCount = queryTasks(t => t.list_id === l.id).length
-    const incompleteCount = queryTasks(t => t.list_id === l.id && !t.completed).length
-    return { ...l, task_count: taskCount, incomplete_count: incompleteCount }
-  }).sort((a: List, b: List) => {
-    if (a.id === 'inbox') return -1
-    if (b.id === 'inbox') return 1
-    return a.name.localeCompare(b.name)
-  })
+  return lists
+    .map((l: List) => {
+      const taskCount = queryTasks((t) => t.list_id === l.id).length
+      const incompleteCount = queryTasks(
+        (t) => t.list_id === l.id && !t.completed
+      ).length
+      return { ...l, task_count: taskCount, incomplete_count: incompleteCount }
+    })
+    .sort((a: List, b: List) => {
+      if (a.id === 'inbox') return -1
+      if (b.id === 'inbox') return 1
+      return a.name.localeCompare(b.name)
+    })
 }
 
 export function createList(name: string, color: string, emoji: string): List {
   const id = generateId()
-  const list = { id, name, color, emoji, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+  const list = {
+    id,
+    name,
+    color,
+    emoji,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
   insertList(list)
   return list
 }
 
-export function updateList(id: string, data: Partial<Omit<List, 'id' | 'created_at' | 'updated_at'>>): void {
+export function updateList(
+  id: string,
+  data: Partial<Omit<List, 'id' | 'created_at' | 'updated_at'>>
+): void {
   updateListInDb(id, { ...data, updated_at: new Date().toISOString() })
 }
 
@@ -65,16 +101,24 @@ function getTaskWithRelations(task: Task, db: ReturnType<typeof getDb>): Task {
 
   return {
     ...task,
-    list: task.list_id ? lists.find((l: List) => l.id === task.list_id) : undefined,
+    list: task.list_id
+      ? lists.find((l: List) => l.id === task.list_id)
+      : undefined,
     labels: taskLabels
-      .filter((tl: { task_id: string; label_id: string }) => tl.task_id === task.id)
-      .map((tl: { task_id: string; label_id: string }) => labels.find((l: Label) => l.id === tl.label_id))
+      .filter(
+        (tl: { task_id: string; label_id: string }) => tl.task_id === task.id
+      )
+      .map((tl: { task_id: string; label_id: string }) =>
+        labels.find((l: Label) => l.id === tl.label_id)
+      )
       .filter((l: Label | undefined): l is Label => l !== undefined),
     sub_tasks: allTasks
       .filter((t: Task) => t.parent_task_id === task.id)
       .sort((a: Task, b: Task) => (a.position || 0) - (b.position || 0))
-      .map(t => getTaskWithRelations(t, db)),
-    attachments: taskAttachments.filter((a: TaskAttachment) => a.task_id === task.id),
+      .map((t) => getTaskWithRelations(t, db)),
+    attachments: taskAttachments.filter(
+      (a: TaskAttachment) => a.task_id === task.id
+    ),
     reminders: taskReminders.filter((r: TaskReminder) => r.task_id === task.id),
   }
 }
@@ -85,38 +129,43 @@ export function getTasks(options?: {
   completed?: boolean
   search?: string
 }): Task[] {
-  let tasks = queryTasks(t => !t.parent_task_id)
+  let tasks = queryTasks((t) => !t.parent_task_id)
 
   if (options?.listId) {
-    tasks = tasks.filter(t => t.list_id === options.listId)
+    tasks = tasks.filter((t) => t.list_id === options.listId)
   }
 
   if (options?.view) {
     const today = new Date().toISOString().split('T')[0]
-    const next7 = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+    const next7 = new Date(Date.now() + 7 * 86400000)
+      .toISOString()
+      .split('T')[0]
 
     switch (options.view) {
       case 'today':
-        tasks = tasks.filter(t => t.date === today || t.deadline === today)
+        tasks = tasks.filter((t) => t.date === today || t.deadline === today)
         break
       case 'next7':
-        tasks = tasks.filter(t => t.date && t.date >= today && t.date <= next7)
+        tasks = tasks.filter(
+          (t) => t.date && t.date >= today && t.date <= next7
+        )
         break
       case 'upcoming':
-        tasks = tasks.filter(t => t.date && t.date >= today)
+        tasks = tasks.filter((t) => t.date && t.date >= today)
         break
     }
   }
 
   if (options?.completed !== undefined) {
-    tasks = tasks.filter(t => t.completed === (options.completed ? 1 : 0))
+    tasks = tasks.filter((t) => t.completed === options.completed)
   }
 
   if (options?.search) {
     const search = options.search.toLowerCase()
-    tasks = tasks.filter(t =>
-      t.name.toLowerCase().includes(search) ||
-      (t.description && t.description.toLowerCase().includes(search))
+    tasks = tasks.filter(
+      (t) =>
+        t.name.toLowerCase().includes(search) ||
+        (t.description && t.description.toLowerCase().includes(search))
     )
   }
 
@@ -124,17 +173,25 @@ export function getTasks(options?: {
   return tasks
     .sort((a: Task, b: Task) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1
-      const priorityOrder: Record<string, number> = { high:0, medium: 1, low: 2, none: 3 }
-      if (a.priority !== b.priority) return (priorityOrder[a.priority] || 0) - (priorityOrder[b.priority] || 0)
+      const priorityOrder: Record<string, number> = {
+        high: 0,
+        medium: 1,
+        low: 2,
+        none: 3,
+      }
+      if (a.priority !== b.priority)
+        return (
+          (priorityOrder[a.priority] || 0) - (priorityOrder[b.priority] || 0)
+        )
       return (a.position || 0) - (b.position || 0)
     })
-    .map(t => getTaskWithRelations(t, db))
+    .map((t) => getTaskWithRelations(t, db))
 }
 
 export function getTask(id: string): Task | undefined {
   const db = getDb()
-  const task = queryTasks(t => t.id === id)[0]
-  if (!task) return undefined;
+  const task = queryTasks((t) => t.id === id)[0]
+  if (!task) return undefined
 
   return getTaskWithRelations(task, db)
 }
@@ -154,7 +211,7 @@ export function createTask(data: Partial<Task>): Task {
     recurring: data.recurring || null,
     list_id: data.list_id || null,
     parent_task_id: data.parent_task_id || null,
-    completed: data.completed || 0,
+    completed: data.completed || false,
     completed_at: null,
     position: data.position || 0,
     created_at: now,
@@ -170,7 +227,9 @@ export function updateTask(id: string, data: Partial<Task>): void {
   updateTaskInDb(id, { ...data, updated_at: new Date().toISOString() })
 
   if (oldTask) {
-    const changes = Object.keys(data).filter(k => data[k as keyof Task] !== oldTask[k as keyof Task])
+    const changes = Object.keys(data).filter(
+      (k) => data[k as keyof Task] !== oldTask[k as keyof Task]
+    )
     if (changes.length > 0) {
       logTaskAction(id, 'updated', `Updated: ${changes.join(', ')}`)
     }
@@ -179,13 +238,17 @@ export function updateTask(id: string, data: Partial<Task>): void {
 
 export function toggleTaskComplete(id: string): void {
   const task = getTask(id)
-  if (!task) return;
+  if (!task) return
 
-  const completed = task.completed ? 0 : 1
+  const completed = !task.completed
   const completedAt = completed ? new Date().toISOString() : null
   updateTaskInDb(id, { completed, completed_at: completedAt })
 
-  logTaskAction(id, completed ? 'completed' : 'reopened', `Task ${completed ? 'completed' : 'reopened'}`)
+  logTaskAction(
+    id,
+    completed ? 'completed' : 'reopened',
+    `Task ${completed ? 'completed' : 'reopened'}`
+  )
 
   if (task.sub_tasks) {
     for (const sub of task.sub_tasks) {
@@ -216,7 +279,13 @@ export function getTaskAttachments(taskId: string): TaskAttachment[] {
   return getTaskAttachmentsFromDb(taskId)
 }
 
-export function addTaskAttachment(taskId: string, fileName: string, filePath: string, fileSize: number, mimeType?: string): void {
+export function addTaskAttachment(
+  taskId: string,
+  fileName: string,
+  filePath: string,
+  fileSize: number,
+  mimeType?: string
+): void {
   const id = generateId()
   insertAttachment({
     id,
@@ -232,10 +301,16 @@ export function addTaskAttachment(taskId: string, fileName: string, filePath: st
 
 export function removeTaskAttachment(attachmentId: string): void {
   const db = getDb()
-  const att = db.task_attachments.find((a: TaskAttachment) => a.id === attachmentId)
+  const att = db.task_attachments.find(
+    (a: TaskAttachment) => a.id === attachmentId
+  )
   if (att) {
     deleteAttachment(attachmentId)
-    logTaskAction(att.task_id, 'attachment_removed', `File "${att.file_name}" removed`)
+    logTaskAction(
+      att.task_id,
+      'attachment_removed',
+      `File "${att.file_name}" removed`
+    )
   }
 }
 
@@ -278,22 +353,27 @@ export function getOverdueTasks(): Task[] {
   const db = getDb()
   const today = new Date().toISOString().split('T')[0]
   return db.tasks
-    .filter((t: Task) => t.date !== null && t.date < today && !t.completed && !t.parent_task_id)
+    .filter(
+      (t: Task) =>
+        t.date !== null && t.date < today && !t.completed && !t.parent_task_id
+    )
     .sort((a: Task, b: Task) => {
       if (!a.date || !b.date) return 0
       return a.date.localeCompare(b.date)
     })
-    .map(t => getTaskWithRelations(t, db))
+    .map((t) => getTaskWithRelations(t, db))
 }
 
 export function searchTasks(query: string): Task[] {
   const db = getDb()
   return db.tasks
-    .filter(t =>
-      t.name.toLowerCase().includes(query.toLowerCase()) ||
-      (t.description !== null && t.description.toLowerCase().includes(query.toLowerCase()))
+    .filter(
+      (t) =>
+        t.name.toLowerCase().includes(query.toLowerCase()) ||
+        (t.description !== null &&
+          t.description.toLowerCase().includes(query.toLowerCase()))
     )
     .sort((a: Task, b: Task) => b.created_at.localeCompare(a.created_at))
     .slice(0, 50)
-    .map(t => getTaskWithRelations(t, db))
+    .map((t) => getTaskWithRelations(t, db))
 }

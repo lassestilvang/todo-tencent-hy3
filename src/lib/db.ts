@@ -29,7 +29,15 @@ export function getDb(): Database {
   if (fs.existsSync(dbPath)) {
     try {
       const data = fs.readFileSync(dbPath, 'utf-8')
-      return JSON.parse(data)
+      const db = JSON.parse(data)
+      // Convert completed from number (0/1) to boolean
+      if (db.tasks) {
+        db.tasks = db.tasks.map((t: Task) => ({
+          ...t,
+          completed: !!t.completed,
+        }))
+      }
+      return db
     } catch (e) {
       console.error('Failed to parse database file:', e)
       // Return default database on parse error

@@ -70,7 +70,7 @@ export interface Task {
   recurring: RecurringType
   list_id: string | null
   parent_task_id: string | null
-  completed: number
+  completed: boolean
   completed_at: string | null
   position: number
   created_at: string

@@ -1,72 +1,90 @@
-import { X, Paperclip, Trash2, Clock, ListTodo, FileText } from "lucide-react"
-import { getTask } from "@/lib/tasks"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-import { PriorityIcon } from "@/components/priority-icon"
-import { handleToggle, handleDelete } from "@/lib/actions"
-import { cn, formatDisplayDate, formatDateTime } from "@/lib/utils"
+import { X, Paperclip, Trash2, Clock, ListTodo, FileText } from 'lucide-react'
+import { getTask } from '@/lib/tasks'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { PriorityIcon } from '@/components/priority-icon'
+import { handleToggle, handleDelete } from '@/lib/actions'
+import { cn, formatDisplayDate, formatDateTime } from '@/lib/utils'
 
-export function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () => void }) {
+export function TaskDetail({
+  taskId,
+  onUpdate,
+}: {
+  taskId: string
+  onUpdate: () => void
+}) {
   const task = getTask(taskId)
 
-  if (!task) return <div className="p-6 text-muted-foreground">Task not found</div>
+  if (!task)
+    return <div className="text-muted-foreground p-6">Task not found</div>
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3 flex-1">
+        <div className="flex flex-1 items-center gap-3">
           <form action={handleToggle.bind(null, taskId)}>
             <button type="submit">
-              <Checkbox checked={task.completed === 1} />
+              <Checkbox checked={task.completed} />
             </button>
           </form>
-          <h2 className={cn("text-lg font-semibold flex-1", task.completed && "line-through opacity-60")}>
+          <h2
+            className={cn(
+              'flex-1 text-lg font-semibold',
+              task.completed && 'line-through opacity-60'
+            )}
+          >
             {task.name}
           </h2>
         </div>
         <Button variant="ghost" size="icon" onClick={onUpdate}>
-          <X className="w-4 h-4" />
+          <X className="h-4 w-4" />
         </Button>
       </div>
 
       <div className="space-y-4 text-sm">
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="text-muted-foreground flex items-center gap-2">
           <PriorityIcon priority={task.priority} />
           <span className="capitalize">{task.priority}</span>
-          {task.date && <>
-            <Clock className="w-3 h-3" />
-            <span>{formatDisplayDate(task.date)}</span>
-          </>}
-          {task.list && <>
-            <ListTodo className="w-3 h-3" />
-            <span>{task.list.emoji} {task.list.name}</span>
-          </>}
+          {task.date && (
+            <>
+              <Clock className="h-3 w-3" />
+              <span>{formatDisplayDate(task.date)}</span>
+            </>
+          )}
+          {task.list && (
+            <>
+              <ListTodo className="h-3 w-3" />
+              <span>
+                {task.list.emoji} {task.list.name}
+              </span>
+            </>
+          )}
         </div>
 
         {task.description && (
-          <div className="flex gap-2 text-muted-foreground">
-            <FileText className="w-4 h-4 mt-0.5" />
+          <div className="text-muted-foreground flex gap-2">
+            <FileText className="mt-0.5 h-4 w-4" />
             <p className="whitespace-pre-wrap">{task.description}</p>
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs text-muted-foreground">Date</label>
+            <span className="text-muted-foreground text-xs">Date</span>
             <p>{formatDisplayDate(task.date)}</p>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">Priority</label>
+            <span className="text-muted-foreground text-xs">Priority</span>
             <p className="capitalize">{task.priority}</p>
           </div>
         </div>
 
         {task.labels && task.labels.length > 0 && (
           <div>
-            <span className="text-xs text-muted-foreground">Labels</span>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {task.labels.map(l => (
+            <span className="text-muted-foreground text-xs">Labels</span>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {task.labels.map((l) => (
                 <Badge key={l.id} variant="secondary">
                   {l.icon} {l.name}
                 </Badge>
@@ -77,16 +95,18 @@ export function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () 
 
         {task.sub_tasks && task.sub_tasks.length > 0 && (
           <div>
-            <span className="text-xs text-muted-foreground">Subtasks</span>
+            <span className="text-muted-foreground text-xs">Subtasks</span>
             <div className="mt-1 space-y-1">
-              {task.sub_tasks.map(sub => (
+              {task.sub_tasks.map((sub) => (
                 <div key={sub.id} className="flex items-center gap-2">
                   <form action={handleToggle.bind(null, sub.id)}>
                     <button type="submit">
-                      <Checkbox checked={sub.completed === 1} />
+                      <Checkbox checked={sub.completed} />
                     </button>
                   </form>
-                  <span className={sub.completed ? 'line-through opacity-60' : ''}>
+                  <span
+                    className={sub.completed ? 'line-through opacity-60' : ''}
+                  >
                     {sub.name}
                   </span>
                 </div>
@@ -97,11 +117,14 @@ export function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () 
 
         {task.attachments && task.attachments.length > 0 && (
           <div>
-            <span className="text-xs text-muted-foreground">Attachments</span>
+            <span className="text-muted-foreground text-xs">Attachments</span>
             <div className="mt-1 space-y-1">
-              {task.attachments.map(att => (
-                <div key={att.id} className="flex items-center gap-2 text-sm p-2 hover:bg-accent rounded">
-                  <Paperclip className="w-3 h-3" />
+              {task.attachments.map((att) => (
+                <div
+                  key={att.id}
+                  className="hover:bg-accent flex items-center gap-2 rounded p-2 text-sm"
+                >
+                  <Paperclip className="h-3 w-3" />
                   <span className="flex-1">{att.file_name}</span>
                 </div>
               ))}
@@ -111,10 +134,10 @@ export function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () 
 
         {task.logs && task.logs.length > 0 && (
           <div>
-            <span className="text-xs text-muted-foreground">Activity Log</span>
-            <div className="mt-1 space-y-1 max-h-32 overflow-auto">
-              {task.logs.map(log => (
-                <div key={log.id} className="text-xs text-muted-foreground p-1">
+            <span className="text-muted-foreground text-xs">Activity Log</span>
+            <div className="mt-1 max-h-32 space-y-1 overflow-auto">
+              {task.logs.map((log) => (
+                <div key={log.id} className="text-muted-foreground p-1 text-xs">
                   {formatDateTime(log.created_at)} - {log.action}
                 </div>
               ))}
@@ -124,7 +147,7 @@ export function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () 
 
         <form action={handleDelete.bind(null, taskId)}>
           <Button variant="destructive" size="sm" type="submit">
-            <Trash2 className="w-3 h-3 mr-2" />
+            <Trash2 className="mr-2 h-3 w-3" />
             Delete Task
           </Button>
         </form>

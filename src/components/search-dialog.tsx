@@ -50,7 +50,7 @@ export function SearchDialog({
                 className="hover:bg-accent flex items-center gap-3 rounded-lg p-3"
                 onClick={() => onOpenChange(false)}
               >
-                <Checkbox checked={task.completed === 1} />
+                <Checkbox checked={task.completed} />
                 <div className="min-w-0 flex-1">
                   <p
                     className={cn(
