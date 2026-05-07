@@ -1,9 +1,14 @@
-"use client"
+'use client'
 
-import { AlertTriangle, ArrowDown, ArrowUp } from "lucide-react"
-import type { Priority } from "@/types"
+import { memo } from 'react'
+import { AlertTriangle, ArrowDown, ArrowUp } from 'lucide-react'
+import type { Priority } from '@/types'
 
-export function PriorityIcon({ priority }: { priority: Priority }) {
+export const PriorityIcon = memo(function PriorityIcon({
+  priority,
+}: {
+  priority: Priority
+}) {
   if (priority === 'none') return null
 
   const config = {
@@ -13,5 +18,5 @@ export function PriorityIcon({ priority }: { priority: Priority }) {
   }
 
   const { icon: Icon, color } = config[priority]
-  return <Icon className={`w-3.5 h-3.5 ${color}`} />
-}
+  return <Icon className={`h-3.5 w-3.5 ${color}`} />
+})
