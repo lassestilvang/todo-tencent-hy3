@@ -20,7 +20,7 @@ const createTaskSchema = z.object({
 const patchTaskSchema = z.object({
   id: z.string().min(1),
   action: z.enum(['toggle', 'delete', 'update']),
-  data: z.record(z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
 })
 
 export async function GET(request: Request) {
