@@ -146,7 +146,7 @@ export function TaskDetail({
             <div className="mt-1 max-h-32 space-y-1 overflow-auto">
               {task.logs.map((log) => (
                 <div key={log.id} className="text-muted-foreground p-1 text-xs">
-                  {formatDateTime(log.created_at)} - {log.action}
+                  {formatDateTime(log.created_at)} - {log.details || log.action}
                 </div>
               ))}
             </div>
