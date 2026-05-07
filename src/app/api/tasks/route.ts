@@ -4,6 +4,7 @@ import {
   createTask,
   toggleTaskComplete,
   deleteTask,
+  updateTask,
 } from '@/lib/tasks'
 import type { View } from '@/types'
 import { z } from 'zod'
@@ -14,6 +15,12 @@ const createTaskSchema = z.object({
   date: z.string().optional(),
   priority: z.enum(['high', 'medium', 'low', 'none']).optional(),
   listId: z.string().optional(),
+})
+
+const patchTaskSchema = z.object({
+  id: z.string().min(1),
+  action: z.enum(['toggle', 'delete', 'update']),
+  data: z.record(z.unknown()).optional(),
 })
 
 export async function GET(request: Request) {
@@ -59,7 +66,17 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { id, action } = await request.json()
+    const body = await request.json()
+    const result = patchTaskSchema.safeParse(body)
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: 'Invalid request data' },
+        { status: 400 }
+      )
+    }
+
+    const { id, action, data } = result.data
 
     if (action === 'toggle') {
       toggleTaskComplete(id)
@@ -68,6 +85,11 @@ export async function PATCH(request: Request) {
 
     if (action === 'delete') {
       deleteTask(id)
+      return NextResponse.json({ success: true })
+    }
+
+    if (action === 'update' && data) {
+      updateTask(id, data)
       return NextResponse.json({ success: true })
     }
 
