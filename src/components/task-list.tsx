@@ -63,7 +63,7 @@ export async function TaskList({
                     Add a new task to your todo list
                   </DialogDescription>
                 </DialogHeader>
-                <CreateTaskFormWrapper />
+                <CreateTaskForm />
               </DialogContent>
             </Dialog>
           </div>
@@ -214,8 +214,4 @@ function TaskItem({ task }: { task: Task }) {
       )}
     </div>
   )
-}
-
-function CreateTaskFormWrapper() {
-  return <CreateTaskForm />
 }
