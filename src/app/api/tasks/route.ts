@@ -6,7 +6,7 @@ import {
   deleteTask,
   updateTask,
 } from '@/lib/tasks'
-import type { View } from '@/types'
+import type { Task, View } from '@/types'
 import { z } from 'zod'
 
 const createTaskSchema = z.object({
@@ -89,7 +89,7 @@ export async function PATCH(request: Request) {
     }
 
     if (action === 'update' && data) {
-      updateTask(id, data)
+      updateTask(id, data as Partial<Task>)
       return NextResponse.json({ success: true })
     }
 
