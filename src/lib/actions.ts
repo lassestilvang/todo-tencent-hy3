@@ -5,6 +5,7 @@ import {
   createList,
   toggleTaskComplete,
   deleteTask,
+  clearCompletedTasks,
 } from '@/lib/tasks'
 import type { Priority } from '@/types'
 import { revalidatePath } from 'next/cache'
@@ -90,4 +91,9 @@ export async function handleDelete(taskId: string) {
   if (!taskId) return
   deleteTask(taskId)
   redirect('/')
+}
+
+export async function handleClearCompleted() {
+  clearCompletedTasks()
+  revalidatePath('/')
 }

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { cn, formatDisplayDate } from '@/lib/utils'
 import { getTasks } from '@/lib/tasks'
-import { handleToggle, handleDelete } from '@/lib/actions'
+import { handleToggle, handleDelete, handleClearCompleted } from '@/lib/actions'
 import type { Task } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -71,6 +71,13 @@ export async function TaskList({
             <span className="text-muted-foreground text-sm">
               {tasks.filter((t) => !t.completed).length} remaining
             </span>
+            {tasks.some((t) => t.completed) && (
+              <form action={handleClearCompleted}>
+                <Button variant="ghost" size="sm" type="submit">
+                  Clear completed
+                </Button>
+              </form>
+            )}
           </div>
         </div>
 

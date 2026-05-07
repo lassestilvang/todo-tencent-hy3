@@ -261,6 +261,17 @@ export function deleteTask(id: string): void {
   deleteTaskInDb(id)
 }
 
+export function clearCompletedTasks(): void {
+  const db = getDb()
+  const completedTaskIds = db.tasks
+    .filter((t: Task) => t.completed)
+    .map((t: Task) => t.id)
+
+  for (const id of completedTaskIds) {
+    deleteTaskInDb(id)
+  }
+}
+
 export function getTaskLabels(taskId: string): Label[] {
   return getTaskLabelsFromDb(taskId)
 }
