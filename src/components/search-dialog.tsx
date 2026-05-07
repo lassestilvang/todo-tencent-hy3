@@ -1,7 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import type { Task } from '@/types'
@@ -23,9 +23,13 @@ export function SearchDialog({
 }) {
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [selectedIndex, setSelectedIndex] = useState(-1)
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query), DEBOUNCE_MS)
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query)
+      setSelectedIndex(-1)
+    }, DEBOUNCE_MS)
     return () => clearTimeout(timer)
   }, [query])
 
@@ -37,6 +41,28 @@ export function SearchDialog({
     { revalidateOnFocus: false }
   )
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (results.length === 0) return
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedIndex((prev) => Math.min(prev + 1, results.length - 1))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedIndex((prev) => Math.max(prev - 1, 0))
+      } else if (e.key === 'Enter' && selectedIndex >= 0) {
+        e.preventDefault()
+        const task = results[selectedIndex]
+        window.location.href = `/task/${task.id}`
+        onOpenChange(false)
+      } else if (e.key === 'Escape') {
+        onOpenChange(false)
+      }
+    },
+    [results, selectedIndex, onOpenChange]
+  )
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
@@ -44,7 +70,9 @@ export function SearchDialog({
           placeholder="Search tasks..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="h-12 text-lg"
+          autoFocus
         />
         {isLoading && (
           <div className="flex justify-center py-4">
@@ -53,11 +81,14 @@ export function SearchDialog({
         )}
         {results.length > 0 && (
           <div className="mt-4 max-h-96 space-y-1 overflow-auto">
-            {results.map((task) => (
+            {results.map((task, index) => (
               <Link
                 key={task.id}
                 href={`/task/${task.id}`}
-                className="hover:bg-accent flex items-center gap-3 rounded-lg p-3"
+                className={cn(
+                  'hover:bg-accent flex items-center gap-3 rounded-lg p-3',
+                  index === selectedIndex && 'bg-accent'
+                )}
                 onClick={() => onOpenChange(false)}
               >
                 <Checkbox checked={task.completed} />
