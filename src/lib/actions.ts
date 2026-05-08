@@ -7,12 +7,9 @@ import {
   deleteTask,
   clearCompletedTasks,
 } from '@/lib/tasks'
-import type { Priority } from '@/types'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-
-const validPriorities: Priority[] = ['high', 'medium', 'low', 'none']
 
 const createTaskSchema = z.object({
   name: z
@@ -37,7 +34,7 @@ export async function createTaskAction(formData: FormData) {
     description: formData.get('description') as string,
     date: formData.get('date') as string,
     deadline: formData.get('deadline') as string,
-    priority: formData.get('priority') as Priority,
+    priority: formData.get('priority') as string,
     listId: formData.get('listId') as string,
     estimate: formData.get('estimate') as string,
   }
@@ -49,15 +46,13 @@ export async function createTaskAction(formData: FormData) {
 
   const { name, description, date, deadline, priority, listId, estimate } =
     result.data
-  const validPriority: Priority =
-    priority && validPriorities.includes(priority) ? priority : 'none'
 
   createTask({
     name: name.trim(),
     description: description || undefined,
     date: date || undefined,
     deadline: deadline || undefined,
-    priority: validPriority,
+    priority: priority ?? 'none',
     list_id: listId || undefined,
     estimate: estimate || undefined,
   })
