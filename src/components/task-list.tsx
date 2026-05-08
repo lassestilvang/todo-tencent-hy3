@@ -26,6 +26,7 @@ import {
 interface TaskListProps {
   view?: 'today' | 'next7' | 'upcoming' | 'all'
   listId?: string
+  labelId?: string
   title: string
   searchQuery?: string
 }
@@ -33,12 +34,14 @@ interface TaskListProps {
 export async function TaskList({
   view,
   listId,
+  labelId,
   title,
   searchQuery,
 }: TaskListProps) {
   const tasks = getTasks({
     view,
     listId,
+    labelId,
     completed: undefined,
     search: searchQuery,
   })

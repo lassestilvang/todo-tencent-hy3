@@ -27,5 +27,5 @@ export default async function LabelPage({
   const label = labels.find((l) => l.id === id)
   const title = label ? `${label.icon} ${label.name}` : 'Label'
 
-  return <TaskList title={title} />
+  return <TaskList labelId={id} title={title} />
 }

@@ -126,6 +126,7 @@ function getTaskWithRelations(task: Task, db: ReturnType<typeof getDb>): Task {
 
 export function getTasks(options?: {
   listId?: string
+  labelId?: string
   view?: 'today' | 'next7' | 'upcoming' | 'all'
   completed?: boolean
   search?: string
@@ -135,6 +136,15 @@ export function getTasks(options?: {
 
   if (options?.listId) {
     tasks = tasks.filter((t) => t.list_id === options.listId)
+  }
+
+  if (options?.labelId) {
+    const taskIdsWithLabel = new Set(
+      db.task_labels
+        .filter((tl) => tl.label_id === options.labelId)
+        .map((tl) => tl.task_id)
+    )
+    tasks = tasks.filter((t) => taskIdsWithLabel.has(t.id))
   }
 
   if (options?.view) {
