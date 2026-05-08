@@ -60,18 +60,29 @@ export async function createTaskAction(formData: FormData) {
   revalidatePath('/')
 }
 
-export async function createListAction(formData: FormData) {
-  const name = (formData.get('name') as string)?.trim()
-  if (!name) {
-    throw new Error('List name is required')
-  }
-  if (name.length > 50) {
-    throw new Error('List name is too long')
-  }
-  const color = formData.get('color') as string
-  const emoji = formData.get('emoji') as string
+const createListSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'List name is required')
+    .max(50, 'List name is too long'),
+  color: z.string().optional(),
+  emoji: z.string().optional(),
+})
 
-  createList(name, color || '#6366f1', emoji || '📋')
+export async function createListAction(formData: FormData) {
+  const result = createListSchema.safeParse({
+    name: formData.get('name'),
+    color: formData.get('color'),
+    emoji: formData.get('emoji'),
+  })
+
+  if (!result.success) {
+    throw new Error(result.error.issues[0].message)
+  }
+
+  const { name, color, emoji } = result.data
+
+  createList(name.trim(), color || '#6366f1', emoji || '📋')
 
   revalidatePath('/')
 }
