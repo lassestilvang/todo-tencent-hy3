@@ -62,7 +62,7 @@ export function SearchDialog({
         onOpenChange(false)
       }
     },
-    [results, selectedIndex, onOpenChange]
+    [results, selectedIndex, onOpenChange, router]
   )
 
   return (
