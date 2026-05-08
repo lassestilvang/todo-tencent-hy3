@@ -4,6 +4,7 @@ import {
   insertTask,
   updateTask as updateTaskInDb,
   deleteTask as deleteTaskInDb,
+  deleteTasks as deleteTasksInDb,
   insertList,
   updateList as updateListInDb,
   deleteList as deleteListInDb,
@@ -267,9 +268,8 @@ export function clearCompletedTasks(): void {
     .filter((t: Task) => t.completed)
     .map((t: Task) => t.id)
 
-  for (const id of completedTaskIds) {
-    deleteTaskInDb(id)
-  }
+  if (completedTaskIds.length === 0) return
+  deleteTasksInDb(completedTaskIds)
 }
 
 export function getTaskLabels(taskId: string): Label[] {

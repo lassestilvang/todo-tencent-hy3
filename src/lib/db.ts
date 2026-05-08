@@ -292,6 +292,21 @@ export function deleteTask(id: string): void {
   saveDb(db)
 }
 
+export function deleteTasks(ids: string[]): void {
+  if (ids.length === 0) return
+
+  const idSet = new Set(ids)
+  const db = getDb()
+  db.tasks = db.tasks.filter(
+    (t) => !idSet.has(t.id) && !idSet.has(t.parent_task_id)
+  )
+  db.task_labels = db.task_labels.filter((tl) => !idSet.has(tl.task_id))
+  db.task_attachments = db.task_attachments.filter((a) => !idSet.has(a.task_id))
+  db.task_reminders = db.task_reminders.filter((r) => !idSet.has(r.task_id))
+  db.task_logs = db.task_logs.filter((l) => !idSet.has(l.task_id))
+  saveDb(db)
+}
+
 // ---- List Operations ----
 export function queryLists(): List[] {
   return getDb().lists
