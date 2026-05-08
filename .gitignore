@@ -41,3 +41,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# database (user data)
+/tasks.json
+tasks.db*
+*.backup.*
+*.corrupted.*
