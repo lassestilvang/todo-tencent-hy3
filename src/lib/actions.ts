@@ -57,7 +57,7 @@ export async function createTaskAction(formData: FormData) {
     estimate: estimate || undefined,
   })
 
-  revalidatePath('/')
+  revalidatePath('/', 'layout')
 }
 
 const createListSchema = z.object({
@@ -84,13 +84,13 @@ export async function createListAction(formData: FormData) {
 
   createList(name.trim(), color || '#6366f1', emoji || '📋')
 
-  revalidatePath('/')
+  revalidatePath('/', 'layout')
 }
 
 export async function handleToggle(taskId: string) {
   if (!taskId) return
   toggleTaskComplete(taskId)
-  revalidatePath('/')
+  revalidatePath('/', 'layout')
 }
 
 export async function handleDelete(taskId: string) {
@@ -101,5 +101,5 @@ export async function handleDelete(taskId: string) {
 
 export async function handleClearCompleted() {
   clearCompletedTasks()
-  revalidatePath('/')
+  revalidatePath('/', 'layout')
 }

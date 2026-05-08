@@ -68,7 +68,7 @@ export function updateList(
   id: string,
   data: Partial<Omit<List, 'id' | 'created_at' | 'updated_at'>>
 ): void {
-  updateListInDb(id, { ...data, updated_at: new Date().toISOString() })
+  updateListInDb(id, data)
 }
 
 export function deleteList(id: string): void {
@@ -235,7 +235,7 @@ export function createTask(data: Partial<Task>): Task {
 
 export function updateTask(id: string, data: Partial<Task>): void {
   const oldTask = getTask(id)
-  updateTaskInDb(id, { ...data, updated_at: new Date().toISOString() })
+  updateTaskInDb(id, data)
 
   if (oldTask) {
     const changes = Object.keys(data).filter(

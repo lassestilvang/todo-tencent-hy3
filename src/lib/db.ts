@@ -118,24 +118,27 @@ const dbPath =
   path.join(/*turbopackIgnore: true*/ process.cwd(), 'tasks.json')
 
 // Default database structure for new or corrupted databases
-const DEFAULT_DB = {
-  lists: [
-    {
-      id: 'inbox',
-      name: 'Inbox',
-      color: '#6366f1',
-      emoji: '📥',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  ],
-  labels: [],
-  tasks: [],
-  task_labels: [],
-  task_attachments: [],
-  task_reminders: [],
-  task_logs: [],
-} as z.infer<typeof DatabaseSchema>
+function createDefaultDb(): z.infer<typeof DatabaseSchema> {
+  const now = new Date().toISOString()
+  return {
+    lists: [
+      {
+        id: 'inbox',
+        name: 'Inbox',
+        color: '#6366f1',
+        emoji: '📥',
+        created_at: now,
+        updated_at: now,
+      },
+    ],
+    labels: [],
+    tasks: [],
+    task_labels: [],
+    task_attachments: [],
+    task_reminders: [],
+    task_logs: [],
+  }
+}
 
 /**
  * Read and validate the database from disk
@@ -143,7 +146,7 @@ const DEFAULT_DB = {
  */
 export function getDb(): z.infer<typeof DatabaseSchema> {
   if (!fs.existsSync(dbPath)) {
-    return DEFAULT_DB
+    return createDefaultDb()
   }
 
   try {
@@ -157,7 +160,7 @@ export function getDb(): z.infer<typeof DatabaseSchema> {
         validationResult.error.format()
       )
       backupCorruptedDb()
-      return DEFAULT_DB
+      return createDefaultDb()
     }
 
     return validationResult.data
@@ -166,7 +169,7 @@ export function getDb(): z.infer<typeof DatabaseSchema> {
     if (fs.existsSync(dbPath)) {
       backupCorruptedDb()
     }
-    return DEFAULT_DB
+    return createDefaultDb()
   }
 }
 

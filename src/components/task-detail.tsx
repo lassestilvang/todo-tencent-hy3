@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { X, Paperclip, Trash2, Clock, ListTodo, FileText } from 'lucide-react'
 import { getTask } from '@/lib/tasks'
 import { Button } from '@/components/ui/button'
@@ -7,13 +8,7 @@ import { handleDelete } from '@/lib/actions'
 import { TaskCheckbox } from '@/components/task-checkbox'
 import { cn, formatDisplayDate, formatDateTime } from '@/lib/utils'
 
-export function TaskDetail({
-  taskId,
-  onClose,
-}: {
-  taskId: string
-  onClose: () => void
-}) {
+export function TaskDetail({ taskId }: { taskId: string }) {
   const task = getTask(taskId)
 
   if (!task)
@@ -33,9 +28,11 @@ export function TaskDetail({
             {task.name}
           </h2>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+        <Link href="/">
+          <Button variant="ghost" size="icon">
+            <X className="h-4 w-4" />
+          </Button>
+        </Link>
       </div>
 
       <div className="space-y-4 text-sm">
