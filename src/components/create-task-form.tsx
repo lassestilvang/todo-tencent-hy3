@@ -13,6 +13,7 @@ import {
 import { createTaskAction } from '@/lib/actions'
 import { useFormStatus } from 'react-dom'
 import type { Priority } from '@/types'
+import { useState } from 'react'
 
 const PRIORITIES: { value: Priority; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -31,6 +32,7 @@ function SubmitButton() {
 }
 
 export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
+  const [priority, setPriority] = useState<string>('none')
   return (
     <form action={createTaskAction} className="space-y-4">
       <Input
@@ -65,7 +67,8 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
           <label htmlFor="priority" className="text-muted-foreground text-xs">
             Priority
           </label>
-          <Select name="priority" defaultValue="none">
+          <input type="hidden" name="priority" value={priority} />
+          <Select defaultValue="none" onValueChange={setPriority}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
