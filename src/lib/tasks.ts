@@ -129,7 +129,8 @@ export function getTasks(options?: {
   completed?: boolean
   search?: string
 }): Task[] {
-  let tasks = queryTasks((t) => !t.parent_task_id)
+  const db = getDb()
+  let tasks = (db.tasks || []).filter((t) => !t.parent_task_id)
 
   if (options?.listId) {
     tasks = tasks.filter((t) => t.list_id === options.listId)
@@ -169,7 +170,6 @@ export function getTasks(options?: {
     )
   }
 
-  const db = getDb()
   return tasks
     .sort((a: Task, b: Task) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1
