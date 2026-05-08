@@ -86,6 +86,10 @@ export function TaskDetail({
             <span className="text-muted-foreground text-xs">Estimate</span>
             <p>{task.estimate ? `${task.estimate} min` : '—'}</p>
           </div>
+          <div>
+            <span className="text-muted-foreground text-xs">Last updated</span>
+            <p>{formatDateTime(task.updated_at)}</p>
+          </div>
         </div>
 
         {task.labels && task.labels.length > 0 && (
