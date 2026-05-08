@@ -5,10 +5,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import type { Task } from '@/types'
-import { Checkbox } from '@/components/ui/checkbox'
 import Link from 'next/link'
 import { cn, formatDisplayDate } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
+import { TaskCheckbox } from '@/components/task-checkbox'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -82,17 +82,19 @@ export function SearchDialog({
         {results.length > 0 && (
           <div className="mt-4 max-h-96 space-y-1 overflow-auto">
             {results.map((task, index) => (
-              <Link
+              <div
                 key={task.id}
-                href={`/task/${task.id}`}
                 className={cn(
                   'hover:bg-accent flex items-center gap-3 rounded-lg p-3',
                   index === selectedIndex && 'bg-accent'
                 )}
-                onClick={() => onOpenChange(false)}
               >
-                <Checkbox checked={task.completed} />
-                <div className="min-w-0 flex-1">
+                <TaskCheckbox taskId={task.id} checked={task.completed} />
+                <Link
+                  href={`/task/${task.id}`}
+                  className="flex min-w-0 flex-1"
+                  onClick={() => onOpenChange(false)}
+                >
                   <p
                     className={cn(
                       'truncate',
@@ -106,8 +108,8 @@ export function SearchDialog({
                       {formatDisplayDate(task.date)}
                     </p>
                   )}
-                </div>
-              </Link>
+                </Link>
+              </div>
             ))}
           </div>
         )}

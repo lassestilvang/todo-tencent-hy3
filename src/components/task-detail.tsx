@@ -1,10 +1,10 @@
 import { X, Paperclip, Trash2, Clock, ListTodo, FileText } from 'lucide-react'
 import { getTask } from '@/lib/tasks'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { PriorityIcon } from '@/components/priority-icon'
-import { handleToggle, handleDelete } from '@/lib/actions'
+import { handleDelete } from '@/lib/actions'
+import { TaskCheckbox } from '@/components/task-checkbox'
 import { cn, formatDisplayDate, formatDateTime } from '@/lib/utils'
 
 export function TaskDetail({
@@ -23,11 +23,7 @@ export function TaskDetail({
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between">
         <div className="flex flex-1 items-center gap-3">
-          <form action={handleToggle.bind(null, taskId)}>
-            <button type="submit">
-              <Checkbox checked={task.completed} />
-            </button>
-          </form>
+          <TaskCheckbox taskId={taskId} checked={task.completed} />
           <h2
             className={cn(
               'flex-1 text-lg font-semibold',
@@ -111,11 +107,7 @@ export function TaskDetail({
             <div className="mt-1 space-y-1">
               {task.sub_tasks.map((sub) => (
                 <div key={sub.id} className="flex items-center gap-2">
-                  <form action={handleToggle.bind(null, sub.id)}>
-                    <button type="submit">
-                      <Checkbox checked={sub.completed} />
-                    </button>
-                  </form>
+                  <TaskCheckbox taskId={sub.id} checked={sub.completed} />
                   <span
                     className={sub.completed ? 'line-through opacity-60' : ''}
                   >

@@ -8,12 +8,12 @@ import {
 } from 'lucide-react'
 import { cn, formatDisplayDate } from '@/lib/utils'
 import { getTasks } from '@/lib/tasks'
-import { handleToggle, handleDelete, handleClearCompleted } from '@/lib/actions'
+import { handleDelete, handleClearCompleted } from '@/lib/actions'
 import type { Task } from '@/types'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { PriorityIcon } from '@/components/priority-icon'
 import { CreateTaskForm } from '@/components/create-task-form'
+import { TaskCheckbox } from '@/components/task-checkbox'
 import {
   Dialog,
   DialogContent,
@@ -120,11 +120,7 @@ function TaskItem({ task }: { task: Task }) {
         )}
         suppressHydrationWarning
       >
-        <form action={handleToggle.bind(null, task.id)}>
-          <button type="submit">
-            <Checkbox checked={task.completed} />
-          </button>
-        </form>
+        <TaskCheckbox taskId={task.id} checked={task.completed} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Link
@@ -205,11 +201,7 @@ function TaskItem({ task }: { task: Task }) {
               key={sub.id}
               className="hover:bg-accent/50 flex items-center gap-3 rounded-lg px-3 py-2"
             >
-              <form action={handleToggle.bind(null, sub.id)}>
-                <button type="submit">
-                  <Checkbox checked={sub.completed} />
-                </button>
-              </form>
+              <TaskCheckbox taskId={sub.id} checked={sub.completed} />
               <span
                 className={cn(
                   'text-sm',

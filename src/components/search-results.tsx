@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { searchTasks } from '@/lib/tasks'
-import { Checkbox } from '@/components/ui/checkbox'
 import { formatDisplayDate } from '@/lib/utils'
+import { TaskCheckbox } from '@/components/task-checkbox'
 
 export async function SearchResults({ query }: { query: string }) {
   if (!query || query.length < 2) {
@@ -21,13 +21,12 @@ export async function SearchResults({ query }: { query: string }) {
   return (
     <div className="space-y-1">
       {results.map((task) => (
-        <Link
+        <div
           key={task.id}
-          href={`/task/${task.id}`}
           className="hover:bg-accent flex items-center gap-3 rounded-lg p-3"
         >
-          <Checkbox checked={task.completed} />
-          <div className="min-w-0 flex-1">
+          <TaskCheckbox taskId={task.id} checked={task.completed} />
+          <Link href={`/task/${task.id}`} className="flex min-w-0 flex-1">
             <p
               className={`truncate ${task.completed ? 'line-through opacity-60' : ''}`}
             >
@@ -38,8 +37,8 @@ export async function SearchResults({ query }: { query: string }) {
                 {formatDisplayDate(task.date)}
               </p>
             )}
-          </div>
-        </Link>
+          </Link>
+        </div>
       ))}
     </div>
   )
