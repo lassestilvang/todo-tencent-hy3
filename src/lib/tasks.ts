@@ -1,6 +1,5 @@
 import {
   getDb,
-  queryTasks,
   queryLists,
   queryLabels,
   insertTask,
@@ -192,7 +191,7 @@ export function getTasks(options?: {
 
 export function getTask(id: string): Task | undefined {
   const db = getDb()
-  const task = queryTasks((t) => t.id === id)[0]
+  const task = db.tasks.find((t: Task) => t.id === id)
   if (!task) return undefined
 
   return getTaskWithRelations(task, db)

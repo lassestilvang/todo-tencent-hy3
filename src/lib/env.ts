@@ -7,4 +7,10 @@ const envSchema = z.object({
     .default('development'),
 })
 
-export const env = envSchema.parse(process.env)
+const envResult = envSchema.safeParse(process.env)
+if (!envResult.success) {
+  throw new Error(
+    `Invalid environment variables: ${JSON.stringify(envResult.error.format())}`
+  )
+}
+export const env = envResult.data
