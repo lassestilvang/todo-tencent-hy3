@@ -4,6 +4,7 @@ import {
   queryLabels,
   insertTask,
   updateTask as updateTaskInDb,
+  updateTasks as updateTasksInDb,
   deleteTask as deleteTaskInDb,
   deleteTasks as deleteTasksInDb,
   insertList,
@@ -247,25 +248,39 @@ export function updateTask(id: string, data: Partial<Task>): void {
   }
 }
 
+function collectSubTaskIds(subTasks: Task[]): string[] {
+  const ids: string[] = []
+  for (const sub of subTasks) {
+    ids.push(sub.id)
+    if (sub.sub_tasks) {
+      ids.push(...collectSubTaskIds(sub.sub_tasks))
+    }
+  }
+  return ids
+}
+
 export function toggleTaskComplete(id: string): void {
   const task = getTask(id)
   if (!task) return
 
   const completed = !task.completed
   const completedAt = completed ? new Date().toISOString() : null
-  updateTaskInDb(id, { completed, completed_at: completedAt })
+
+  const subIds = task.sub_tasks ? collectSubTaskIds(task.sub_tasks) : []
+  const allIds = [id, ...subIds]
+
+  updateTasksInDb(
+    allIds.map((tid) => ({
+      id: tid,
+      data: { completed, completed_at: completedAt },
+    }))
+  )
 
   logTaskAction(
     id,
     completed ? 'completed' : 'reopened',
     `Task ${completed ? 'completed' : 'reopened'}`
   )
-
-  if (task.sub_tasks) {
-    for (const sub of task.sub_tasks) {
-      toggleTaskComplete(sub.id)
-    }
-  }
 }
 
 export function deleteTask(id: string): void {

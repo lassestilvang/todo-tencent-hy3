@@ -279,6 +279,32 @@ export function updateTask(id: string, data: Partial<Task>): void {
   saveDb(db)
 }
 
+export function updateTasks(
+  updates: { id: string; data: Partial<Task> }[]
+): void {
+  if (updates.length === 0) return
+
+  const db = getDb()
+  const now = new Date().toISOString()
+
+  for (const { id, data } of updates) {
+    const index = db.tasks.findIndex((t) => t.id === id)
+    if (index === -1) {
+      console.warn(`Task with ID ${id} not found for batch update`)
+      continue
+    }
+    const updated = { ...db.tasks[index], ...data, updated_at: now }
+    const validation = TaskSchema.safeParse(updated)
+    if (!validation.success) {
+      console.warn(`Invalid batch update for task ${id}: skipping`)
+      continue
+    }
+    db.tasks[index] = validation.data
+  }
+
+  saveDb(db)
+}
+
 export function deleteTask(id: string): void {
   if (!id) throw new Error('Task ID is required for deletion')
 
