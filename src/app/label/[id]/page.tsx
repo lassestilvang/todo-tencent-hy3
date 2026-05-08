@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { getLabels } from '@/lib/tasks'
 import { TaskList } from '@/components/task-list'
+import { notFound } from 'next/navigation'
 
 export async function generateMetadata({
   params,
@@ -10,10 +11,10 @@ export async function generateMetadata({
   const { id } = await params
   const labels = getLabels()
   const label = labels.find((l) => l.id === id)
-  const title = label ? `${label.icon} ${label.name}` : 'Label'
+  if (!label) return {}
   return {
-    title: `${title} - TaskFlow`,
-    description: `View tasks with label: ${label?.name || 'label'}`,
+    title: `${label.icon} ${label.name} - TaskFlow`,
+    description: `View tasks with label: ${label.name}`,
   }
 }
 
@@ -25,7 +26,7 @@ export default async function LabelPage({
   const { id } = await params
   const labels = getLabels()
   const label = labels.find((l) => l.id === id)
-  const title = label ? `${label.icon} ${label.name}` : 'Label'
+  if (!label) notFound()
 
-  return <TaskList labelId={id} title={title} />
+  return <TaskList labelId={id} title={`${label.icon} ${label.name}`} />
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { TaskList } from '@/components/task-list'
 import { getLists } from '@/lib/tasks'
+import { notFound } from 'next/navigation'
 
 export async function generateMetadata({
   params,
@@ -10,10 +11,10 @@ export async function generateMetadata({
   const { id } = await params
   const lists = getLists()
   const list = lists.find((l) => l.id === id)
-  const title = list ? `${list.emoji} ${list.name}` : 'List'
+  if (!list) return {}
   return {
-    title: `${title} - TaskFlow`,
-    description: `View tasks in ${list?.name || 'list'}`,
+    title: `${list.emoji} ${list.name} - TaskFlow`,
+    description: `View tasks in ${list.name}`,
   }
 }
 
@@ -25,7 +26,7 @@ export default async function ListPage({
   const { id } = await params
   const lists = getLists()
   const list = lists.find((l) => l.id === id)
-  const title = list ? `${list.emoji} ${list.name}` : 'List'
+  if (!list) notFound()
 
-  return <TaskList listId={id} title={title} />
+  return <TaskList listId={id} title={`${list.emoji} ${list.name}`} />
 }
