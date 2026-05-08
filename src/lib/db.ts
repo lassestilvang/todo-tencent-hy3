@@ -298,7 +298,9 @@ export function deleteTasks(ids: string[]): void {
   const idSet = new Set(ids)
   const db = getDb()
   db.tasks = db.tasks.filter(
-    (t) => !idSet.has(t.id) && !idSet.has(t.parent_task_id)
+    (t) =>
+      !idSet.has(t.id) &&
+      (t.parent_task_id === null || !idSet.has(t.parent_task_id))
   )
   db.task_labels = db.task_labels.filter((tl) => !idSet.has(tl.task_id))
   db.task_attachments = db.task_attachments.filter((a) => !idSet.has(a.task_id))

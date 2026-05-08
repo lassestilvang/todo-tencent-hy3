@@ -1,6 +1,8 @@
 import {
   getDb,
   queryTasks,
+  queryLists,
+  queryLabels,
   insertTask,
   updateTask as updateTaskInDb,
   deleteTask as deleteTaskInDb,
@@ -34,12 +36,10 @@ import { generateId } from './utils'
 
 export function getLists(): List[] {
   const db = getDb()
-  const lists = db.lists
-  const tasks = db.tasks || []
-
+  const lists = queryLists()
   return lists
     .map((l: List) => {
-      const listTasks = tasks.filter((t: Task) => t.list_id === l.id)
+      const listTasks = db.tasks.filter((t: Task) => t.list_id === l.id)
       const taskCount = listTasks.length
       const incompleteCount = listTasks.filter((t: Task) => !t.completed).length
       return { ...l, task_count: taskCount, incomplete_count: incompleteCount }
@@ -77,8 +77,9 @@ export function deleteList(id: string): void {
 }
 
 export function getLabels(): Label[] {
-  const db = getDb()
-  return db.labels.sort((a: Label, b: Label) => a.name.localeCompare(b.name))
+  return queryLabels().sort((a: Label, b: Label) =>
+    a.name.localeCompare(b.name)
+  )
 }
 
 export function createLabel(name: string, color: string, icon: string): Label {
