@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
@@ -21,6 +22,7 @@ export function SearchDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const router = useRouter()
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(-1)
@@ -54,7 +56,7 @@ export function SearchDialog({
       } else if (e.key === 'Enter' && selectedIndex >= 0) {
         e.preventDefault()
         const task = results[selectedIndex]
-        window.location.href = `/task/${task.id}`
+        router.push(`/task/${task.id}`)
         onOpenChange(false)
       } else if (e.key === 'Escape') {
         onOpenChange(false)
