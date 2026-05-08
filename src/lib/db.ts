@@ -280,6 +280,12 @@ export function deleteTask(id: string): void {
   if (!id) throw new Error('Task ID is required for deletion')
 
   const db = getDb()
+  const allIds = new Set([
+    id,
+    ...db.tasks
+      .filter((t: Task) => t.parent_task_id === id)
+      .map((t: Task) => t.id),
+  ])
   const initialLength = db.tasks.length
   db.tasks = db.tasks.filter(
     (t: Task) => t.id !== id && t.parent_task_id !== id
@@ -287,6 +293,13 @@ export function deleteTask(id: string): void {
 
   if (db.tasks.length === initialLength) {
     console.warn(`Task with ID ${id} not found for deletion`)
+  } else {
+    db.task_labels = db.task_labels.filter((tl) => !allIds.has(tl.task_id))
+    db.task_attachments = db.task_attachments.filter(
+      (a) => !allIds.has(a.task_id)
+    )
+    db.task_reminders = db.task_reminders.filter((r) => !allIds.has(r.task_id))
+    db.task_logs = db.task_logs.filter((l) => !allIds.has(l.task_id))
   }
 
   saveDb(db)
