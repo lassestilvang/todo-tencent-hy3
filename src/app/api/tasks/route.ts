@@ -6,32 +6,46 @@ import {
   deleteTask,
   updateTask,
 } from '@/lib/tasks'
-import type { Task, View } from '@/types'
 import { z } from 'zod'
 
 const createTaskSchema = z.object({
   name: z.string().min(1).max(500),
   description: z.string().max(5000).optional(),
   date: z.string().optional(),
+  deadline: z.string().optional(),
   priority: z.enum(['high', 'medium', 'low', 'none']).optional(),
-  listId: z.string().optional(),
+  list_id: z.string().optional(),
+  estimate: z.coerce.number().int().positive().optional(),
+})
+
+const updateTaskSchema = z.object({
+  name: z.string().min(1).max(500).optional(),
+  description: z.string().max(5000).nullable().optional(),
+  date: z.string().nullable().optional(),
+  deadline: z.string().nullable().optional(),
+  priority: z.enum(['high', 'medium', 'low', 'none']).optional(),
+  list_id: z.string().nullable().optional(),
+  estimate: z.coerce.number().int().positive().nullable().optional(),
+  completed: z.boolean().optional(),
 })
 
 const patchTaskSchema = z.object({
   id: z.string().min(1),
   action: z.enum(['toggle', 'delete', 'update']),
-  data: z.record(z.string(), z.unknown()).optional(),
+  data: updateTaskSchema.optional(),
 })
+
+const validViews = z.enum(['today', 'next7', 'upcoming', 'all'])
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const view = searchParams.get('view') as View['type'] | null
+    const viewResult = validViews.safeParse(searchParams.get('view'))
     const listId = searchParams.get('listId')
     const completed = searchParams.get('completed')
 
     const tasks = getTasks({
-      view: view || undefined,
+      view: viewResult.success ? viewResult.data : undefined,
       listId: listId || undefined,
       completed:
         completed === 'true' ? true : completed === 'false' ? false : undefined,
@@ -89,7 +103,7 @@ export async function PATCH(request: Request) {
     }
 
     if (action === 'update' && data) {
-      updateTask(id, data as Partial<Task>)
+      updateTask(id, data)
       return NextResponse.json({ success: true })
     }
 
