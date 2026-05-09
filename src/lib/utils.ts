@@ -1,5 +1,5 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -18,7 +18,10 @@ export function formatTime(minutes: number): string {
 }
 
 export function parseTimeToMinutes(time: string): number {
-  const [hrs, mins] = time.split(':').map(Number)
+  const parts = time.split(':')
+  if (parts.length !== 2) return 0
+  const [hrs, mins] = parts.map(Number)
+  if (isNaN(hrs) || isNaN(mins)) return 0
   return hrs * 60 + mins
 }
 
