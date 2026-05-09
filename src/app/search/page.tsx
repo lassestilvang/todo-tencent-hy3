@@ -18,13 +18,23 @@ export default async function SearchPage({
     <div className="mx-auto max-w-4xl p-6">
       <h1 className="mb-6 text-2xl font-bold">Search Tasks</h1>
       <form className="mb-6">
+        <label htmlFor="search-input" className="sr-only">
+          Search tasks
+        </label>
         <input
+          id="search-input"
           type="text"
           name="q"
           placeholder="Search by name or description..."
           defaultValue={query}
           className="bg-background w-full rounded-lg border px-4 py-2"
         />
+        <button
+          type="submit"
+          className="bg-primary text-primary-foreground mt-2 rounded-lg px-4 py-2"
+        >
+          Search
+        </button>
       </form>
       <SearchResults query={query} />
     </div>
