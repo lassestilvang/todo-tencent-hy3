@@ -11,7 +11,11 @@ import { cn, formatDisplayDate } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
 import { TaskCheckbox } from '@/components/task-checkbox'
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = async (url: string) => {
+  const r = await fetch(url)
+  if (!r.ok) throw new Error('Search failed')
+  return r.json()
+}
 
 const DEBOUNCE_MS = 300
 
@@ -35,7 +39,11 @@ export function SearchDialog({
     return () => clearTimeout(timer)
   }, [query])
 
-  const { data: results = [], isLoading } = useSWR<Task[]>(
+  const {
+    data: results = [],
+    isLoading,
+    error,
+  } = useSWR<Task[]>(
     debouncedQuery.length >= 2
       ? `/api/search?q=${encodeURIComponent(debouncedQuery)}`
       : null,
@@ -115,11 +123,19 @@ export function SearchDialog({
             ))}
           </div>
         )}
-        {debouncedQuery.length >= 2 && !isLoading && results.length === 0 && (
-          <p className="text-muted-foreground py-8 text-center">
-            No tasks found
+        {error && (
+          <p className="text-destructive py-8 text-center">
+            Failed to search. Please try again.
           </p>
         )}
+        {!error &&
+          debouncedQuery.length >= 2 &&
+          !isLoading &&
+          results.length === 0 && (
+            <p className="text-muted-foreground py-8 text-center">
+              No tasks found
+            </p>
+          )}
       </DialogContent>
     </Dialog>
   )
