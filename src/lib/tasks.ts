@@ -231,7 +231,7 @@ export function createTask(data: Partial<Task>): Task {
   }
   insertTask(task)
   logTaskAction(id, 'created', `Task "${data.name}" created`)
-  return getTask(id)!
+  return getTask(id) ?? task
 }
 
 export function updateTask(id: string, data: Partial<Task>): void {
