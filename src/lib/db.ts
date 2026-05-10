@@ -235,11 +235,6 @@ function backupCorruptedDb(): void {
 }
 
 // ---- Task Operations ----
-export function queryTasks(where?: (task: Task) => boolean): Task[] {
-  const db = getDb()
-  return where ? db.tasks.filter(where) : db.tasks
-}
-
 export function insertTask(task: Task): void {
   const validation = TaskSchema.safeParse(task)
   if (!validation.success) {
