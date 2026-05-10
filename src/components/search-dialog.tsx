@@ -26,7 +26,7 @@ export function SearchDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const router = useRouter()
+  const { push } = useRouter()
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(-1)
@@ -64,13 +64,13 @@ export function SearchDialog({
       } else if (e.key === 'Enter' && selectedIndex >= 0) {
         e.preventDefault()
         const task = results[selectedIndex]
-        router.push(`/task/${task.id}`)
+        push(`/task/${task.id}`)
         onOpenChange(false)
       } else if (e.key === 'Escape') {
         onOpenChange(false)
       }
     },
-    [results, selectedIndex, onOpenChange, router]
+    [results, selectedIndex, onOpenChange, push]
   )
 
   return (
