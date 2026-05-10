@@ -69,7 +69,7 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
           </label>
           <input type="hidden" name="priority" value={priority} />
           <Select defaultValue="none" onValueChange={setPriority}>
-            <SelectTrigger>
+            <SelectTrigger id="priority">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
