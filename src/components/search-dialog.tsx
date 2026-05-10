@@ -78,6 +78,7 @@ export function SearchDialog({
       <DialogContent className="sm:max-w-2xl">
         <Input
           placeholder="Search tasks..."
+          aria-label="Search tasks"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
