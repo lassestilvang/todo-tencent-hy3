@@ -55,11 +55,13 @@ export function CreateListForm() {
         required
       />
       <div className="space-y-2">
-        <label className="text-sm font-medium">Emoji</label>
+        <label id="emoji-label" className="text-sm font-medium">
+          Emoji
+        </label>
         <div
           className="flex flex-wrap gap-1"
           role="radiogroup"
-          aria-label="Select emoji"
+          aria-labelledby="emoji-label"
         >
           {EMOJIS.map((e) => (
             <button
@@ -75,11 +77,13 @@ export function CreateListForm() {
         </div>
       </div>
       <div className="space-y-2">
-        <label className="text-sm font-medium">Color</label>
+        <label id="color-label" className="text-sm font-medium">
+          Color
+        </label>
         <div
           className="flex flex-wrap gap-1"
           role="radiogroup"
-          aria-label="Select color"
+          aria-labelledby="color-label"
         >
           {COLORS.map((c) => (
             <button

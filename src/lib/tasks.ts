@@ -8,7 +8,6 @@ import {
   deleteTask as deleteTaskInDb,
   deleteTasks as deleteTasksInDb,
   insertList,
-  updateList as updateListInDb,
   deleteList as deleteListInDb,
   insertLabel,
   deleteLabel as deleteLabelInDb,
@@ -63,13 +62,6 @@ export function createList(name: string, color: string, emoji: string): List {
   }
   insertList(list)
   return list
-}
-
-export function updateList(
-  id: string,
-  data: Partial<Omit<List, 'id' | 'created_at' | 'updated_at'>>
-): void {
-  updateListInDb(id, data)
 }
 
 export function deleteList(id: string): void {
