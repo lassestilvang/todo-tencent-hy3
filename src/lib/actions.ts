@@ -96,7 +96,7 @@ export async function handleToggle(taskId: string) {
 export async function handleDelete(taskId: string) {
   if (!taskId) return
   deleteTask(taskId)
-  redirect('/')
+  redirect('/today')
 }
 
 export async function handleClearCompleted() {
