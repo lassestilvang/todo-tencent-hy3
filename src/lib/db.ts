@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { cache } from 'react'
 import type {
   List,
   Label,
@@ -143,8 +144,9 @@ function createDefaultDb(): z.infer<typeof DatabaseSchema> {
 /**
  * Read and validate the database from disk
  * Handles corrupted files by backing them up and returning a default database
+ * Uses React cache to deduplicate reads within the same render pass
  */
-export function getDb(): z.infer<typeof DatabaseSchema> {
+export const getDb: () => z.infer<typeof DatabaseSchema> = cache(() => {
   if (!fs.existsSync(dbPath)) {
     return createDefaultDb()
   }
@@ -171,7 +173,7 @@ export function getDb(): z.infer<typeof DatabaseSchema> {
     }
     return createDefaultDb()
   }
-}
+})
 
 /**
  * Save validated database to disk
