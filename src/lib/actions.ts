@@ -89,17 +89,33 @@ export async function createListAction(formData: FormData) {
 
 export async function handleToggle(taskId: string) {
   if (!taskId) return
-  toggleTaskComplete(taskId)
+  try {
+    toggleTaskComplete(taskId)
+  } catch (error) {
+    console.error('Failed to toggle task:', error)
+    throw new Error('Failed to update task')
+  }
   revalidatePath('/', 'layout')
 }
 
 export async function handleDelete(taskId: string) {
   if (!taskId) return
-  deleteTask(taskId)
+  try {
+    deleteTask(taskId)
+  } catch (error) {
+    console.error('Failed to delete task:', error)
+    throw new Error('Failed to delete task')
+  }
+  revalidatePath('/', 'layout')
   redirect('/today')
 }
 
 export async function handleClearCompleted() {
-  clearCompletedTasks()
+  try {
+    clearCompletedTasks()
+  } catch (error) {
+    console.error('Failed to clear completed tasks:', error)
+    throw new Error('Failed to clear completed tasks')
+  }
   revalidatePath('/', 'layout')
 }
