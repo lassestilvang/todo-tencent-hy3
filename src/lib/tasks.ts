@@ -114,6 +114,9 @@ function getTaskWithRelations(task: Task, db: ReturnType<typeof getDb>): Task {
       (a: TaskAttachment) => a.task_id === task.id
     ),
     reminders: taskReminders.filter((r: TaskReminder) => r.task_id === task.id),
+    logs: db.task_logs
+      .filter((l) => l.task_id === task.id)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at)),
   }
 }
 
