@@ -13,7 +13,7 @@ import {
 import { createTaskAction } from '@/lib/actions'
 import { useFormStatus } from 'react-dom'
 import type { Priority } from '@/types'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 const PRIORITIES: { value: Priority; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -33,8 +33,16 @@ function SubmitButton() {
 
 export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
   const [priority, setPriority] = useState<string>('none')
+  const formRef = useRef<HTMLFormElement>(null)
+
+  async function handleSubmit(formData: FormData) {
+    await createTaskAction(formData)
+    formRef.current?.reset()
+    setPriority('none')
+  }
+
   return (
-    <form action={createTaskAction} className="space-y-4">
+    <form ref={formRef} action={handleSubmit} className="space-y-4">
       <Input
         name="name"
         placeholder="Task name"
