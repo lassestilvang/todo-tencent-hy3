@@ -1,39 +1,42 @@
 import type { MetadataRoute } from 'next'
+import { env } from '@/lib/env'
+
+const baseUrl = env.APP_URL
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
-      url: 'https://taskflow.app',
+      url: baseUrl,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 1,
     },
     {
-      url: 'https://taskflow.app/today',
+      url: `${baseUrl}/today`,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.8,
     },
     {
-      url: 'https://taskflow.app/upcoming',
+      url: `${baseUrl}/upcoming`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.6,
     },
     {
-      url: 'https://taskflow.app/all',
+      url: `${baseUrl}/all`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.6,
     },
     {
-      url: 'https://taskflow.app/next7',
+      url: `${baseUrl}/next7`,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.6,
     },
     {
-      url: 'https://taskflow.app/search',
+      url: `${baseUrl}/search`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.3,

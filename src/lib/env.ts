@@ -5,6 +5,7 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),
+  APP_URL: z.string().url().default('https://taskflow.app'),
 })
 
 const envResult = envSchema.safeParse(process.env)

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { env } from '@/lib/env'
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -6,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
     },
-    sitemap: 'https://taskflow.app/sitemap.xml',
+    sitemap: `${env.APP_URL}/sitemap.xml`,
   }
 }
