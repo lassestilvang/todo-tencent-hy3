@@ -107,6 +107,10 @@ export async function handleDelete(taskId: string) {
     throw new Error('Failed to delete task')
   }
   revalidatePath('/', 'layout')
+}
+
+export async function handleDeleteAndRedirect(taskId: string) {
+  await handleDelete(taskId)
   redirect('/today')
 }
 

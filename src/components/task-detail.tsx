@@ -4,7 +4,7 @@ import { getTask } from '@/lib/tasks'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PriorityIcon } from '@/components/priority-icon'
-import { handleDelete } from '@/lib/actions'
+import { handleDeleteAndRedirect } from '@/lib/actions'
 import { TaskCheckbox } from '@/components/task-checkbox'
 import { cn, formatDisplayDate, formatDateTime } from '@/lib/utils'
 
@@ -146,7 +146,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           </div>
         )}
 
-        <form action={handleDelete.bind(null, taskId)}>
+        <form action={handleDeleteAndRedirect.bind(null, taskId)}>
           <Button variant="destructive" size="sm" type="submit">
             <Trash2 className="mr-2 h-3 w-3" />
             Delete Task
