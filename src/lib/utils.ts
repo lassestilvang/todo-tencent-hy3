@@ -17,14 +17,6 @@ export function formatTime(minutes: number): string {
   return `${hrs}h ${mins}m`
 }
 
-export function parseTimeToMinutes(time: string): number {
-  const parts = time.split(':')
-  if (parts.length !== 2) return 0
-  const [hrs, mins] = parts.map(Number)
-  if (isNaN(hrs) || isNaN(mins)) return 0
-  return hrs * 60 + mins
-}
-
 export function formatDate(date: string | Date | null): string {
   if (!date) return ''
   const d = new Date(date)
