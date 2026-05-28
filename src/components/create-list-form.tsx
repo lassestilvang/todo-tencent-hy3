@@ -53,13 +53,17 @@ export function CreateListForm() {
         value={name}
         onChange={(e) => setName(e.target.value)}
         required
+        className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-11 rounded-xl transition-all"
       />
       <div className="space-y-2">
-        <label id="emoji-label" className="text-sm font-medium">
+        <label
+          id="emoji-label"
+          className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase"
+        >
           Emoji
         </label>
         <div
-          className="flex flex-wrap gap-1"
+          className="bg-accent/10 border-border/5 flex flex-wrap gap-1.5 rounded-xl border p-2"
           role="radiogroup"
           aria-labelledby="emoji-label"
         >
@@ -69,7 +73,7 @@ export function CreateListForm() {
               type="button"
               aria-label={`Select emoji ${e}`}
               onClick={() => setEmoji(e)}
-              className={`hover:bg-accent flex h-8 w-8 items-center justify-center rounded text-lg ${emoji === e ? 'bg-accent ring-primary ring-2' : ''}`}
+              className={`hover:bg-accent/40 flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-all duration-200 hover:scale-110 active:scale-75 ${emoji === e ? 'bg-accent/60 ring-primary/40 ring-2' : ''}`}
             >
               {e}
             </button>
@@ -77,11 +81,14 @@ export function CreateListForm() {
         </div>
       </div>
       <div className="space-y-2">
-        <label id="color-label" className="text-sm font-medium">
+        <label
+          id="color-label"
+          className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase"
+        >
           Color
         </label>
         <div
-          className="flex flex-wrap gap-1"
+          className="bg-accent/10 border-border/5 flex flex-wrap gap-2 rounded-xl border p-2.5"
           role="radiogroup"
           aria-labelledby="color-label"
         >
@@ -91,15 +98,20 @@ export function CreateListForm() {
               type="button"
               aria-label={`Select color ${c}`}
               onClick={() => setColor(c)}
-              className={`h-8 w-8 rounded-full ${color === c ? 'ring-offset-background ring-2 ring-offset-2' : ''}`}
+              className={`h-6 w-6 cursor-pointer rounded-full transition-all duration-200 hover:scale-110 active:scale-75 ${color === c ? 'ring-primary ring-offset-background ring-2 ring-offset-2' : 'opacity-85 hover:opacity-100'}`}
               style={{ backgroundColor: c }}
             />
           ))}
         </div>
       </div>
-      <Button type="submit" className="w-full">
-        Create List
-      </Button>
+      <div className="pt-2">
+        <Button
+          type="submit"
+          className="hover:shadow-primary/25 w-full font-semibold shadow-lg transition-all duration-200"
+        >
+          Create List
+        </Button>
+      </div>
     </form>
   )
 }
