@@ -25,7 +25,11 @@ const PRIORITIES: { value: Priority; label: string }[] = [
 function SubmitButton() {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
+    <Button
+      type="submit"
+      className="hover:shadow-primary/25 w-full font-semibold shadow-lg transition-all duration-200"
+      disabled={pending}
+    >
       {pending ? 'Creating...' : 'Create Task'}
     </Button>
   )
@@ -48,6 +52,7 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
         placeholder="Task name"
         aria-label="Task name"
         required
+        className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-11 rounded-xl transition-all"
       />
       <input type="hidden" name="listId" value={defaultListId || ''} />
       <Textarea
@@ -55,42 +60,72 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
         placeholder="Description (optional)"
         aria-label="Task description"
         rows={3}
+        className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all"
       />
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label htmlFor="date" className="text-muted-foreground text-xs">
+        <div className="space-y-1.5">
+          <label
+            htmlFor="date"
+            className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase"
+          >
             Date
           </label>
-          <Input id="date" name="date" type="date" />
+          <Input
+            id="date"
+            name="date"
+            type="date"
+            className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-10 rounded-xl transition-all"
+          />
         </div>
-        <div className="space-y-1">
-          <label htmlFor="deadline" className="text-muted-foreground text-xs">
+        <div className="space-y-1.5">
+          <label
+            htmlFor="deadline"
+            className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase"
+          >
             Deadline
           </label>
-          <Input id="deadline" name="deadline" type="date" />
+          <Input
+            id="deadline"
+            name="deadline"
+            type="date"
+            className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-10 rounded-xl transition-all"
+          />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label htmlFor="priority" className="text-muted-foreground text-xs">
+        <div className="space-y-1.5">
+          <label
+            htmlFor="priority"
+            className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase"
+          >
             Priority
           </label>
           <input type="hidden" name="priority" value={priority} />
           <Select defaultValue="none" onValueChange={setPriority}>
-            <SelectTrigger id="priority">
+            <SelectTrigger
+              id="priority"
+              className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-10 rounded-xl transition-all"
+            >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="glass-effect bg-card/90 rounded-xl border">
               {PRIORITIES.map((p) => (
-                <SelectItem key={p.value} value={p.value}>
+                <SelectItem
+                  key={p.value}
+                  value={p.value}
+                  className="hover:bg-accent/40 rounded-lg"
+                >
                   {p.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
-          <label htmlFor="estimate" className="text-muted-foreground text-xs">
+        <div className="space-y-1.5">
+          <label
+            htmlFor="estimate"
+            className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase"
+          >
             Estimate (min)
           </label>
           <Input
@@ -100,10 +135,13 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
             min="1"
             max="9999"
             placeholder="60"
+            className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-10 rounded-xl transition-all"
           />
         </div>
       </div>
-      <SubmitButton />
+      <div className="pt-2">
+        <SubmitButton />
+      </div>
     </form>
   )
 }
