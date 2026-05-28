@@ -75,47 +75,50 @@ export function SearchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <Input
-          placeholder="Search tasks..."
-          aria-label="Search tasks"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="h-12 text-lg"
-          autoFocus
-        />
+      <DialogContent className="glass-effect bg-card/15 rounded-2xl border p-6 shadow-2xl sm:max-w-2xl">
+        <div className="relative">
+          <Input
+            placeholder="Search tasks..."
+            aria-label="Search tasks"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="bg-background/50 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-12 rounded-xl px-4 text-lg transition-all"
+            autoFocus
+          />
+        </div>
         {isLoading && (
-          <div className="flex justify-center py-4">
-            <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+          <div className="flex justify-center py-6">
+            <Loader2 className="text-primary h-6 w-6 animate-spin" />
           </div>
         )}
         {results.length > 0 && (
-          <div className="mt-4 max-h-96 space-y-1 overflow-auto">
+          <div className="bg-accent/5 border-border/5 mt-4 max-h-96 space-y-1.5 overflow-auto rounded-xl border p-1.5">
             {results.map((task, index) => (
               <div
                 key={task.id}
                 className={cn(
-                  'hover:bg-accent flex items-center gap-3 rounded-lg p-3',
-                  index === selectedIndex && 'bg-accent'
+                  'hover:bg-accent/40 flex items-center gap-3 rounded-lg p-3 transition-colors duration-150',
+                  index === selectedIndex &&
+                    'bg-accent/50 border-primary border-l-2'
                 )}
               >
                 <TaskCheckbox taskId={task.id} checked={task.completed} />
                 <Link
                   href={`/task/${task.id}`}
-                  className="flex min-w-0 flex-1"
+                  className="flex min-w-0 flex-1 items-center justify-between"
                   onClick={() => onOpenChange(false)}
                 >
                   <p
                     className={cn(
-                      'truncate',
+                      'text-foreground/90 truncate font-medium',
                       task.completed && 'line-through opacity-60'
                     )}
                   >
                     {task.name}
                   </p>
                   {task.date && (
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-muted-foreground ml-2 text-xs font-medium">
                       {formatDisplayDate(task.date)}
                     </p>
                   )}
@@ -125,7 +128,7 @@ export function SearchDialog({
           </div>
         )}
         {error && (
-          <p className="text-destructive py-8 text-center">
+          <p className="text-destructive py-8 text-center font-medium">
             Failed to search. Please try again.
           </p>
         )}
@@ -133,7 +136,7 @@ export function SearchDialog({
           debouncedQuery.length >= 2 &&
           !isLoading &&
           results.length === 0 && (
-            <p className="text-muted-foreground py-8 text-center">
+            <p className="text-muted-foreground py-8 text-center font-medium">
               No tasks found
             </p>
           )}
