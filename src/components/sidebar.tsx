@@ -1,60 +1,77 @@
-import Link from "next/link"
-import { CalendarDays, Calendar, Clock, ListTodo, Plus } from "lucide-react"
-import { getLists, getLabels, getOverdueTasks } from "@/lib/tasks"
-import { Button } from "@/components/ui/button"
-import { CreateListForm } from "@/components/create-list-form"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import Link from 'next/link'
+import { CalendarDays, Calendar, Clock, ListTodo, Plus } from 'lucide-react'
+import { getLists, getLabels, getOverdueTasks } from '@/lib/tasks'
+import { Button } from '@/components/ui/button'
+import { CreateListForm } from '@/components/create-list-form'
+import { ThemeToggle } from '@/components/theme-toggle'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 export async function Sidebar() {
   const lists = getLists()
   const labels = getLabels()
   const overdue = getOverdueTasks()
-
   return (
-    <aside className="w-64 border-r bg-card hidden md:flex flex-col h-full">
-      <div className="p-4 border-b flex items-center justify-between">
-        <h1 className="text-xl font-bold">TaskFlow</h1>
+    <aside className="glass-effect hidden h-full w-64 flex-col border-r md:flex">
+      <div className="flex items-center justify-between border-b p-4">
+        <h1 className="from-primary bg-gradient-to-r to-indigo-500 bg-clip-text text-xl font-bold text-transparent">
+          TaskFlow
+        </h1>
         <ThemeToggle />
       </div>
 
-      <div className="flex-1 overflow-auto p-3 space-y-6">
+      <div className="flex-1 space-y-6 overflow-auto p-3">
         <nav className="space-y-1">
-          <SidebarLink href="/today" icon={CalendarDays} label="Today" badge={overdue.length > 0 ? overdue.length : undefined} />
+          <SidebarLink
+            href="/today"
+            icon={CalendarDays}
+            label="Today"
+            badge={overdue.length > 0 ? overdue.length : undefined}
+          />
           <SidebarLink href="/next7" icon={Clock} label="Next 7 Days" />
           <SidebarLink href="/upcoming" icon={Calendar} label="Upcoming" />
           <SidebarLink href="/all" icon={ListTodo} label="All Tasks" />
         </nav>
 
         <div>
-          <div className="flex items-center justify-between mb-2 px-3">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase">Lists</h3>
+          <div className="mb-2 flex items-center justify-between px-3">
+            <h3 className="text-muted-foreground text-xs font-semibold uppercase">
+              Lists
+            </h3>
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="w-5 h-5">
-                  <Plus className="w-3 h-3" />
+                <Button variant="ghost" size="icon" className="h-5 w-5">
+                  <Plus className="h-3 w-3" />
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create New List</DialogTitle>
-                  <DialogDescription>Add a new list to organize your tasks</DialogDescription>
+                  <DialogDescription>
+                    Add a new list to organize your tasks
+                  </DialogDescription>
                 </DialogHeader>
                 <CreateListForm />
               </DialogContent>
             </Dialog>
           </div>
           <nav className="space-y-1">
-            {lists.map(list => (
+            {lists.map((list) => (
               <Link
                 key={list.id}
                 href={`/list/${list.id}`}
-                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors"
               >
                 <span>{list.emoji}</span>
                 <span className="flex-1">{list.name}</span>
                 {list.incomplete_count ? (
-                  <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                  <span className="bg-primary/10 text-primary rounded-full px-1.5 py-0.5 text-xs">
                     {list.incomplete_count}
                   </span>
                 ) : null}
@@ -65,15 +82,17 @@ export async function Sidebar() {
 
         {labels.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-2 px-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase">Labels</h3>
+            <div className="mb-2 flex items-center justify-between px-3">
+              <h3 className="text-muted-foreground text-xs font-semibold uppercase">
+                Labels
+              </h3>
             </div>
             <nav className="space-y-1">
-              {labels.map(label => (
+              {labels.map((label) => (
                 <Link
                   key={label.id}
                   href={`/label/${label.id}`}
-                  className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors"
                 >
                   <span>{label.icon}</span>
                   <span className="flex-1">{label.name}</span>
@@ -87,16 +106,26 @@ export async function Sidebar() {
   )
 }
 
-function SidebarLink({ href, icon: Icon, label, badge }: { href: string; icon: React.ComponentType<{ className?: string }>; label: string; badge?: number }) {
+function SidebarLink({
+  href,
+  icon: Icon,
+  label,
+  badge,
+}: {
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  badge?: number
+}) {
   return (
     <Link
       href={href}
-      className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors"
     >
-      <Icon className="w-4 h-4" />
+      <Icon className="h-4 w-4" />
       {label}
       {badge !== undefined && (
-        <span className="ml-auto text-xs bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full">
+        <span className="bg-destructive text-destructive-foreground ml-auto rounded-full px-1.5 py-0.5 text-xs">
           {badge}
         </span>
       )}
