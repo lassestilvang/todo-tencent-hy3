@@ -47,14 +47,19 @@ export async function TaskList({
   })
 
   return (
-    <div className="flex h-full">
-      <div className="flex flex-1 flex-col">
-        <div className="border-b p-6">
+    <div className="flex h-full p-4 md:p-6 lg:p-8">
+      <div className="glass-effect flex flex-1 flex-col overflow-hidden rounded-2xl shadow-xl">
+        <div className="bg-card/25 border-b p-6">
           <div className="mb-4 flex items-center justify-between">
-            <h1 className="text-2xl font-bold">{title}</h1>
+            <h1 className="from-foreground to-foreground/80 bg-gradient-to-r bg-clip-text text-2xl font-bold text-transparent">
+              {title}
+            </h1>
             <Dialog>
               <DialogTrigger asChild>
-                <Button size="sm">
+                <Button
+                  size="sm"
+                  className="hover:shadow-primary/20 shadow-lg transition-all duration-200"
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Task
                 </Button>
@@ -71,12 +76,17 @@ export async function TaskList({
             </Dialog>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-muted-foreground text-sm">
+            <span className="text-muted-foreground text-sm font-medium">
               {tasks.filter((t) => !t.completed).length} remaining
             </span>
             {tasks.some((t) => t.completed) && (
               <form action={handleClearCompleted}>
-                <Button variant="ghost" size="sm" type="submit">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="submit"
+                  className="hover:bg-destructive/10 hover:text-destructive text-xs transition-colors"
+                >
                   Clear completed
                 </Button>
               </form>
@@ -84,14 +94,19 @@ export async function TaskList({
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto p-6">
+        <div className="bg-card/10 flex-1 overflow-auto p-6">
           {tasks.length === 0 ? (
-            <div className="text-muted-foreground py-12 text-center">
-              <p className="text-lg">No tasks yet</p>
+            <div className="text-muted-foreground py-16 text-center">
+              <div className="bg-muted mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full">
+                <Clock className="text-muted-foreground/60 h-6 w-6" />
+              </div>
+              <p className="text-foreground/80 text-lg font-semibold">
+                No tasks yet
+              </p>
               <p className="mt-1 text-sm">Create a task to get started</p>
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-2">
               {tasks.map((task) => (
                 <TaskItem key={task.id} task={task} />
               ))}
@@ -112,10 +127,12 @@ function TaskItem({ task }: { task: Task }) {
     : []
 
   return (
-    <div>
+    <div
+      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 56px' }}
+    >
       <div
         className={cn(
-          'group hover:bg-accent/50 flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors',
+          'group hover:bg-accent/40 hover:border-border/20 flex items-center gap-3 rounded-xl border border-transparent px-4 py-3 transition-all duration-200 hover:translate-x-1 hover:shadow-sm',
           task.completed && 'opacity-60'
         )}
         suppressHydrationWarning
