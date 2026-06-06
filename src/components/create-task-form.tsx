@@ -52,6 +52,7 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
         placeholder="Task name"
         aria-label="Task name"
         required
+        autoFocus
         className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-11 rounded-xl transition-all"
       />
       <input type="hidden" name="listId" value={defaultListId || ''} />
