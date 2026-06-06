@@ -1,5 +1,16 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
-import { X, Paperclip, Trash2, Clock, ListTodo, FileText } from 'lucide-react'
+import {
+  X,
+  Paperclip,
+  Trash2,
+  Clock,
+  ListTodo,
+  FileText,
+  Pencil,
+} from 'lucide-react'
 import { getTask } from '@/lib/tasks'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -7,12 +18,33 @@ import { PriorityIcon } from '@/components/priority-icon'
 import { handleDeleteAndRedirect } from '@/lib/actions'
 import { TaskCheckbox } from '@/components/task-checkbox'
 import { cn, formatDisplayDate, formatDateTime } from '@/lib/utils'
+import { EditTaskForm } from '@/components/edit-task-form'
 
 export function TaskDetail({ taskId }: { taskId: string }) {
+  const [isEditing, setIsEditing] = useState(false)
   const task = getTask(taskId)
 
   if (!task)
     return <div className="text-muted-foreground p-6">Task not found</div>
+
+  if (isEditing) {
+    return (
+      <div className="glass-effect bg-card/15 space-y-6 overflow-hidden rounded-2xl border p-6 shadow-xl md:p-8">
+        <div className="border-border/40 flex items-center justify-between border-b pb-4">
+          <h2 className="text-xl font-bold">Edit Task</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full"
+            onClick={() => setIsEditing(false)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <EditTaskForm task={task} onCancel={() => setIsEditing(false)} />
+      </div>
+    )
+  }
 
   return (
     <div className="glass-effect bg-card/15 space-y-6 overflow-hidden rounded-2xl border p-6 shadow-xl md:p-8">
@@ -28,15 +60,25 @@ export function TaskDetail({ taskId }: { taskId: string }) {
             {task.name}
           </h2>
         </div>
-        <Link href="/">
+        <div className="flex gap-2">
           <Button
             variant="ghost"
             size="icon"
             className="hover:bg-accent/40 rounded-full"
+            onClick={() => setIsEditing(true)}
           >
-            <X className="h-4 w-4" />
+            <Pencil className="h-4 w-4" />
           </Button>
-        </Link>
+          <Link href="/">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:bg-accent/40 rounded-full"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="space-y-6 text-sm">
