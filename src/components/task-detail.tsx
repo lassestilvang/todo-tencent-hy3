@@ -216,7 +216,16 @@ export function TaskDetail({ taskId }: { taskId: string }) {
         )}
 
         <div className="border-border/40 flex justify-end border-t pt-4">
-          <form action={handleDeleteAndRedirect.bind(null, taskId)}>
+          <form
+            action={handleDeleteAndRedirect.bind(null, taskId)}
+            onSubmit={(e) => {
+              if (
+                !window.confirm('Are you sure you want to delete this task?')
+              ) {
+                e.preventDefault()
+              }
+            }}
+          >
             <Button
               variant="destructive"
               size="sm"
