@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { CalendarDays, Calendar, Clock, ListTodo, Plus } from 'lucide-react'
 import { getLists, getLabels, getOverdueTasks } from '@/lib/tasks'
 import { Button } from '@/components/ui/button'
@@ -12,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { SidebarLink } from '@/components/sidebar-link'
 
 export async function Sidebar() {
   const lists = getLists()
@@ -63,19 +63,15 @@ export async function Sidebar() {
           </div>
           <nav className="space-y-1">
             {lists.map((list) => (
-              <Link
+              <SidebarLink
                 key={list.id}
                 href={`/list/${list.id}`}
-                className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors"
-              >
-                <span>{list.emoji}</span>
-                <span className="flex-1">{list.name}</span>
-                {list.incomplete_count ? (
-                  <span className="bg-primary/10 text-primary rounded-full px-1.5 py-0.5 text-xs">
-                    {list.incomplete_count}
-                  </span>
-                ) : null}
-              </Link>
+                label={list.name}
+                icon={() => <span>{list.emoji}</span>}
+                badge={
+                  list.incomplete_count ? list.incomplete_count : undefined
+                }
+              />
             ))}
           </nav>
         </div>
@@ -89,46 +85,17 @@ export async function Sidebar() {
             </div>
             <nav className="space-y-1">
               {labels.map((label) => (
-                <Link
+                <SidebarLink
                   key={label.id}
                   href={`/label/${label.id}`}
-                  className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors"
-                >
-                  <span>{label.icon}</span>
-                  <span className="flex-1">{label.name}</span>
-                </Link>
+                  label={label.name}
+                  icon={() => <span>{label.icon}</span>}
+                />
               ))}
             </nav>
           </div>
         )}
       </div>
     </aside>
-  )
-}
-
-function SidebarLink({
-  href,
-  icon: Icon,
-  label,
-  badge,
-}: {
-  href: string
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  badge?: number
-}) {
-  return (
-    <Link
-      href={href}
-      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors"
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-      {badge !== undefined && (
-        <span className="bg-destructive text-destructive-foreground ml-auto rounded-full px-1.5 py-0.5 text-xs">
-          {badge}
-        </span>
-      )}
-    </Link>
   )
 }
