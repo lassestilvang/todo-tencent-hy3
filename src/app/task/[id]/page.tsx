@@ -29,7 +29,7 @@ export default async function TaskPage({
 
   return (
     <div className="mx-auto max-w-4xl">
-      <TaskDetail taskId={id} />
+      <TaskDetail task={task} />
     </div>
   )
 }

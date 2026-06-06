@@ -11,46 +11,31 @@ import {
   FileText,
   Pencil,
 } from 'lucide-react'
-import { getTask } from '@/lib/tasks'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PriorityIcon } from '@/components/priority-icon'
 import { handleDeleteAndRedirect } from '@/lib/actions'
 import { TaskCheckbox } from '@/components/task-checkbox'
 import { cn, formatDisplayDate, formatDateTime } from '@/lib/utils'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { EditTaskForm } from '@/components/edit-task-form'
+import type { Task } from '@/types'
 
-export function TaskDetail({ taskId }: { taskId: string }) {
-  const [isEditing, setIsEditing] = useState(false)
-  const task = getTask(taskId)
-
-  if (!task)
-    return <div className="text-muted-foreground p-6">Task not found</div>
-
-  if (isEditing) {
-    return (
-      <div className="glass-effect bg-card/15 space-y-6 overflow-hidden rounded-2xl border p-6 shadow-xl md:p-8">
-        <div className="border-border/40 flex items-center justify-between border-b pb-4">
-          <h2 className="text-xl font-bold">Edit Task</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full"
-            onClick={() => setIsEditing(false)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <EditTaskForm task={task} onCancel={() => setIsEditing(false)} />
-      </div>
-    )
-  }
+export function TaskDetail({ task }: { task: Task }) {
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   return (
     <div className="glass-effect bg-card/15 space-y-6 overflow-hidden rounded-2xl border p-6 shadow-xl md:p-8">
       <div className="border-border/40 flex items-start justify-between border-b pb-4">
         <div className="flex flex-1 items-center gap-3">
-          <TaskCheckbox taskId={taskId} checked={task.completed} />
+          <TaskCheckbox taskId={task.id} checked={task.completed} />
           <h2
             className={cn(
               'from-foreground to-foreground/80 flex-1 bg-gradient-to-r bg-clip-text text-xl font-bold text-transparent',
@@ -61,14 +46,27 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           </h2>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-accent/40 rounded-full"
-            onClick={() => setIsEditing(true)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hover:bg-accent/40 rounded-full"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Task</DialogTitle>
+                <DialogDescription>Update task details</DialogDescription>
+              </DialogHeader>
+              <EditTaskForm
+                task={task}
+                onCancel={() => setIsEditDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
           <Link href="/">
             <Button
               variant="ghost"
@@ -259,7 +257,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
 
         <div className="border-border/40 flex justify-end border-t pt-4">
           <form
-            action={handleDeleteAndRedirect.bind(null, taskId)}
+            action={handleDeleteAndRedirect.bind(null, task.id)}
             onSubmit={(e) => {
               if (
                 !window.confirm('Are you sure you want to delete this task?')
