@@ -96,14 +96,15 @@ export async function TaskList({
 
         <div className="bg-card/10 flex-1 overflow-auto p-6">
           {tasks.length === 0 ? (
-            <div className="text-muted-foreground py-16 text-center">
-              <div className="bg-muted mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full">
-                <Clock className="text-muted-foreground/60 h-6 w-6" />
+            <div className="flex h-full flex-col items-center justify-center py-16 text-center">
+              <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
+                <Clock className="h-10 w-10 text-white" />
               </div>
-              <p className="text-foreground/80 text-lg font-semibold">
-                No tasks yet
+              <h2 className="text-foreground text-2xl font-bold">All clear!</h2>
+              <p className="text-muted-foreground mt-2 max-w-sm text-sm">
+                You&apos;ve got no tasks for {title.toLowerCase()}. Take a break
+                or add a new task to get ahead!
               </p>
-              <p className="mt-1 text-sm">Create a task to get started</p>
             </div>
           ) : (
             <div className="space-y-2">
