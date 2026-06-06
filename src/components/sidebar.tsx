@@ -30,13 +30,25 @@ export async function Sidebar() {
         <nav className="space-y-1">
           <SidebarLink
             href="/today"
-            icon={CalendarDays}
+            icon={<CalendarDays className="h-4 w-4" />}
             label="Today"
             badge={overdue.length > 0 ? overdue.length : undefined}
           />
-          <SidebarLink href="/next7" icon={Clock} label="Next 7 Days" />
-          <SidebarLink href="/upcoming" icon={Calendar} label="Upcoming" />
-          <SidebarLink href="/all" icon={ListTodo} label="All Tasks" />
+          <SidebarLink
+            href="/next7"
+            icon={<Clock className="h-4 w-4" />}
+            label="Next 7 Days"
+          />
+          <SidebarLink
+            href="/upcoming"
+            icon={<Calendar className="h-4 w-4" />}
+            label="Upcoming"
+          />
+          <SidebarLink
+            href="/all"
+            icon={<ListTodo className="h-4 w-4" />}
+            label="All Tasks"
+          />
         </nav>
 
         <div>
@@ -67,7 +79,7 @@ export async function Sidebar() {
                 key={list.id}
                 href={`/list/${list.id}`}
                 label={list.name}
-                icon={() => <span>{list.emoji}</span>}
+                icon={<span>{list.emoji}</span>}
                 badge={
                   list.incomplete_count ? list.incomplete_count : undefined
                 }
@@ -89,7 +101,7 @@ export async function Sidebar() {
                   key={label.id}
                   href={`/label/${label.id}`}
                   label={label.name}
-                  icon={() => <span>{label.icon}</span>}
+                  icon={<span>{label.icon}</span>}
                 />
               ))}
             </nav>
