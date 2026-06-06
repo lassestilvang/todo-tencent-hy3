@@ -136,9 +136,17 @@ export function SearchDialog({
           debouncedQuery.length >= 2 &&
           !isLoading &&
           results.length === 0 && (
-            <p className="text-muted-foreground py-8 text-center font-medium">
-              No tasks found
-            </p>
+            <div className="flex h-48 flex-col items-center justify-center py-8 text-center">
+              <div className="bg-muted mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full">
+                <span className="text-2xl">🔍</span>
+              </div>
+              <p className="text-foreground/80 text-lg font-semibold">
+                No tasks found
+              </p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Try a different search term
+              </p>
+            </div>
           )}
       </DialogContent>
     </Dialog>
