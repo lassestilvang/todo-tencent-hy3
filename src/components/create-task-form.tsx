@@ -14,6 +14,7 @@ import { createTaskAction } from '@/lib/actions'
 import { useFormStatus } from 'react-dom'
 import type { Priority } from '@/types'
 import { useState, useRef } from 'react'
+import { cn } from '@/lib/utils'
 
 const PRIORITIES: { value: Priority; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -37,32 +38,53 @@ function SubmitButton() {
 
 export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
   const [priority, setPriority] = useState<string>('none')
+  const [errors, setErrors] = useState<Record<string, string[]> | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
   async function handleSubmit(formData: FormData) {
-    await createTaskAction(formData)
+    const result = await createTaskAction(formData)
+    if (!result.success) {
+      setErrors(result.errors || null)
+      return
+    }
     formRef.current?.reset()
     setPriority('none')
+    setErrors(null)
   }
 
   return (
     <form ref={formRef} action={handleSubmit} className="space-y-4">
-      <Input
-        name="name"
-        placeholder="Task name"
-        aria-label="Task name"
-        required
-        autoFocus
-        className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-11 rounded-xl transition-all"
-      />
+      <div className="space-y-1.5">
+        <Input
+          name="name"
+          placeholder="Task name"
+          aria-label="Task name"
+          autoFocus
+          className={cn(
+            'bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-11 rounded-xl transition-all',
+            errors?.name && 'border-destructive focus:border-destructive'
+          )}
+        />
+        {errors?.name && (
+          <p className="text-destructive text-xs">{errors.name[0]}</p>
+        )}
+      </div>
       <input type="hidden" name="listId" value={defaultListId || ''} />
-      <Textarea
-        name="description"
-        placeholder="Description (optional)"
-        aria-label="Task description"
-        rows={3}
-        className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all"
-      />
+      <div className="space-y-1.5">
+        <Textarea
+          name="description"
+          placeholder="Description (optional)"
+          aria-label="Task description"
+          rows={3}
+          className={cn(
+            'bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all',
+            errors?.description && 'border-destructive focus:border-destructive'
+          )}
+        />
+        {errors?.description && (
+          <p className="text-destructive text-xs">{errors.description[0]}</p>
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label
@@ -136,8 +158,14 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
             min="1"
             max="9999"
             placeholder="60"
-            className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-10 rounded-xl transition-all"
+            className={cn(
+              'bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-10 rounded-xl transition-all',
+              errors?.estimate && 'border-destructive focus:border-destructive'
+            )}
           />
+          {errors?.estimate && (
+            <p className="text-destructive text-xs">{errors.estimate[0]}</p>
+          )}
         </div>
       </div>
       <div className="pt-2">

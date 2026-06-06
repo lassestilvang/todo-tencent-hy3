@@ -41,7 +41,7 @@ export async function createTaskAction(formData: FormData) {
 
   const result = createTaskSchema.safeParse(raw)
   if (!result.success) {
-    throw new Error('Invalid task data - please check your input')
+    return { success: false, errors: result.error.flatten().fieldErrors }
   }
 
   const { name, description, date, deadline, priority, listId, estimate } =
@@ -58,6 +58,7 @@ export async function createTaskAction(formData: FormData) {
   })
 
   revalidatePath('/', 'layout')
+  return { success: true }
 }
 
 const createListSchema = z.object({
