@@ -1,5 +1,9 @@
-import { TaskSkeleton } from '@/components/skeleton'
+import { TaskDetailSkeleton } from '@/components/skeleton'
 
 export default function Loading() {
-  return <TaskSkeleton />
+  return (
+    <div className="mx-auto max-w-4xl">
+      <TaskDetailSkeleton />
+    </div>
+  )
 }

@@ -26,3 +26,18 @@ export function TaskSkeleton() {
     </div>
   )
 }
+
+export function TaskDetailSkeleton() {
+  return (
+    <div className="glass-effect bg-card/15 space-y-6 overflow-hidden rounded-2xl border p-6 shadow-xl md:p-8">
+      <div className="space-y-2 border-b pb-4">
+        <Skeleton className="h-8 w-2/3" />
+      </div>
+      <div className="space-y-4">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-1/2" />
+      </div>
+    </div>
+  )
+}
