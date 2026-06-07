@@ -18,6 +18,9 @@ export function TaskCheckbox({
       <Checkbox
         checked={checked}
         onCheckedChange={() => formRef.current?.requestSubmit()}
+        aria-label={
+          checked ? 'Mark task as incomplete' : 'Mark task as complete'
+        }
       />
     </form>
   )
