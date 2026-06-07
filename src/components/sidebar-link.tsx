@@ -1,17 +1,18 @@
 'use client'
 
+import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
 export function SidebarLink({
   href,
-  icon: Icon,
+  icon,
   label,
   badge,
 }: {
   href: string
-  icon: React.ComponentType<{ className?: string }> | (() => JSX.Element)
+  icon: React.ReactNode
   label: string
   badge?: number
 }) {
@@ -28,7 +29,7 @@ export function SidebarLink({
           : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
       )}
     >
-      <Icon className="h-4 w-4" />
+      <div className="flex h-4 w-4 items-center justify-center">{icon}</div>
       <span className="flex-1">{label}</span>
       {badge !== undefined && (
         <span
