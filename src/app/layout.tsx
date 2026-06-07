@@ -4,6 +4,7 @@ import './globals.css'
 import { Sidebar } from '@/components/sidebar'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SearchWrapper } from '@/components/search-wrapper'
+import { SidebarLayout } from '@/components/sidebar-layout'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -56,13 +57,9 @@ export default function RootLayout({
           Skip to main content
         </a>
         <ThemeProvider>
-          <div className="flex h-screen overflow-hidden">
-            <Sidebar />
-            <main id="main" className="flex-1 overflow-auto">
-              {children}
-            </main>
-            <SearchWrapper />
-          </div>
+          <SidebarLayout sidebar={<Sidebar />} search={<SearchWrapper />}>
+            {children}
+          </SidebarLayout>
         </ThemeProvider>
       </body>
     </html>
