@@ -103,7 +103,11 @@ export function SearchDialog({
                     'bg-accent/50 border-primary border-l-2'
                 )}
               >
-                <TaskCheckbox taskId={task.id} checked={task.completed} />
+                <TaskCheckbox
+                  taskId={task.id}
+                  checked={task.completed}
+                  taskName={task.name}
+                />
                 <Link
                   href={`/task/${task.id}`}
                   className="flex min-w-0 flex-1 items-center justify-between"

@@ -7,9 +7,11 @@ import { handleToggle } from '@/lib/actions'
 export function TaskCheckbox({
   taskId,
   checked,
+  taskName,
 }: {
   taskId: string
   checked: boolean
+  taskName: string
 }) {
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -19,7 +21,9 @@ export function TaskCheckbox({
         checked={checked}
         onCheckedChange={() => formRef.current?.requestSubmit()}
         aria-label={
-          checked ? 'Mark task as incomplete' : 'Mark task as complete'
+          checked
+            ? `Mark task "${taskName}" as incomplete`
+            : `Mark task "${taskName}" as complete`
         }
       />
     </form>

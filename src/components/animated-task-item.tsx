@@ -32,7 +32,11 @@ export function AnimatedTaskItem({ task }: { task: Task }) {
         )}
         suppressHydrationWarning
       >
-        <TaskCheckbox taskId={task.id} checked={task.completed} />
+        <TaskCheckbox
+          taskId={task.id}
+          checked={task.completed}
+          taskName={task.name}
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Link
@@ -113,7 +117,11 @@ export function AnimatedTaskItem({ task }: { task: Task }) {
               key={sub.id}
               className="hover:bg-accent/50 flex items-center gap-3 rounded-lg px-3 py-2"
             >
-              <TaskCheckbox taskId={sub.id} checked={sub.completed} />
+              <TaskCheckbox
+                taskId={sub.id}
+                checked={sub.completed}
+                taskName={sub.name}
+              />
               <span
                 className={cn(
                   'text-sm',
