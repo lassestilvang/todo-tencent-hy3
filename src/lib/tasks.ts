@@ -456,6 +456,32 @@ function logTaskAction(taskId: string, action: string, details: string): void {
 
 export function getOverdueTasks(): Task[] {
   const db = getDb()
+
+  // Preprocess data for efficient lookups
+  const listMap = new Map(db.lists.map((list) => [list.id, list]))
+  const labelMap = new Map(db.labels.map((label) => [label.id, label]))
+  const taskLabelsMap = db.task_labels.reduce((acc, tl) => {
+    if (!acc.has(tl.task_id)) acc.set(tl.task_id, [])
+    acc.get(tl.task_id)?.push(tl.label_id)
+    return acc
+  }, new Map<string, string[]>())
+  const taskAttachmentMap = db.task_attachments.reduce((acc, att) => {
+    if (!acc.has(att.task_id)) acc.set(att.task_id, [])
+    acc.get(att.task_id)?.push(att)
+    return acc
+  }, new Map<string, TaskAttachment[]>())
+  const taskReminderMap = db.task_reminders.reduce((acc, rem) => {
+    if (!acc.has(rem.task_id)) acc.set(rem.task_id, [])
+    acc.get(rem.task_id)?.push(rem)
+    return acc
+  }, new Map<string, TaskReminder[]>())
+  const taskLogsMap = db.task_logs.reduce((acc, log) => {
+    if (!acc.has(log.task_id)) acc.set(log.task_id, [])
+    acc.get(log.task_id)?.push(log)
+    return acc
+  }, new Map<string, TaskLog[]>())
+  const allTasksMap = new Map(db.tasks.map((task) => [task.id, task]))
+
   const today = new Date().toISOString().split('T')[0]
   return db.tasks
     .filter(
@@ -466,11 +492,47 @@ export function getOverdueTasks(): Task[] {
       if (!a.date || !b.date) return 0
       return a.date.localeCompare(b.date)
     })
-    .map((t) => getTaskWithRelations(t, db))
+    .map((t) =>
+      getTaskWithRelations(t, {
+        listMap,
+        labelMap,
+        taskLabelsMap,
+        taskAttachmentMap,
+        taskReminderMap,
+        taskLogsMap,
+        allTasksMap,
+      })
+    )
 }
 
 export function searchTasks(query: string): Task[] {
   const db = getDb()
+
+  // Preprocess data for efficient lookups
+  const listMap = new Map(db.lists.map((list) => [list.id, list]))
+  const labelMap = new Map(db.labels.map((label) => [label.id, label]))
+  const taskLabelsMap = db.task_labels.reduce((acc, tl) => {
+    if (!acc.has(tl.task_id)) acc.set(tl.task_id, [])
+    acc.get(tl.task_id)?.push(tl.label_id)
+    return acc
+  }, new Map<string, string[]>())
+  const taskAttachmentMap = db.task_attachments.reduce((acc, att) => {
+    if (!acc.has(att.task_id)) acc.set(att.task_id, [])
+    acc.get(att.task_id)?.push(att)
+    return acc
+  }, new Map<string, TaskAttachment[]>())
+  const taskReminderMap = db.task_reminders.reduce((acc, rem) => {
+    if (!acc.has(rem.task_id)) acc.set(rem.task_id, [])
+    acc.get(rem.task_id)?.push(rem)
+    return acc
+  }, new Map<string, TaskReminder[]>())
+  const taskLogsMap = db.task_logs.reduce((acc, log) => {
+    if (!acc.has(log.task_id)) acc.set(log.task_id, [])
+    acc.get(log.task_id)?.push(log)
+    return acc
+  }, new Map<string, TaskLog[]>())
+  const allTasksMap = new Map(db.tasks.map((task) => [task.id, task]))
+
   return db.tasks
     .filter(
       (t) =>
@@ -480,5 +542,15 @@ export function searchTasks(query: string): Task[] {
     )
     .sort((a: Task, b: Task) => b.created_at.localeCompare(a.created_at))
     .slice(0, 50)
-    .map((t) => getTaskWithRelations(t, db))
+    .map((t) =>
+      getTaskWithRelations(t, {
+        listMap,
+        labelMap,
+        taskLabelsMap,
+        taskAttachmentMap,
+        taskReminderMap,
+        taskLogsMap,
+        allTasksMap,
+      })
+    )
 }
