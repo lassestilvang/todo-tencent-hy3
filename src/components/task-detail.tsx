@@ -35,7 +35,11 @@ export function TaskDetail({ task }: { task: Task }) {
     <div className="glass-effect bg-card/15 space-y-6 overflow-hidden rounded-2xl border p-6 shadow-xl md:p-8">
       <div className="border-border/40 flex items-start justify-between border-b pb-4">
         <div className="flex flex-1 items-center gap-3">
-          <TaskCheckbox taskId={task.id} checked={task.completed} />
+          <TaskCheckbox
+            taskId={task.id}
+            checked={task.completed}
+            taskName={task.name}
+          />
           <h2
             className={cn(
               'from-foreground to-foreground/80 flex-1 bg-gradient-to-r bg-clip-text text-xl font-bold text-transparent',
@@ -196,7 +200,11 @@ export function TaskDetail({ task }: { task: Task }) {
                   key={sub.id}
                   className="hover:bg-accent/20 flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors"
                 >
-                  <TaskCheckbox taskId={sub.id} checked={sub.completed} />
+                  <TaskCheckbox
+                    taskId={sub.id}
+                    checked={sub.completed}
+                    taskName={sub.name}
+                  />
                   <span
                     className={cn(
                       'text-sm',

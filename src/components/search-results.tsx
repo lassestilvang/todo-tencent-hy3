@@ -25,7 +25,11 @@ export async function SearchResults({ query }: { query: string }) {
           key={task.id}
           className="hover:bg-accent flex items-center gap-3 rounded-lg p-3"
         >
-          <TaskCheckbox taskId={task.id} checked={task.completed} />
+          <TaskCheckbox
+            taskId={task.id}
+            checked={task.completed}
+            taskName={task.name}
+          />
           <Link href={`/task/${task.id}`} className="flex min-w-0 flex-1">
             <p
               className={`truncate ${task.completed ? 'line-through opacity-60' : ''}`}
