@@ -1,7 +1,6 @@
 import { AnimatePresence } from 'framer-motion'
 import { Plus, Clock } from 'lucide-react'
 import { getTasks } from '@/lib/tasks'
-import { handleClearCompleted } from '@/lib/actions'
 import { Button } from '@/components/ui/button'
 import { CreateTaskForm } from '@/components/create-task-form'
 import {
@@ -13,6 +12,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { AnimatedTaskItem } from '@/components/animated-task-item'
+import { ClearCompletedButton } from '@/components/clear-completed-button'
 
 interface TaskListProps {
   view?: 'today' | 'next7' | 'upcoming' | 'all'
@@ -70,18 +70,7 @@ export async function TaskList({
             <span className="text-muted-foreground text-sm font-medium">
               {tasks.filter((t) => !t.completed).length} remaining
             </span>
-            {tasks.some((t) => t.completed) && (
-              <form action={handleClearCompleted}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  type="submit"
-                  className="hover:bg-destructive/10 hover:text-destructive text-xs transition-colors"
-                >
-                  Clear completed
-                </Button>
-              </form>
-            )}
+            {tasks.some((t) => t.completed) && <ClearCompletedButton />}
           </div>
         </div>
 
