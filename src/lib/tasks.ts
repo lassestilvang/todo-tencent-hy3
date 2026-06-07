@@ -85,38 +85,43 @@ export function deleteLabel(id: string): void {
   deleteLabelInDb(id)
 }
 
-function getTaskWithRelations(task: Task, db: ReturnType<typeof getDb>): Task {
-  const lists = db.lists
-  const taskLabels = db.task_labels
-  const labels = db.labels
-  const taskAttachments = db.task_attachments
-  const taskReminders = db.task_reminders
-  const allTasks = db.tasks
+function getTaskWithRelations(
+  task: Task,
+  preprocessedData: {
+    listMap: Map<string, List>
+    labelMap: Map<string, Label>
+    taskLabelsMap: Map<string, string[]> // taskId -> labelId[]
+    taskAttachmentMap: Map<string, TaskAttachment[]> // taskId -> attachment[]
+    taskReminderMap: Map<string, TaskReminder[]> // taskId -> reminder[]
+    taskLogsMap: Map<string, TaskLog[]> // taskId -> log[]
+    allTasksMap: Map<string, Task> // taskId -> task
+  }
+): Task {
+  const {
+    listMap,
+    labelMap,
+    taskLabelsMap,
+    taskAttachmentMap,
+    taskReminderMap,
+    taskLogsMap,
+    allTasksMap,
+  } = preprocessedData
 
   return {
     ...task,
-    list: task.list_id
-      ? lists.find((l: List) => l.id === task.list_id)
-      : undefined,
-    labels: taskLabels
-      .filter(
-        (tl: { task_id: string; label_id: string }) => tl.task_id === task.id
-      )
-      .map((tl: { task_id: string; label_id: string }) =>
-        labels.find((l: Label) => l.id === tl.label_id)
-      )
+    list: task.list_id ? listMap.get(task.list_id) : undefined,
+    labels: (taskLabelsMap.get(task.id) || [])
+      .map((labelId) => labelMap.get(labelId))
       .filter((l: Label | undefined): l is Label => l !== undefined),
-    sub_tasks: allTasks
+    sub_tasks: Array.from(allTasksMap.values())
       .filter((t: Task) => t.parent_task_id === task.id)
       .sort((a: Task, b: Task) => (a.position || 0) - (b.position || 0))
-      .map((t) => getTaskWithRelations(t, db)),
-    attachments: taskAttachments.filter(
-      (a: TaskAttachment) => a.task_id === task.id
+      .map((t) => getTaskWithRelations(t, preprocessedData)),
+    attachments: taskAttachmentMap.get(task.id) || [],
+    reminders: taskReminderMap.get(task.id) || [],
+    logs: (taskLogsMap.get(task.id) || []).sort((a, b) =>
+      b.created_at.localeCompare(a.created_at)
     ),
-    reminders: taskReminders.filter((r: TaskReminder) => r.task_id === task.id),
-    logs: db.task_logs
-      .filter((l) => l.task_id === task.id)
-      .sort((a, b) => b.created_at.localeCompare(a.created_at)),
   }
 }
 
@@ -128,6 +133,32 @@ export function getTasks(options?: {
   search?: string
 }): Task[] {
   const db = getDb()
+
+  // Preprocess data for efficient lookups
+  const listMap = new Map(db.lists.map((list) => [list.id, list]))
+  const labelMap = new Map(db.labels.map((label) => [label.id, label]))
+  const taskLabelsMap = db.task_labels.reduce((acc, tl) => {
+    if (!acc.has(tl.task_id)) acc.set(tl.task_id, [])
+    acc.get(tl.task_id)?.push(tl.label_id)
+    return acc
+  }, new Map<string, string[]>())
+  const taskAttachmentMap = db.task_attachments.reduce((acc, att) => {
+    if (!acc.has(att.task_id)) acc.set(att.task_id, [])
+    acc.get(att.task_id)?.push(att)
+    return acc
+  }, new Map<string, TaskAttachment[]>())
+  const taskReminderMap = db.task_reminders.reduce((acc, rem) => {
+    if (!acc.has(rem.task_id)) acc.set(rem.task_id, [])
+    acc.get(rem.task_id)?.push(rem)
+    return acc
+  }, new Map<string, TaskReminder[]>())
+  const taskLogsMap = db.task_logs.reduce((acc, log) => {
+    if (!acc.has(log.task_id)) acc.set(log.task_id, [])
+    acc.get(log.task_id)?.push(log)
+    return acc
+  }, new Map<string, TaskLog[]>())
+  const allTasksMap = new Map(db.tasks.map((task) => [task.id, task]))
+
   let tasks = (db.tasks || []).filter((t) => !t.parent_task_id)
 
   if (options?.listId) {
@@ -145,7 +176,7 @@ export function getTasks(options?: {
 
   if (options?.view) {
     const today = new Date().toISOString().split('T')[0]
-    const next7 = new Date(Date.now() + 7 * 86400000)
+    const next7Days = new Date(Date.now() + 7 * 86400000)
       .toISOString()
       .split('T')[0]
 
@@ -155,7 +186,7 @@ export function getTasks(options?: {
         break
       case 'next7':
         tasks = tasks.filter(
-          (t) => t.date && t.date >= today && t.date <= next7
+          (t) => t.date && t.date >= today && t.date <= next7Days
         )
         break
       case 'upcoming':
@@ -192,7 +223,17 @@ export function getTasks(options?: {
         )
       return (a.position || 0) - (b.position || 0)
     })
-    .map((t) => getTaskWithRelations(t, db))
+    .map((t) =>
+      getTaskWithRelations(t, {
+        listMap,
+        labelMap,
+        taskLabelsMap,
+        taskAttachmentMap,
+        taskReminderMap,
+        taskLogsMap,
+        allTasksMap,
+      })
+    )
 }
 
 export function getTask(id: string): Task | undefined {
@@ -200,7 +241,40 @@ export function getTask(id: string): Task | undefined {
   const task = db.tasks.find((t: Task) => t.id === id)
   if (!task) return undefined
 
-  return getTaskWithRelations(task, db)
+  // Preprocess data for efficient lookups
+  const listMap = new Map(db.lists.map((list) => [list.id, list]))
+  const labelMap = new Map(db.labels.map((label) => [label.id, label]))
+  const taskLabelsMap = db.task_labels.reduce((acc, tl) => {
+    if (!acc.has(tl.task_id)) acc.set(tl.task_id, [])
+    acc.get(tl.task_id)?.push(tl.label_id)
+    return acc
+  }, new Map<string, string[]>())
+  const taskAttachmentMap = db.task_attachments.reduce((acc, att) => {
+    if (!acc.has(att.task_id)) acc.set(att.task_id, [])
+    acc.get(att.task_id)?.push(att)
+    return acc
+  }, new Map<string, TaskAttachment[]>())
+  const taskReminderMap = db.task_reminders.reduce((acc, rem) => {
+    if (!acc.has(rem.task_id)) acc.set(rem.task_id, [])
+    acc.get(rem.task_id)?.push(rem)
+    return acc
+  }, new Map<string, TaskReminder[]>())
+  const taskLogsMap = db.task_logs.reduce((acc, log) => {
+    if (!acc.has(log.task_id)) acc.set(log.task_id, [])
+    acc.get(log.task_id)?.push(log)
+    return acc
+  }, new Map<string, TaskLog[]>())
+  const allTasksMap = new Map(db.tasks.map((task) => [task.id, task]))
+
+  return getTaskWithRelations(task, {
+    listMap,
+    labelMap,
+    taskLabelsMap,
+    taskAttachmentMap,
+    taskReminderMap,
+    taskLogsMap,
+    allTasksMap,
+  })
 }
 
 export function createTask(data: Partial<Task>): Task {
