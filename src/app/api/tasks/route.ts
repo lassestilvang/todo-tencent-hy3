@@ -67,14 +67,18 @@ export async function POST(request: Request) {
     const result = createTaskSchema.safeParse(body)
     if (!result.success) {
       return NextResponse.json(
-        { error: 'Invalid request data' },
+        { error: 'Invalid request data', details: result.error.format() },
         { status: 400 }
       )
     }
     const task = createTask(result.data)
-    return NextResponse.json(task)
-  } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json(task, { status: 201 })
+  } catch (error) {
+    console.error('Task creation error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
 
@@ -85,7 +89,7 @@ export async function PATCH(request: Request) {
 
     if (!result.success) {
       return NextResponse.json(
-        { error: 'Invalid request data' },
+        { error: 'Invalid request data', details: result.error.format() },
         { status: 400 }
       )
     }
@@ -108,7 +112,11 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
-  } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  } catch (error) {
+    console.error('Task patch error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
