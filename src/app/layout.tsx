@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { SearchWrapper } from '@/components/search-wrapper'
 import { SidebarLayout } from '@/components/sidebar-layout'
 import { Toaster } from 'sonner'
+import NextTopLoader from 'nextjs-toploader'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -51,6 +52,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <NextTopLoader color="#6366f1" showSpinner={false} />
         <a
           href="#main"
           className="bg-primary text-primary-foreground sr-only z-50 rounded-md px-4 py-2 focus:not-sr-only focus:absolute focus:top-4 focus:left-4"

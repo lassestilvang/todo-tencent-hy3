@@ -2,15 +2,32 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Clock, AlertTriangle, Paperclip, MessageSquare } from 'lucide-react'
+import {
+  Clock,
+  AlertTriangle,
+  Paperclip,
+  MessageSquare,
+  Pencil,
+} from 'lucide-react'
 import { cn, formatDisplayDate } from '@/lib/utils'
 import { handleDelete } from '@/lib/actions'
 import type { Task } from '@/types'
 import { Button } from '@/components/ui/button'
 import { PriorityIcon } from '@/components/priority-icon'
 import { TaskCheckbox } from '@/components/task-checkbox'
+import { useState } from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { EditTaskForm } from '@/components/edit-task-form'
 
 export function AnimatedTaskItem({ task }: { task: Task }) {
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+
   const sorted = task.sub_tasks
     ? [...task.sub_tasks].sort((a, b) => {
         if (a.completed !== b.completed) return a.completed ? 1 : -1
@@ -98,17 +115,40 @@ export function AnimatedTaskItem({ task }: { task: Task }) {
             {task.list.emoji} {task.list.name}
           </span>
         )}
-        <form action={handleDelete.bind(null, task.id)}>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Delete task"
-            className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-            type="submit"
-          >
-            <span aria-hidden="true">×</span>
-          </Button>
-        </form>
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Edit task"
+                className="h-7 w-7"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Task</DialogTitle>
+              </DialogHeader>
+              <EditTaskForm
+                task={task}
+                onCancel={() => setIsEditDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+          <form action={handleDelete.bind(null, task.id)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Delete task"
+              className="h-7 w-7"
+              type="submit"
+            >
+              <span aria-hidden="true">×</span>
+            </Button>
+          </form>
+        </div>
       </div>
       {sorted.length > 0 && (
         <div className="ml-8 space-y-1">
