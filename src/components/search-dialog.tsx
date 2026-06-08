@@ -11,6 +11,29 @@ import { cn, formatDisplayDate } from '@/lib/utils'
 import { Loader2, X } from 'lucide-react'
 import { TaskCheckbox } from '@/components/task-checkbox'
 
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>
+  const parts = text.split(
+    new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+  )
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase() ? (
+          <mark
+            key={i}
+            className="bg-primary/20 text-primary rounded-sm px-0.5 font-bold"
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  )
+}
+
 const fetcher = async (url: string) => {
   const r = await fetch(url)
   if (!r.ok) throw new Error('Search failed')
@@ -128,7 +151,7 @@ export function SearchDialog({
                       task.completed && 'line-through opacity-60'
                     )}
                   >
-                    {task.name}
+                    <HighlightText text={task.name} query={debouncedQuery} />
                   </p>
                   {task.date && (
                     <p className="text-muted-foreground ml-2 text-xs font-medium">
