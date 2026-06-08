@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import type { Task } from '@/types'
 import Link from 'next/link'
 import { cn, formatDisplayDate } from '@/lib/utils'
-import { Loader2 } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import { TaskCheckbox } from '@/components/task-checkbox'
 
 const fetcher = async (url: string) => {
@@ -83,9 +83,18 @@ export function SearchDialog({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="bg-background/50 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-12 rounded-xl px-4 text-lg transition-all"
+            className="bg-background/50 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-12 rounded-xl px-4 pr-10 text-lg transition-all"
             autoFocus
           />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-1 transition-colors"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         {isLoading && (
           <div className="flex justify-center py-6">

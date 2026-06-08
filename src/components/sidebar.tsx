@@ -74,17 +74,23 @@ export async function Sidebar() {
             </Dialog>
           </div>
           <nav className="space-y-1">
-            {lists.map((list) => (
-              <SidebarLink
-                key={list.id}
-                href={`/list/${list.id}`}
-                label={list.name}
-                icon={<span>{list.emoji}</span>}
-                badge={
-                  list.incomplete_count ? list.incomplete_count : undefined
-                }
-              />
-            ))}
+            {lists.length === 0 ? (
+              <p className="text-muted-foreground/70 px-3 py-2 text-xs italic">
+                No lists yet. Create one above!
+              </p>
+            ) : (
+              lists.map((list) => (
+                <SidebarLink
+                  key={list.id}
+                  href={`/list/${list.id}`}
+                  label={list.name}
+                  icon={<span>{list.emoji}</span>}
+                  badge={
+                    list.incomplete_count ? list.incomplete_count : undefined
+                  }
+                />
+              ))
+            )}
           </nav>
         </div>
 

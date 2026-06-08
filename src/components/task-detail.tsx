@@ -10,6 +10,8 @@ import {
   ListTodo,
   FileText,
   Pencil,
+  Copy,
+  Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -27,9 +29,18 @@ import {
 } from '@/components/ui/dialog'
 import { EditTaskForm } from '@/components/edit-task-form'
 import type { Task } from '@/types'
+import { toast } from 'sonner'
 
 export function TaskDetail({ task }: { task: Task }) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/task/${task.id}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+    toast.success('Link copied to clipboard')
+  }
 
   return (
     <div className="glass-effect bg-card/15 space-y-6 overflow-hidden rounded-2xl border p-6 shadow-xl md:p-8">
@@ -50,12 +61,26 @@ export function TaskDetail({ task }: { task: Task }) {
           </h2>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hover:bg-accent/40 rounded-full"
+            onClick={handleCopyLink}
+            title="Copy Link"
+          >
+            {copied ? (
+              <Check className="h-4 w-4 text-green-500" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </Button>
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
             <DialogTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 className="hover:bg-accent/40 rounded-full"
+                title="Edit Task"
               >
                 <Pencil className="h-4 w-4" />
               </Button>
@@ -76,6 +101,7 @@ export function TaskDetail({ task }: { task: Task }) {
               variant="ghost"
               size="icon"
               className="hover:bg-accent/40 rounded-full"
+              title="Close"
             >
               <X className="h-4 w-4" />
             </Button>

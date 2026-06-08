@@ -14,6 +14,8 @@ import {
 import { AnimatedTaskItem } from '@/components/animated-task-item'
 import { ClearCompletedButton } from '@/components/clear-completed-button'
 
+import { formatTime } from '@/lib/utils'
+
 interface TaskListProps {
   view?: 'today' | 'next7' | 'upcoming' | 'all'
   listId?: string
@@ -67,9 +69,21 @@ export async function TaskList({
             </Dialog>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-muted-foreground text-sm font-medium">
-              {tasks.filter((t) => !t.completed).length} remaining
-            </span>
+            <div className="flex flex-col">
+              <span className="text-muted-foreground text-sm font-medium">
+                {tasks.filter((t) => !t.completed).length} remaining
+              </span>
+              {(() => {
+                const totalMinutes = tasks
+                  .filter((t) => !t.completed)
+                  .reduce((acc, t) => acc + (t.estimate || 0), 0)
+                return totalMinutes > 0 ? (
+                  <span className="text-muted-foreground/70 text-xs">
+                    ~{formatTime(totalMinutes)} estimated
+                  </span>
+                ) : null
+              })()}
+            </div>
             {tasks.some((t) => t.completed) && <ClearCompletedButton />}
           </div>
         </div>
