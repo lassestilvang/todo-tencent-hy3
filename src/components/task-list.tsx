@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { AnimatedTaskItem } from '@/components/animated-task-item'
 import { ClearCompletedButton } from '@/components/clear-completed-button'
+import { QuickAddTask } from '@/components/quick-add-task'
 
 import { formatTime } from '@/lib/utils'
 
@@ -98,6 +99,7 @@ export async function TaskList({
         </div>
 
         <div className="bg-card/10 flex-1 overflow-auto p-6">
+          <QuickAddTask listId={listId} />
           {tasks.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center py-16 text-center">
               <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">

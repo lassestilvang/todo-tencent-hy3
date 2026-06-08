@@ -4,6 +4,7 @@ import {
   createTask,
   updateTask as updateTaskInDb,
   createList,
+  createLabel,
   toggleTaskComplete,
   deleteTask,
   clearCompletedTasks,
@@ -123,6 +124,33 @@ export async function createListAction(formData: FormData) {
   const { name, color, emoji } = result.data
 
   createList(name.trim(), color || '#6366f1', emoji || '📋')
+
+  revalidatePath('/', 'layout')
+}
+
+const createLabelSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Label name is required')
+    .max(50, 'Label name is too long'),
+  color: z.string().optional(),
+  icon: z.string().optional(),
+})
+
+export async function createLabelAction(formData: FormData) {
+  const result = createLabelSchema.safeParse({
+    name: formData.get('name'),
+    color: formData.get('color'),
+    icon: formData.get('icon'),
+  })
+
+  if (!result.success) {
+    throw new Error(result.error.issues[0].message)
+  }
+
+  const { name, color, icon } = result.data
+
+  createLabel(name.trim(), color || '#6366f1', icon || '🏷️')
 
   revalidatePath('/', 'layout')
 }

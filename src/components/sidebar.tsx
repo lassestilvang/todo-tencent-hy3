@@ -2,6 +2,7 @@ import { CalendarDays, Calendar, Clock, ListTodo, Plus } from 'lucide-react'
 import { getLists, getLabels, getOverdueTasks } from '@/lib/tasks'
 import { Button } from '@/components/ui/button'
 import { CreateListForm } from '@/components/create-list-form'
+import { CreateLabelForm } from '@/components/create-label-form'
 import { ThemeToggle } from '@/components/theme-toggle'
 import {
   Dialog,
@@ -94,25 +95,45 @@ export async function Sidebar() {
           </nav>
         </div>
 
-        {labels.length > 0 && (
-          <div>
-            <div className="mb-2 flex items-center justify-between px-3">
-              <h3 className="text-muted-foreground text-xs font-semibold uppercase">
-                Labels
-              </h3>
-            </div>
-            <nav className="space-y-1">
-              {labels.map((label) => (
+        <div>
+          <div className="mb-2 flex items-center justify-between px-3">
+            <h3 className="text-muted-foreground text-xs font-semibold uppercase">
+              Labels
+            </h3>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-5 w-5">
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Label</DialogTitle>
+                  <DialogDescription>
+                    Add a new label to categorize your tasks
+                  </DialogDescription>
+                </DialogHeader>
+                <CreateLabelForm />
+              </DialogContent>
+            </Dialog>
+          </div>
+          <nav className="space-y-1">
+            {labels.length === 0 ? (
+              <p className="text-muted-foreground/70 px-3 py-2 text-xs italic">
+                No labels yet. Create one above!
+              </p>
+            ) : (
+              labels.map((label) => (
                 <SidebarLink
                   key={label.id}
                   href={`/label/${label.id}`}
                   label={label.name}
                   icon={<span>{label.icon}</span>}
                 />
-              ))}
-            </nav>
-          </div>
-        )}
+              ))
+            )}
+          </nav>
+        </div>
       </div>
     </aside>
   )
