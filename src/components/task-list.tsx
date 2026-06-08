@@ -50,6 +50,11 @@ export async function TaskList({
       <div className="glass-effect flex flex-1 flex-col overflow-hidden rounded-2xl shadow-xl">
         <div className="bg-card/25 relative overflow-hidden border-b p-6">
           <div
+            role="progressbar"
+            aria-valuenow={progress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`${progress}% of tasks completed`}
             className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           />
@@ -82,6 +87,12 @@ export async function TaskList({
             <div className="flex flex-col">
               <span className="text-muted-foreground text-sm font-medium">
                 {tasks.filter((t) => !t.completed).length} remaining
+                {totalTasks > 0 && (
+                  <span className="text-muted-foreground/60">
+                    {' '}
+                    · {progress}% done
+                  </span>
+                )}
               </span>
               {(() => {
                 const totalMinutes = tasks
