@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { SidebarLink } from '@/components/sidebar-link'
+import { SidebarSearchTrigger } from '@/components/sidebar-search-trigger'
 
 export async function Sidebar() {
   const lists = getLists()
@@ -28,6 +29,7 @@ export async function Sidebar() {
       </div>
 
       <div className="flex-1 space-y-6 overflow-auto p-3">
+        <SidebarSearchTrigger />
         <nav className="space-y-1">
           <SidebarLink
             href="/today"

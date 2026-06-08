@@ -60,9 +60,9 @@ export default function RootLayout({
           Skip to main content
         </a>
         <ThemeProvider>
-          <SidebarLayout sidebar={<Sidebar />} search={<SearchWrapper />}>
-            {children}
-          </SidebarLayout>
+          <SearchWrapper>
+            <SidebarLayout sidebar={<Sidebar />}>{children}</SidebarLayout>
+          </SearchWrapper>
           <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>

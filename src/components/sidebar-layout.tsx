@@ -3,16 +3,15 @@
 import { useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SearchTrigger } from '@/components/search-wrapper'
 import { cn } from '@/lib/utils'
 
 export function SidebarLayout({
   sidebar,
   children,
-  search,
 }: {
   sidebar: React.ReactNode
   children: React.ReactNode
-  search: React.ReactNode
 }) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -38,15 +37,16 @@ export function SidebarLayout({
             variant="ghost"
             size="icon"
             onClick={() => setIsOpen(!isOpen)}
+            aria-label={isOpen ? 'Close menu' : 'Open menu'}
           >
             {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
-          <span className="text-lg font-bold">TaskFlow</span>
+          <span className="flex-1 text-lg font-bold">TaskFlow</span>
+          <SearchTrigger />
         </header>
         <main id="main" className="flex-1 overflow-auto">
           {children}
         </main>
-        {search}
       </div>
     </div>
   )
