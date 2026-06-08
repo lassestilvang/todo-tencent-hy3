@@ -39,11 +39,20 @@ export async function TaskList({
     search: searchQuery,
   })
 
+  const totalTasks = tasks.length
+  const completedTasks = tasks.filter((t) => t.completed).length
+  const progress =
+    totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100)
+
   return (
     <div className="flex h-full p-4 md:p-6 lg:p-8">
       <div className="glass-effect flex flex-1 flex-col overflow-hidden rounded-2xl shadow-xl">
-        <div className="bg-card/25 border-b p-6">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="bg-card/25 relative overflow-hidden border-b p-6">
+          <div
+            className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+          <div className="relative z-10 mb-4 flex items-center justify-between">
             <h1 className="from-foreground to-foreground/80 bg-gradient-to-r bg-clip-text text-2xl font-bold text-transparent">
               {title}
             </h1>
