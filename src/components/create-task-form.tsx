@@ -15,6 +15,7 @@ import { useFormStatus } from 'react-dom'
 import type { Priority } from '@/types'
 import { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 const PRIORITIES: { value: Priority; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -45,8 +46,10 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
     const result = await createTaskAction(formData)
     if (!result.success) {
       setErrors(result.errors || null)
+      toast.error('Failed to create task. Please check your inputs.')
       return
     }
+    toast.success('Task created successfully')
     formRef.current?.reset()
     setPriority('none')
     setErrors(null)

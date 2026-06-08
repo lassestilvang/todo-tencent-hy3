@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { createListAction } from '@/lib/actions'
+import { toast } from 'sonner'
 
 const EMOJIS = [
   '📋',
@@ -40,8 +41,13 @@ export function CreateListForm() {
   async function handleSubmit(formData: FormData) {
     formData.set('color', color)
     formData.set('emoji', emoji)
-    await createListAction(formData)
-    setName('')
+    try {
+      await createListAction(formData)
+      toast.success('List created successfully')
+      setName('')
+    } catch {
+      toast.error('Failed to create list.')
+    }
   }
 
   return (

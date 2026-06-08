@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/sidebar'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SearchWrapper } from '@/components/search-wrapper'
 import { SidebarLayout } from '@/components/sidebar-layout'
+import { Toaster } from 'sonner'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -60,6 +61,7 @@ export default function RootLayout({
           <SidebarLayout sidebar={<Sidebar />} search={<SearchWrapper />}>
             {children}
           </SidebarLayout>
+          <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>
     </html>

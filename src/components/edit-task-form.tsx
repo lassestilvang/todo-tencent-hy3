@@ -15,6 +15,7 @@ import { useFormStatus } from 'react-dom'
 import type { Priority, Task } from '@/types'
 import { useState } from 'react'
 import { cn, formatDate } from '@/lib/utils'
+import { toast } from 'sonner'
 
 const PRIORITIES: { value: Priority; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -50,8 +51,10 @@ export function EditTaskForm({
     const result = await updateTaskAction(task.id, formData)
     if (!result.success) {
       setErrors(result.errors || null)
+      toast.error('Failed to update task. Please check your inputs.')
       return
     }
+    toast.success('Task updated successfully')
     onCancel()
   }
 
