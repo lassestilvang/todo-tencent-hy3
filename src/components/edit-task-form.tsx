@@ -10,10 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { updateTaskAction } from '@/lib/actions'
+import { updateTaskAction, getListsAction } from '@/lib/actions'
 import { useFormStatus } from 'react-dom'
-import type { Priority, Task } from '@/types'
-import { useState } from 'react'
+import type { Priority, Task, List } from '@/types'
+import { useState, useEffect } from 'react'
 import { cn, formatDate } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -45,9 +45,20 @@ export function EditTaskForm({
   onCancel: () => void
 }) {
   const [priority, setPriority] = useState<string>(task.priority || 'none')
+  const [listId, setListId] = useState<string>(task.list_id || 'none')
   const [errors, setErrors] = useState<Record<string, string[]> | null>(null)
+  const [lists, setLists] = useState<List[]>([])
+
+  useEffect(() => {
+    getListsAction().then(setLists)
+  }, [])
 
   async function handleSubmit(formData: FormData) {
+    if (listId !== 'none') {
+      formData.set('listId', listId)
+    } else {
+      formData.delete('listId') // Send empty listId if 'none' is selected
+    }
     const result = await updateTaskAction(task.id, formData)
     if (!result.success) {
       setErrors(result.errors || null)
@@ -77,7 +88,6 @@ export function EditTaskForm({
           <p className="text-destructive text-xs">{errors.name[0]}</p>
         )}
       </div>
-      <input type="hidden" name="listId" value={task.list_id || ''} />
       <div className="space-y-1.5">
         <Textarea
           name="description"
@@ -157,28 +167,61 @@ export function EditTaskForm({
         </div>
         <div className="space-y-1.5">
           <label
-            htmlFor="estimate"
+            htmlFor="list"
             className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase"
           >
-            Estimate (min)
+            List
           </label>
-          <Input
-            id="estimate"
-            name="estimate"
-            type="number"
-            min="1"
-            max="9999"
-            defaultValue={task.estimate || ''}
-            placeholder="60"
-            className={cn(
-              'bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-10 rounded-xl transition-all',
-              errors?.estimate && 'border-destructive focus:border-destructive'
-            )}
-          />
-          {errors?.estimate && (
-            <p className="text-destructive text-xs">{errors.estimate[0]}</p>
-          )}
+          <Select value={listId} onValueChange={setListId}>
+            <SelectTrigger
+              id="list"
+              className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-10 rounded-xl transition-all"
+            >
+              <SelectValue placeholder="Select a list" />
+            </SelectTrigger>
+            <SelectContent className="glass-effect bg-card/90 rounded-xl border">
+              <SelectItem
+                value="none"
+                className="hover:bg-accent/40 rounded-lg"
+              >
+                No List
+              </SelectItem>
+              {lists.map((list) => (
+                <SelectItem
+                  key={list.id}
+                  value={list.id}
+                  className="hover:bg-accent/40 rounded-lg"
+                >
+                  {list.emoji} {list.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+      </div>
+      <div className="space-y-1.5">
+        <label
+          htmlFor="estimate"
+          className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase"
+        >
+          Estimate (min)
+        </label>
+        <Input
+          id="estimate"
+          name="estimate"
+          type="number"
+          min="1"
+          max="9999"
+          defaultValue={task.estimate || ''}
+          placeholder="60"
+          className={cn(
+            'bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-10 rounded-xl transition-all',
+            errors?.estimate && 'border-destructive focus:border-destructive'
+          )}
+        />
+        {errors?.estimate && (
+          <p className="text-destructive text-xs">{errors.estimate[0]}</p>
+        )}
       </div>
       <div className="flex gap-3 pt-2">
         <Button

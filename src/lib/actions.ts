@@ -7,10 +7,15 @@ import {
   toggleTaskComplete,
   deleteTask,
   clearCompletedTasks,
+  getLists,
 } from '@/lib/tasks'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
+
+export async function getListsAction() {
+  return getLists()
+}
 
 const createTaskSchema = z.object({
   name: z
