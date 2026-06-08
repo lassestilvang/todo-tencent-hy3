@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchTrigger } from '@/components/search-wrapper'
@@ -14,6 +15,13 @@ export function SidebarLayout({
   children: React.ReactNode
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const pathname = usePathname()
+  const [lastPathname, setLastPathname] = useState(pathname)
+
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname)
+    setIsOpen(false)
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
