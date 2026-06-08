@@ -14,6 +14,7 @@ import {
 import { AnimatedTaskItem } from '@/components/animated-task-item'
 import { ClearCompletedButton } from '@/components/clear-completed-button'
 import { QuickAddTask } from '@/components/quick-add-task'
+import { ToggleCompletedButton } from '@/components/toggle-completed-button'
 
 import { formatTime } from '@/lib/utils'
 
@@ -23,6 +24,7 @@ interface TaskListProps {
   labelId?: string
   title: string
   searchQuery?: string
+  showCompleted?: boolean
 }
 
 export async function TaskList({
@@ -31,12 +33,13 @@ export async function TaskList({
   labelId,
   title,
   searchQuery,
+  showCompleted = true,
 }: TaskListProps) {
   const tasks = getTasks({
     view,
     listId,
     labelId,
-    completed: undefined,
+    completed: showCompleted ? undefined : false,
     search: searchQuery,
   })
 
@@ -105,7 +108,10 @@ export async function TaskList({
                 ) : null
               })()}
             </div>
-            {tasks.some((t) => t.completed) && <ClearCompletedButton />}
+            <div className="flex items-center gap-1">
+              <ToggleCompletedButton />
+              {tasks.some((t) => t.completed) && <ClearCompletedButton />}
+            </div>
           </div>
         </div>
 

@@ -20,13 +20,22 @@ export async function generateMetadata({
 
 export default async function ListPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ completed?: string }>
 }) {
   const { id } = await params
+  const { completed } = await searchParams
   const lists = getLists()
   const list = lists.find((l) => l.id === id)
   if (!list) notFound()
 
-  return <TaskList listId={id} title={`${list.emoji} ${list.name}`} />
+  return (
+    <TaskList
+      listId={id}
+      title={`${list.emoji} ${list.name}`}
+      showCompleted={completed !== 'false'}
+    />
+  )
 }

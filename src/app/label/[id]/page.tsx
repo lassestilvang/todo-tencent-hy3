@@ -20,13 +20,22 @@ export async function generateMetadata({
 
 export default async function LabelPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ completed?: string }>
 }) {
   const { id } = await params
+  const { completed } = await searchParams
   const labels = getLabels()
   const label = labels.find((l) => l.id === id)
   if (!label) notFound()
 
-  return <TaskList labelId={id} title={`${label.icon} ${label.name}`} />
+  return (
+    <TaskList
+      labelId={id}
+      title={`${label.icon} ${label.name}`}
+      showCompleted={completed !== 'false'}
+    />
+  )
 }
