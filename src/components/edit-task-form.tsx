@@ -10,12 +10,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { updateTaskAction, getListsAction } from '@/lib/actions'
+import {
+  updateTaskAction,
+  getListsAction,
+  getLabelsAction,
+  toggleTaskLabelAction,
+} from '@/lib/actions'
 import { useFormStatus } from 'react-dom'
-import type { Priority, Task, List } from '@/types'
-import { useState, useEffect } from 'react'
+import type { Priority, Task, List, Label } from '@/types'
+import { useState, useEffect, useOptimistic, startTransition } from 'react'
 import { cn, formatDate } from '@/lib/utils'
 import { toast } from 'sonner'
+import { Check } from 'lucide-react'
 
 const PRIORITIES: { value: Priority; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -48,9 +54,22 @@ export function EditTaskForm({
   const [listId, setListId] = useState<string>(task.list_id || 'none')
   const [errors, setErrors] = useState<Record<string, string[]> | null>(null)
   const [lists, setLists] = useState<List[]>([])
+  const [labels, setLabels] = useState<Label[]>([])
+  const [optimisticLabels, setOptimisticLabels] = useOptimistic(
+    task.labels || [],
+    (state: Label[], action: { type: 'toggle'; label: Label }) => {
+      const hasLabel = state.some((l) => l.id === action.label.id)
+      if (hasLabel) {
+        return state.filter((l) => l.id !== action.label.id)
+      } else {
+        return [...state, action.label]
+      }
+    }
+  )
 
   useEffect(() => {
     getListsAction().then(setLists)
+    getLabelsAction().then(setLabels)
   }, [])
 
   async function handleSubmit(formData: FormData) {
@@ -197,6 +216,48 @@ export function EditTaskForm({
               ))}
             </SelectContent>
           </Select>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase">
+          Labels
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {labels.length === 0 ? (
+            <span className="text-muted-foreground text-xs italic">
+              No labels available
+            </span>
+          ) : (
+            labels.map((label) => {
+              const isSelected = optimisticLabels.some((l) => l.id === label.id)
+              return (
+                <button
+                  key={label.id}
+                  type="button"
+                  onClick={() => {
+                    startTransition(() => {
+                      setOptimisticLabels({ type: 'toggle', label })
+                      toggleTaskLabelAction(task.id, label.id, isSelected)
+                    })
+                  }}
+                  className={cn(
+                    'flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors',
+                    isSelected
+                      ? 'bg-accent/60'
+                      : 'hover:bg-accent/30 bg-transparent'
+                  )}
+                  style={{
+                    borderColor: label.color + '40',
+                    color: label.color,
+                  }}
+                >
+                  <span>{label.icon}</span>
+                  <span>{label.name}</span>
+                  {isSelected && <Check className="ml-1 h-3 w-3" />}
+                </button>
+              )
+            })
+          )}
         </div>
       </div>
       <div className="space-y-1.5">

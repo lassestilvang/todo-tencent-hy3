@@ -9,6 +9,9 @@ import {
   deleteTask,
   clearCompletedTasks,
   getLists,
+  getLabels,
+  addTaskLabel,
+  removeTaskLabel,
 } from '@/lib/tasks'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -16,6 +19,10 @@ import { z } from 'zod'
 
 export async function getListsAction() {
   return getLists()
+}
+
+export async function getLabelsAction() {
+  return getLabels()
 }
 
 const createTaskSchema = z.object({
@@ -163,6 +170,25 @@ export async function createLabelAction(formData: FormData) {
 
   createLabel(name.trim(), color || '#6366f1', icon || '🏷️')
 
+  revalidatePath('/', 'layout')
+}
+
+export async function toggleTaskLabelAction(
+  taskId: string,
+  labelId: string,
+  hasLabel: boolean
+) {
+  if (!taskId || !labelId) return
+  try {
+    if (hasLabel) {
+      removeTaskLabel(taskId, labelId)
+    } else {
+      addTaskLabel(taskId, labelId)
+    }
+  } catch (error) {
+    console.error('Failed to toggle task label:', error)
+    throw new Error('Failed to update task label')
+  }
   revalidatePath('/', 'layout')
 }
 
