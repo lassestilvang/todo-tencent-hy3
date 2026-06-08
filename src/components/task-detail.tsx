@@ -28,6 +28,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { EditTaskForm } from '@/components/edit-task-form'
+import { QuickAddSubtask } from '@/components/quick-add-subtask'
 import type { Task } from '@/types'
 import { toast } from 'sonner'
 
@@ -215,13 +216,14 @@ export function TaskDetail({ task }: { task: Task }) {
           </div>
         )}
 
-        {task.sub_tasks && task.sub_tasks.length > 0 && (
-          <div>
-            <span className="text-muted-foreground mb-2 block text-xs font-semibold tracking-wider uppercase">
-              Subtasks
-            </span>
-            <div className="bg-accent/10 border-border/5 space-y-2 rounded-xl border p-3">
-              {task.sub_tasks.map((sub) => (
+        <div>
+          <span className="text-muted-foreground mb-2 block text-xs font-semibold tracking-wider uppercase">
+            Subtasks
+          </span>
+          <div className="bg-accent/10 border-border/5 space-y-2 rounded-xl border p-3">
+            {task.sub_tasks &&
+              task.sub_tasks.length > 0 &&
+              task.sub_tasks.map((sub) => (
                 <div
                   key={sub.id}
                   className="hover:bg-accent/20 flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors"
@@ -243,9 +245,9 @@ export function TaskDetail({ task }: { task: Task }) {
                   </span>
                 </div>
               ))}
-            </div>
+            <QuickAddSubtask parentId={task.id} />
           </div>
-        )}
+        </div>
 
         {task.attachments && task.attachments.length > 0 && (
           <div>

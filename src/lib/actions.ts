@@ -28,6 +28,7 @@ const createTaskSchema = z.object({
   deadline: z.string().optional(),
   priority: z.enum(['high', 'medium', 'low', 'none']).optional(),
   listId: z.string().optional(),
+  parentId: z.string().optional(),
   estimate: z.coerce
     .number()
     .min(1, 'Estimate must be at least 1 minute')
@@ -43,6 +44,7 @@ export async function createTaskAction(formData: FormData) {
     deadline: formData.get('deadline') as string,
     priority: formData.get('priority') as string,
     listId: formData.get('listId') as string,
+    parentId: formData.get('parentId') as string,
     estimate: formData.get('estimate') as string,
   }
 
@@ -51,8 +53,16 @@ export async function createTaskAction(formData: FormData) {
     return { success: false, errors: result.error.flatten().fieldErrors }
   }
 
-  const { name, description, date, deadline, priority, listId, estimate } =
-    result.data
+  const {
+    name,
+    description,
+    date,
+    deadline,
+    priority,
+    listId,
+    parentId,
+    estimate,
+  } = result.data
 
   createTask({
     name: name.trim(),
@@ -61,6 +71,7 @@ export async function createTaskAction(formData: FormData) {
     deadline: deadline || undefined,
     priority: priority ?? 'none',
     list_id: listId || undefined,
+    parent_task_id: parentId || undefined,
     estimate: estimate || undefined,
   })
 
