@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation'
 export function KeyboardShortcuts({
   onSearchOpen,
   onNewTask,
+  onShortcutsOpen,
 }: {
   onSearchOpen: () => void
   onNewTask?: () => void
+  onShortcutsOpen?: () => void
 }) {
   const { push } = useRouter()
   useEffect(() => {
@@ -45,11 +47,15 @@ export function KeyboardShortcuts({
         e.preventDefault()
         push('/all')
       }
+      if (e.key === '?') {
+        e.preventDefault()
+        onShortcutsOpen?.()
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onSearchOpen, onNewTask, push])
+  }, [onSearchOpen, onNewTask, onShortcutsOpen, push])
 
   return null
 }

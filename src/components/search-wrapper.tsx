@@ -11,16 +11,19 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { KeyboardShortcuts } from '@/components/keyboard-shortcuts'
+import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 
 export function SearchWrapper() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false)
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
 
   return (
     <>
       <KeyboardShortcuts
         onSearchOpen={() => setIsSearchOpen(true)}
         onNewTask={() => setIsNewTaskOpen(true)}
+        onShortcutsOpen={() => setIsShortcutsOpen(true)}
       />
       <SearchDialog open={isSearchOpen} onOpenChange={setIsSearchOpen} />
       <Dialog open={isNewTaskOpen} onOpenChange={setIsNewTaskOpen}>
@@ -34,6 +37,10 @@ export function SearchWrapper() {
           <CreateTaskForm />
         </DialogContent>
       </Dialog>
+      <KeyboardShortcutsDialog
+        open={isShortcutsOpen}
+        onOpenChange={setIsShortcutsOpen}
+      />
     </>
   )
 }
