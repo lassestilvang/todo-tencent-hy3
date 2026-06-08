@@ -18,7 +18,12 @@ import { Badge } from '@/components/ui/badge'
 import { PriorityIcon } from '@/components/priority-icon'
 import { handleDeleteAndRedirect } from '@/lib/actions'
 import { TaskCheckbox } from '@/components/task-checkbox'
-import { cn, formatDisplayDate, formatDateTime } from '@/lib/utils'
+import {
+  cn,
+  formatDisplayDate,
+  formatDateTime,
+  isDateBeforeToday,
+} from '@/lib/utils'
 import {
   Dialog,
   DialogContent,
@@ -161,9 +166,7 @@ export function TaskDetail({ task }: { task: Task }) {
             <p
               className={cn(
                 'font-medium',
-                task.deadline &&
-                  new Date(task.deadline) < new Date() &&
-                  !task.completed
+                isDateBeforeToday(task.deadline) && !task.completed
                   ? 'text-destructive'
                   : 'text-foreground'
               )}

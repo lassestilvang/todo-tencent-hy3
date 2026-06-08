@@ -31,7 +31,7 @@ import type {
   TaskReminder,
   TaskLog,
 } from '@/types'
-import { generateId } from './utils'
+import { generateId, isDateBeforeToday } from './utils'
 
 export function getLists(): List[] {
   const db = getDb()
@@ -482,11 +482,12 @@ export function getOverdueTasks(): Task[] {
   }, new Map<string, TaskLog[]>())
   const allTasksMap = new Map(db.tasks.map((task) => [task.id, task]))
 
-  const today = new Date().toISOString().split('T')[0]
   return db.tasks
     .filter(
       (t: Task) =>
-        t.date !== null && t.date < today && !t.completed && !t.parent_task_id
+        !t.completed &&
+        !t.parent_task_id &&
+        (isDateBeforeToday(t.date) || isDateBeforeToday(t.deadline))
     )
     .sort((a: Task, b: Task) => {
       if (!a.date || !b.date) return 0

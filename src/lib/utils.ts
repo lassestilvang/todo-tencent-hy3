@@ -55,3 +55,23 @@ export function formatDateTime(date: string | Date | null): string {
   if (isNaN(d.getTime())) return 'Invalid date'
   return d.toLocaleString()
 }
+
+/** Compare date-only strings (YYYY-MM-DD) against today at midnight. */
+export function isDateBeforeToday(date: string | null | undefined): boolean {
+  if (!date) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const target = new Date(date)
+  if (isNaN(target.getTime())) return false
+  target.setHours(0, 0, 0, 0)
+  return target < today
+}
+
+export function isOverdue(
+  date: string | null | undefined,
+  deadline: string | null | undefined,
+  completed: boolean
+): boolean {
+  if (completed) return false
+  return isDateBeforeToday(deadline) || isDateBeforeToday(date)
+}

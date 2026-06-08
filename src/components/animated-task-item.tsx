@@ -9,7 +9,7 @@ import {
   MessageSquare,
   Pencil,
 } from 'lucide-react'
-import { cn, formatDisplayDate } from '@/lib/utils'
+import { cn, formatDisplayDate, isOverdue } from '@/lib/utils'
 import { handleDelete } from '@/lib/actions'
 import type { Task } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -83,13 +83,11 @@ export function AnimatedTaskItem({ task }: { task: Task }) {
                 <Clock className="h-3 w-3" /> {formatDisplayDate(task.date)}
               </span>
             )}
-            {task.deadline &&
-              new Date(task.deadline) < new Date() &&
-              !task.completed && (
-                <span className="text-destructive flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" /> Overdue
-                </span>
-              )}
+            {isOverdue(task.date, task.deadline, task.completed) && (
+              <span className="text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> Overdue
+              </span>
+            )}
             {task.attachments && task.attachments.length > 0 && (
               <span className="flex items-center gap-1">
                 <Paperclip className="h-3 w-3" /> {task.attachments.length}
