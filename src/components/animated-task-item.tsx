@@ -94,11 +94,21 @@ export function AnimatedTaskItem({ task }: { task: Task }) {
               </span>
             )}
             {task.sub_tasks && task.sub_tasks.length > 0 && (
-              <span className="flex items-center gap-1">
-                <MessageSquare className="h-3 w-3" />
-                {task.sub_tasks.filter((s) => s.completed).length}/
-                {task.sub_tasks.length}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1">
+                  <MessageSquare className="h-3 w-3" />
+                  {task.sub_tasks.filter((s) => s.completed).length}/
+                  {task.sub_tasks.length}
+                </span>
+                <div className="bg-muted hidden h-1 w-10 overflow-hidden rounded-full sm:block">
+                  <div
+                    className="bg-primary h-full transition-all duration-500 ease-out"
+                    style={{
+                      width: `${(task.sub_tasks.filter((s) => s.completed).length / task.sub_tasks.length) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
             )}
           </div>
         </div>
