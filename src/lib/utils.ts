@@ -28,7 +28,25 @@ export function formatDisplayDate(date: string | Date | null): string {
   if (!date) return 'Not set'
   const d = new Date(date)
   if (isNaN(d.getTime())) return 'Invalid date'
-  return d.toLocaleDateString()
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const target = new Date(d)
+  target.setHours(0, 0, 0, 0)
+
+  const diffTime = target.getTime() - today.getTime()
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Tomorrow'
+  if (diffDays === -1) return 'Yesterday'
+
+  return d.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 export function formatDateTime(date: string | Date | null): string {
