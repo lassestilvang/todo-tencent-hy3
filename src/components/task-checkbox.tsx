@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useOptimistic, startTransition } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { handleToggle } from '@/lib/actions'
 
@@ -13,19 +13,25 @@ export function TaskCheckbox({
   checked: boolean
   taskName: string
 }) {
-  const formRef = useRef<HTMLFormElement>(null)
+  const [optimisticChecked, setOptimisticChecked] = useOptimistic(
+    checked,
+    (_, newChecked: boolean) => newChecked
+  )
 
   return (
-    <form ref={formRef} action={handleToggle.bind(null, taskId)}>
-      <Checkbox
-        checked={checked}
-        onCheckedChange={() => formRef.current?.requestSubmit()}
-        aria-label={
-          checked
-            ? `Mark task "${taskName}" as incomplete`
-            : `Mark task "${taskName}" as complete`
-        }
-      />
-    </form>
+    <Checkbox
+      checked={optimisticChecked}
+      onCheckedChange={(c) => {
+        startTransition(() => {
+          setOptimisticChecked(c === true)
+          handleToggle(taskId)
+        })
+      }}
+      aria-label={
+        optimisticChecked
+          ? `Mark task "${taskName}" as incomplete`
+          : `Mark task "${taskName}" as complete`
+      }
+    />
   )
 }
