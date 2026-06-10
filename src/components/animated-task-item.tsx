@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import Link from 'next/link'
 import {
   Clock,
@@ -36,7 +36,7 @@ export function AnimatedTaskItem({ task }: { task: Task }) {
     : []
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -182,6 +182,6 @@ export function AnimatedTaskItem({ task }: { task: Task }) {
           ))}
         </div>
       )}
-    </motion.div>
+    </m.div>
   )
 }

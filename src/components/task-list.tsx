@@ -1,4 +1,4 @@
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
 import { Plus, Clock } from 'lucide-react'
 import { getTasks } from '@/lib/tasks'
 import { Button } from '@/components/ui/button'
@@ -130,11 +130,13 @@ export async function TaskList({
             </div>
           ) : (
             <div className="space-y-2">
-              <AnimatePresence mode="popLayout">
-                {tasks.map((task) => (
-                  <AnimatedTaskItem key={task.id} task={task} />
-                ))}
-              </AnimatePresence>
+              <LazyMotion features={domAnimation}>
+                <AnimatePresence mode="popLayout">
+                  {tasks.map((task) => (
+                    <AnimatedTaskItem key={task.id} task={task} />
+                  ))}
+                </AnimatePresence>
+              </LazyMotion>
             </div>
           )}
         </div>
