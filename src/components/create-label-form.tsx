@@ -74,15 +74,15 @@ export function CreateLabelForm() {
           role="radiogroup"
           aria-labelledby="icon-label"
         >
-          {ICONS.map((i) => (
+          {ICONS.map((iconChar) => (
             <button
-              key={i}
+              key={iconChar}
               type="button"
-              aria-label={`Select icon ${i}`}
-              onClick={() => setIcon(i)}
-              className={`hover:bg-accent/40 flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-all duration-200 hover:scale-110 active:scale-75 ${icon === i ? 'bg-accent/60 ring-primary/40 ring-2' : ''}`}
+              aria-label={`Select icon ${iconChar}`}
+              onClick={() => setIcon(iconChar)}
+              className={`hover:bg-accent/40 flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-all duration-200 hover:scale-110 active:scale-75 ${icon === iconChar ? 'bg-accent/60 ring-primary/40 ring-2' : ''}`}
             >
-              {i}
+              {iconChar}
             </button>
           ))}
         </div>

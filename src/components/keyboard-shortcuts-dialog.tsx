@@ -50,8 +50,8 @@ export function KeyboardShortcutsDialog({
             >
               <dt className="text-sm">{label}</dt>
               <dd className="flex items-center gap-1">
-                {keys.map((key, i) => (
-                  <Kbd key={i}>{key}</Kbd>
+                {keys.map((key) => (
+                  <Kbd key={key}>{key}</Kbd>
                 ))}
               </dd>
             </div>
