@@ -111,6 +111,7 @@ export function SearchDialog({
           />
           {query && (
             <button
+              type="button"
               onClick={() => setQuery('')}
               className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-1 transition-colors"
               aria-label="Clear search"

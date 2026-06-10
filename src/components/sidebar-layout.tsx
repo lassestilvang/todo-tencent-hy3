@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -16,12 +16,11 @@ export function SidebarLayout({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
-  const [lastPathname, setLastPathname] = useState(pathname)
 
-  if (pathname !== lastPathname) {
-    setLastPathname(pathname)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsOpen(false)
-  }
+  }, [pathname])
 
   return (
     <div className="flex h-screen overflow-hidden">

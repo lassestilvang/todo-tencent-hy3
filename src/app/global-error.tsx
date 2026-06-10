@@ -36,6 +36,7 @@ export default function GlobalError({
                 Try again
               </button>
               <button
+                type="button"
                 onClick={() => (window.location.href = '/')}
                 className="border-input bg-background hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring inline-flex h-11 items-center justify-center rounded-md border px-8 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
               >
