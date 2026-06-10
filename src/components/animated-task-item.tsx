@@ -29,7 +29,7 @@ export function AnimatedTaskItem({ task }: { task: Task }) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   const sorted = task.sub_tasks
-    ? [...task.sub_tasks].sort((a, b) => {
+    ? task.sub_tasks.toSorted((a, b) => {
         if (a.completed !== b.completed) return a.completed ? 1 : -1
         return (a.position || 0) - (b.position || 0)
       })
