@@ -3,15 +3,13 @@
 import { handleClearCompleted } from '@/lib/actions'
 import { Button } from '@/components/ui/button'
 
-export function ClearCompletedButton() {
-  const handleSubmit = (e: React.FormEvent) => {
-    if (
-      !window.confirm('Are you sure you want to delete all completed tasks?')
-    ) {
-      e.preventDefault()
-    }
+const handleSubmit = (e: React.FormEvent) => {
+  if (!window.confirm('Are you sure you want to delete all completed tasks?')) {
+    e.preventDefault()
   }
+}
 
+export function ClearCompletedButton() {
   return (
     <form action={handleClearCompleted} onSubmit={handleSubmit}>
       <Button

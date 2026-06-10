@@ -12,8 +12,9 @@ function Skeleton({
   )
 }
 
+const skeletonIds = ['sk-1', 'sk-2', 'sk-3', 'sk-4', 'sk-5']
+
 export function TaskSkeleton() {
-  const skeletonIds = ['sk-1', 'sk-2', 'sk-3', 'sk-4', 'sk-5']
   return (
     <div className="space-y-3 p-4">
       {skeletonIds.map((id) => (
