@@ -25,8 +25,7 @@ export default async function ListPage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ completed?: string }>
 }) {
-  const { id } = await params
-  const { completed } = await searchParams
+  const [{ id }, { completed }] = await Promise.all([params, searchParams])
   const lists = getLists()
   const list = lists.find((l) => l.id === id)
   if (!list) notFound()

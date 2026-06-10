@@ -25,8 +25,7 @@ export default async function LabelPage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ completed?: string }>
 }) {
-  const { id } = await params
-  const { completed } = await searchParams
+  const [{ id }, { completed }] = await Promise.all([params, searchParams])
   const labels = getLabels()
   const label = labels.find((l) => l.id === id)
   if (!label) notFound()
