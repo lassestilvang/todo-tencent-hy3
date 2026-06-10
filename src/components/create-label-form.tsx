@@ -63,12 +63,12 @@ export function CreateLabelForm() {
         className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-11 rounded-xl transition-all"
       />
       <div className="space-y-2">
-        <label
+        <div
           id="icon-label"
           className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase"
         >
           Icon
-        </label>
+        </div>
         <div
           className="bg-accent/10 border-border/5 flex flex-wrap gap-1.5 rounded-xl border p-2"
           role="radiogroup"

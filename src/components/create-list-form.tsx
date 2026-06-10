@@ -87,12 +87,12 @@ export function CreateListForm() {
         </div>
       </div>
       <div className="space-y-2">
-        <label
+        <div
           id="color-label"
           className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase"
         >
           Color
-        </label>
+        </div>
         <div
           className="bg-accent/10 border-border/5 flex flex-wrap gap-2 rounded-xl border p-2.5"
           role="radiogroup"

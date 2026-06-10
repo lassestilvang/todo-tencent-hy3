@@ -219,9 +219,9 @@ export function EditTaskForm({
         </div>
       </div>
       <div className="space-y-1.5">
-        <label className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase">
+        <div className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase">
           Labels
-        </label>
+        </div>
         <div className="flex flex-wrap gap-2">
           {labels.length === 0 ? (
             <span className="text-muted-foreground text-xs italic">
