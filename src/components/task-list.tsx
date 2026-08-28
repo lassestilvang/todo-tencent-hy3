@@ -35,7 +35,7 @@ export async function TaskList({
   searchQuery,
   showCompleted = true,
 }: TaskListProps) {
-  const tasks = getTasks({
+  const tasks = await getTasks({
     view,
     listId,
     labelId,
