@@ -8,7 +8,7 @@ export async function SearchResults({ query }: { query: string }) {
     return null
   }
 
-  const results = searchTasks(query)
+  const results = await searchTasks(query)
 
   if (results.length === 0) {
     return (
