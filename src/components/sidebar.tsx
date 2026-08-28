@@ -16,9 +16,9 @@ import { SidebarLink } from '@/components/sidebar-link'
 import { SidebarSearchTrigger } from '@/components/sidebar-search-trigger'
 
 export async function Sidebar() {
-  const lists = getLists()
-  const labels = getLabels()
-  const overdue = getOverdueTasks()
+  const lists = await getLists()
+  const labels = await getLabels()
+  const overdue = await getOverdueTasks()
   return (
     <aside className="glass-effect hidden h-full w-64 flex-col border-r md:flex">
       <div className="flex items-center justify-between border-b p-4">
