@@ -42,7 +42,7 @@ export const tasks = sqliteTable('tasks', {
     enum: ['every_day', 'every_week', 'every_weekday', 'every_month', 'every_year', 'custom'],
   }),
   listId: text('list_id').references(() => lists.id, { onDelete: 'set null' }),
-  parentTaskId: text('parent_task_id').references(() => tasks.id, { onDelete: 'cascade' }),
+  parentTaskId: text('parent_task_id').references((): typeof tasks => tasks, { onDelete: 'cascade' }),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
   completedAt: text('completed_at'),
   position: integer('position').notNull().default(0),
