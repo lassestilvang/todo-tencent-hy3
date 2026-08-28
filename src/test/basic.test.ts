@@ -1,5 +1,3 @@
-"use client"
-
 import { formatTime, generateId } from '@/lib/utils'
 
 describe('Utility functions', () => {
