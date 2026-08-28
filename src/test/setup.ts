@@ -33,3 +33,11 @@ Object.defineProperty(window, 'ResizeObserver', {
     disconnect: jest.fn(),
   })),
 })
+
+// Mock crypto.randomUUID
+Object.defineProperty(global, 'crypto', {
+  writable: true,
+  value: {
+    randomUUID: jest.fn(() => 'test-uuid-' + Math.random().toString(36).substr(2, 9)),
+  },
+})
