@@ -1,5 +1,3 @@
-"use client"
-
 import { getTasks } from '@/lib/tasks'
 
 // Mock the database
