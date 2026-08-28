@@ -9,7 +9,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
-  const task = getTask(id)
+  const task = await getTask(id)
   if (!task) return {}
   return {
     title: `${task.name} - TaskFlow`,
@@ -23,7 +23,7 @@ export default async function TaskPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const task = getTask(id)
+  const task = await getTask(id)
 
   if (!task) notFound()
 
