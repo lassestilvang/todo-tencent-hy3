@@ -1,6 +1,7 @@
 import { getDb } from './db'
-import * as schema from './db/schema'
 import { eq, and, or, isNull, desc, asc, sql, inArray } from 'drizzle-orm'
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import * as schema from './db/schema'
 import type {
   Task,
   List,
@@ -11,15 +12,18 @@ import type {
 } from '@/types'
 import { generateId, isDateBeforeToday, formatTime } from './utils'
 
-// Database instance can be overridden for testing
-let dbInstanceOverride: ReturnType<typeof getDb> | null = null
+// Database instance type (better-sqlite3 for both production and tests)
+type DatabaseInstance = BetterSQLite3Database<typeof schema>
 
-export function setDbInstanceForTesting(db: ReturnType<typeof getDb>) {
+// Database instance can be overridden for testing
+let dbInstanceOverride: DatabaseInstance | null = null
+
+export function setDbInstanceForTesting(db: DatabaseInstance) {
   dbInstanceOverride = db
 }
 
-function getDatabase() {
-  return dbInstanceOverride || getDb()
+function getDatabase(): DatabaseInstance {
+  return (dbInstanceOverride || getDb()) as DatabaseInstance
 }
 
 // Helper to convert Drizzle Task to App Task type
