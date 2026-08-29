@@ -30,11 +30,18 @@ const customJestConfig = {
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
       tsconfig: 'tsconfig.json',
+      useESM: true,
     }],
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@/lib/db$': '<rootDir>/src/test/mocks/db.ts',
+    '^@/lib/db/index$': '<rootDir>/src/test/mocks/db.ts',
+    '^@/lib/db/schema$': '<rootDir>/src/test/mocks/db-schema.ts',
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(better-sqlite3|drizzle-orm)/)',
+  ],
   testMatch: [
     '<rootDir>/src/test/**/*.test.ts',
     '<rootDir>/src/test/**/*.test.tsx',
