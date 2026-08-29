@@ -42,9 +42,9 @@ function analyzeTaskPatterns(tasks: Task[]): TaskPattern[] {
       existing.commonHours.push(hour)
       if (task.list_id) existing.commonLists.push(task.list_id)
       if (task.priority) existing.commonPriorities.push(task.priority)
-      if (task.estimated_duration) {
+      if (task.estimate) {
         existing.averageDuration =
-          (existing.averageDuration * (existing.frequency - 1) + task.estimated_duration) /
+          (existing.averageDuration * (existing.frequency - 1) + task.estimate) /
           existing.frequency
       }
     } else {
@@ -55,7 +55,7 @@ function analyzeTaskPatterns(tasks: Task[]): TaskPattern[] {
         commonHours: [hour],
         commonLists: task.list_id ? [task.list_id] : [],
         commonPriorities: task.priority ? [task.priority] : [],
-        averageDuration: task.estimated_duration || 30,
+        averageDuration: task.estimate || 30,
       })
     }
   })
@@ -106,10 +106,10 @@ export function generateSmartSuggestions(
 
       // Check if there's already a task for this pattern this week
       const hasRecentTask = incompleteTasks.some((t) => {
-        if (!t.name || !t.due_date) return false
+        if (!t.name || !t.deadline) return false
         const taskName = t.name.toLowerCase().trim()
         if (taskName !== pattern.name.toLowerCase()) return false
-        const dueDate = new Date(t.due_date)
+        const dueDate = new Date(t.deadline)
         const now = new Date()
         const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         return diffDays >= 0 && diffDays <= 7
@@ -143,7 +143,7 @@ export function generateSmartSuggestions(
 
   // 2. Reschedule overdue tasks to weekend
   const overdueTasks = incompleteTasks.filter(
-    (t) => t.due_date && new Date(t.due_date) < new Date()
+    (t) => t.deadline && new Date(t.deadline) < new Date()
   )
   if (overdueTasks.length >= 3) {
     const lowPriorityOverdue = overdueTasks.filter(
@@ -171,7 +171,7 @@ export function generateSmartSuggestions(
 
   // 3. Priority suggestions - tasks without priority that are due soon
   const noPrioritySoon = incompleteTasks.filter(
-    (t) => !t.priority && t.due_date && new Date(t.due_date) < addDays(new Date(), 3)
+    (t) => !t.priority && t.deadline && new Date(t.deadline) < addDays(new Date(), 3)
   )
   if (noPrioritySoon.length >= 2) {
     suggestions.push({
@@ -218,7 +218,7 @@ export function generateSmartSuggestions(
 
   // 5. Break down large tasks
   const largeTasks = incompleteTasks.filter(
-    (t) => t.estimated_duration && t.estimated_duration > 120
+    (t) => t.estimate && t.estimate > 120
   )
   if (largeTasks.length > 0) {
     suggestions.push({
