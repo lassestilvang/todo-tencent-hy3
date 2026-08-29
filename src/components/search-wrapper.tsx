@@ -10,6 +10,7 @@ import {
 import { Search } from 'lucide-react'
 import { SearchDialog } from '@/components/search-dialog'
 import { CreateTaskForm } from '@/components/create-task-form'
+import { CommandPalette } from '@/components/command-palette'
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,7 @@ interface AppActions {
   openSearch: () => void
   openNewTask: () => void
   openShortcuts: () => void
+  openCommandPalette: () => void
 }
 
 const AppActionsContext = createContext<AppActions | null>(null)
@@ -60,18 +62,40 @@ export function SearchTrigger({
   )
 }
 
+export function CommandPaletteTrigger({
+  className,
+}: {
+  className?: string
+}) {
+  const { openCommandPalette } = useAppActions()
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={openCommandPalette}
+      aria-label="Command palette"
+      title="Command Palette (⌘K)"
+      className={className}
+    >
+      <Search className="h-4 w-4" />
+    </Button>
+  )
+}
+
 export function SearchWrapper({ children }: { children?: React.ReactNode }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false)
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
 
   const openSearch = useCallback(() => setIsSearchOpen(true), [])
   const openNewTask = useCallback(() => setIsNewTaskOpen(true), [])
   const openShortcuts = useCallback(() => setIsShortcutsOpen(true), [])
+  const openCommandPalette = useCallback(() => setIsCommandPaletteOpen(true), [])
 
   const actions = useMemo(
-    () => ({ openSearch, openNewTask, openShortcuts }),
-    [openSearch, openNewTask, openShortcuts]
+    () => ({ openSearch, openNewTask, openShortcuts, openCommandPalette }),
+    [openSearch, openNewTask, openShortcuts, openCommandPalette]
   )
 
   return (
@@ -81,6 +105,7 @@ export function SearchWrapper({ children }: { children?: React.ReactNode }) {
         onSearchOpen={openSearch}
         onNewTask={openNewTask}
         onShortcutsOpen={openShortcuts}
+        onCommandPaletteOpen={openCommandPalette}
       />
       <SearchDialog open={isSearchOpen} onOpenChange={setIsSearchOpen} />
       <Dialog open={isNewTaskOpen} onOpenChange={setIsNewTaskOpen}>
@@ -97,6 +122,10 @@ export function SearchWrapper({ children }: { children?: React.ReactNode }) {
       <KeyboardShortcutsDialog
         open={isShortcutsOpen}
         onOpenChange={setIsShortcutsOpen}
+      />
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
       />
     </AppActionsContext.Provider>
   )
