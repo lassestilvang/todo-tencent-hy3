@@ -7,10 +7,12 @@ export function KeyboardShortcuts({
   onSearchOpen,
   onNewTask,
   onShortcutsOpen,
+  onCommandPaletteOpen,
 }: {
   onSearchOpen: () => void
   onNewTask?: () => void
   onShortcutsOpen?: () => void
+  onCommandPaletteOpen?: () => void
 }) {
   const { push } = useRouter()
   useEffect(() => {
@@ -20,8 +22,13 @@ export function KeyboardShortcuts({
         return
       }
 
-      // Ctrl+K or Cmd+K to open search
+      // Ctrl+K or Cmd+K to open command palette
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        onCommandPaletteOpen?.()
+      }
+      // Ctrl+Shift+K or Cmd+Shift+K for search
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'K') {
         e.preventDefault()
         onSearchOpen()
       }
@@ -55,7 +62,7 @@ export function KeyboardShortcuts({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onSearchOpen, onNewTask, onShortcutsOpen, push])
+  }, [onSearchOpen, onNewTask, onShortcutsOpen, onCommandPaletteOpen, push])
 
   return null
 }
