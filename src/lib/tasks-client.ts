@@ -160,11 +160,11 @@ export async function getOverdueTasks(): Promise<Task[]> {
   if (!response.ok) {
     throw new Error('Failed to fetch overdue tasks')
   }
-  const tasks = await response.json()
+  const tasks = await response.json() as Task[]
   // Filter client-side for overdue
   const today = new Date().toISOString().split('T')[0]
   return tasks.filter(
-    (task) =>
+    (task: Task) =>
       !task.completed &&
       ((task.date && task.date < today) || (task.deadline && task.deadline < today))
   )
