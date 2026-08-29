@@ -7,6 +7,7 @@ import { SearchWrapper } from '@/components/search-wrapper'
 import { SidebarLayout } from '@/components/sidebar-layout'
 import { Toaster } from 'sonner'
 import NextTopLoader from 'nextjs-toploader'
+import { PWAManifest } from '@/components/pwa-manifest'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -20,26 +21,35 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'TaskFlow - Daily Task Planner',
-  description: 'A modern, professional daily task planner',
-  keywords: ['task planner', 'daily tasks', 'productivity', 'todo app'],
+  description: 'A modern, professional daily task planner with analytics and focus mode',
+  keywords: ['task planner', 'daily tasks', 'productivity', 'todo app', 'pomodoro', 'analytics'],
   authors: [{ name: 'TaskFlow Team' }],
   robots: { index: true, follow: true },
   icons: {
-    icon: '/file.svg',
-    apple: '/file.svg',
+    icon: '/icons/icon-192x192.png',
+    shortcut: '/icons/icon-192x192.png',
+    apple: '/icons/icon-192x192.png',
   },
   openGraph: {
     title: 'TaskFlow - Daily Task Planner',
-    description: 'A modern, professional daily task planner',
+    description: 'A modern, professional daily task planner with analytics and focus mode',
     type: 'website',
     locale: 'en_US',
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'TaskFlow - Daily Task Planner',
-    description: 'A modern, professional daily task planner',
+    description: 'A modern, professional daily task planner with analytics and focus mode',
   },
   manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'TaskFlow',
+  },
+  other: {
+    'theme-color': '#6366f1',
+  },
 }
 
 export default function RootLayout({
@@ -64,6 +74,7 @@ export default function RootLayout({
             <SidebarLayout sidebar={<Sidebar />}>{children}</SidebarLayout>
           </SearchWrapper>
           <Toaster richColors position="top-right" />
+          <PWAManifest />
         </ThemeProvider>
       </body>
     </html>
