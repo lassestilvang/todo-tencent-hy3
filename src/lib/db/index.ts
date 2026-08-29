@@ -18,8 +18,17 @@ import { fileURLToPath } from 'url'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import fs from 'fs'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+// Get __dirname in a way that works with both ESM and Jest
+const getDirname = () => {
+  try {
+    return path.dirname(fileURLToPath(import.meta.url))
+  } catch {
+    // Fallback for Jest/test environments
+    return path.dirname(process.cwd() + '/src/lib/db/index.ts')
+  }
+}
+
+const __dirname = getDirname()
 
 const dbPath = env.TEST_DB_PATH || path.join(process.cwd(), 'tasks.db')
 
