@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { Suggestion, generateSmartSuggestions, dismissSuggestion, isSuggestionDismissed } from '@/lib/smart-suggestions'
-import type { Task, List } from '@/lib/db/schema'
+import type { Task, List } from '@/types'
 
 interface SmartSuggestionsProps {
   tasks: Task[]
