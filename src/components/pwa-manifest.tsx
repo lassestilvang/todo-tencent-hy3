@@ -37,9 +37,11 @@ export function PWAManifest() {
       setIsInstallable(true)
 
       // Show prompt after a delay if not dismissed before
-      const dismissed = localStorage.getItem('pwa-install-dismissed')
-      if (!dismissed && !standalone) {
-        setTimeout(() => setShowInstallPrompt(true), 30000) // 30 seconds
+      if (typeof window !== 'undefined') {
+        const dismissed = localStorage.getItem('pwa-install-dismissed')
+        if (!dismissed && !standalone) {
+          setTimeout(() => setShowInstallPrompt(true), 30000) // 30 seconds
+        }
       }
     }
 
@@ -47,7 +49,9 @@ export function PWAManifest() {
       setDeferredPrompt(null)
       setIsInstallable(false)
       setShowInstallPrompt(false)
-      localStorage.setItem('pwa-installed', 'true')
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pwa-installed', 'true')
+      }
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
@@ -79,11 +83,15 @@ export function PWAManifest() {
 
   const handleDismiss = () => {
     setShowInstallPrompt(false)
-    localStorage.setItem('pwa-install-dismissed', 'true')
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pwa-install-dismissed', 'true')
+    }
   }
 
   // Don't show if already installed or dismissed
-  if (isStandalone || localStorage.getItem('pwa-installed') || localStorage.getItem('pwa-install-dismissed')) {
+  const isInstalled = typeof window !== 'undefined' && localStorage.getItem('pwa-installed')
+  const isDismissed = typeof window !== 'undefined' && localStorage.getItem('pwa-install-dismissed')
+  if (isStandalone || isInstalled || isDismissed) {
     return null
   }
 
