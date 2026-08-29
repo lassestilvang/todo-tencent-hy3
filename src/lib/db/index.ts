@@ -1,31 +1,69 @@
+import 'server-only'
+
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import Database from 'better-sqlite3'
-import * as schema from './schema'
+import {
+  lists,
+  labels,
+  tasks,
+  taskLabels,
+  taskAttachments,
+  taskReminders,
+  taskLogs,
+  taskDependencies,
+} from './schema'
 import { env } from '../env'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import fs from 'fs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const dbPath = env.TEST_DB_PATH || path.join(process.cwd(), 'tasks.db')
 
-// Singleton database instance
-let dbInstance: BetterSQLite3Database<typeof schema> | null = null
+// Ensure database directory exists
+const dbDir = path.dirname(dbPath)
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true })
+}
 
-export function getDb(): BetterSQLite3Database<typeof schema> {
+import type { SQLiteTableWithColumns } from 'drizzle-orm/sqlite-core'
+
+// Schema object with only table definitions - explicitly typed to prevent inference issues
+const dbSchema = {
+  lists,
+  labels,
+  tasks,
+  taskLabels,
+  taskAttachments,
+  taskReminders,
+  taskLogs,
+  taskDependencies,
+} as const satisfies Record<string, SQLiteTableWithColumns<any>>
+
+// Singleton database instance
+type DbSchema = typeof dbSchema
+let dbInstance: BetterSQLite3Database<DbSchema> | null = null
+
+export function getDb(): BetterSQLite3Database<DbSchema> {
   if (dbInstance) return dbInstance
 
-  const sqlite = new Database(dbPath)
+  try {
+    const sqlite = new Database(dbPath)
 
-  // Enable WAL mode for better concurrency
-  sqlite.pragma('journal_mode = WAL')
-  sqlite.pragma('foreign_keys = ON')
+    // Enable WAL mode for better concurrency
+    sqlite.pragma('journal_mode = WAL')
+    sqlite.pragma('foreign_keys = ON')
 
-  dbInstance = drizzle(sqlite, { schema, logger: process.env.NODE_ENV === 'development' })
+    dbInstance = drizzle(sqlite, { schema: dbSchema, logger: process.env.NODE_ENV === 'development' })
 
-  return dbInstance
+    return dbInstance
+  } catch (error) {
+    console.error('Failed to initialize database:', error)
+    throw error
+  }
 }
 
 export function closeDb() {
@@ -49,10 +87,10 @@ export function initializeDatabase() {
   const db = getDb()
 
   // Check if lists table is empty
-  const existingLists = db.select().from(schema.lists).all()
+  const existingLists = db.select().from(lists).all()
   if (existingLists.length === 0) {
     const now = new Date().toISOString()
-    db.insert(schema.lists).values({
+    db.insert(lists).values({
       id: 'inbox',
       name: 'Inbox',
       color: '#6366f1',
