@@ -1,4 +1,4 @@
-import { AnalyticsDashboardClient } from './analytics-client'
+import { AnalyticsDashboard } from './analytics-client'
 import { Suspense } from 'react'
 
 export const metadata = {
@@ -14,7 +14,7 @@ function AnalyticsPageContent() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       }>
-        <AnalyticsDashboardClient />
+        <AnalyticsDashboard />
       </Suspense>
     </div>
   )
