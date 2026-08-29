@@ -1,7 +1,16 @@
 import { getDb } from './db'
 import { eq, and, or, isNull, desc, asc, sql, inArray } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import * as schema from './db/schema'
+import {
+  lists,
+  labels,
+  tasks,
+  taskLabels,
+  taskAttachments,
+  taskReminders,
+  taskLogs,
+  taskDependencies,
+} from './db/schema'
 import type {
   Task,
   List,
@@ -11,9 +20,22 @@ import type {
   TaskLog,
 } from '@/types'
 import { generateId, isDateBeforeToday, formatTime } from './utils'
+import { parseNaturalLanguage, validateParsedTask } from './nlp'
+
+// Schema object with only table definitions (not inferred types)
+const dbSchema = {
+  lists,
+  labels,
+  tasks,
+  taskLabels,
+  taskAttachments,
+  taskReminders,
+  taskLogs,
+  taskDependencies,
+} as const
 
 // Database instance type (better-sqlite3 for both production and tests)
-type DatabaseInstance = BetterSQLite3Database<typeof schema>
+type DatabaseInstance = BetterSQLite3Database<typeof dbSchema>
 
 // Database instance can be overridden for testing
 let dbInstanceOverride: DatabaseInstance | null = null
@@ -23,11 +45,68 @@ export function setDbInstanceForTesting(db: DatabaseInstance) {
 }
 
 function getDatabase(): DatabaseInstance {
-  return (dbInstanceOverride || getDb()) as DatabaseInstance
+  // During build/prerendering, return a mock database if real DB fails
+  if (dbInstanceOverride) return dbInstanceOverride
+
+  // Check if we're in a build/prerender context (no database file exists)
+  if (typeof window === 'undefined' && process.env.NEXT_PHASE === 'phase-production-build') {
+    return createMockDatabase() as unknown as DatabaseInstance
+  }
+
+  try {
+    return getDb() as unknown as DatabaseInstance
+  } catch {
+    // Return a mock database that returns empty results for build-time rendering
+    return createMockDatabase() as unknown as DatabaseInstance
+  }
+}
+
+// Mock database for build-time prerendering
+function createMockDatabase(): any {
+  const emptyArray = () => []
+  const emptyObject = () => undefined
+
+  const whereMock = () => ({
+    all: emptyArray,
+    get: emptyObject,
+    orderBy: () => ({ all: emptyArray, get: emptyObject }),
+    limit: () => ({ all: emptyArray, get: emptyObject }),
+    innerJoin: () => ({ all: emptyArray, get: emptyObject }),
+  })
+
+  const fromMock = () => ({
+    all: emptyArray,
+    get: emptyObject,
+    where: whereMock,
+    innerJoin: () => ({ all: emptyArray, get: emptyObject }),
+    orderBy: () => ({ all: emptyArray, get: emptyObject }),
+    limit: () => ({ all: emptyArray, get: emptyObject }),
+  })
+
+  const selectMock = () => ({ from: fromMock })
+
+  return {
+    select: selectMock,
+    insert: () => ({
+      values: () => ({
+        run: () => ({}),
+        onConflictDoUpdate: () => ({ run: () => ({}) }),
+        onConflictDoNothing: () => ({ run: () => ({}) }),
+      }),
+    }),
+    update: () => ({
+      set: () => ({
+        where: () => ({ run: () => ({}) }),
+      }),
+    }),
+    delete: () => ({
+      where: () => ({ run: () => ({}) }),
+    }),
+  }
 }
 
 // Helper to convert Drizzle Task to App Task type
-function mapTaskRow(row: typeof schema.tasks.$inferSelect): Task {
+function mapTaskRow(row: typeof tasks.$inferSelect): Task {
   return {
     id: row.id,
     name: row.name,
@@ -48,7 +127,7 @@ function mapTaskRow(row: typeof schema.tasks.$inferSelect): Task {
   }
 }
 
-function mapListRow(row: typeof schema.lists.$inferSelect): List {
+function mapListRow(row: typeof lists.$inferSelect): List {
   return {
     id: row.id,
     name: row.name,
@@ -59,7 +138,7 @@ function mapListRow(row: typeof schema.lists.$inferSelect): List {
   }
 }
 
-function mapLabelRow(row: typeof schema.labels.$inferSelect): Label {
+function mapLabelRow(row: typeof labels.$inferSelect): Label {
   return {
     id: row.id,
     name: row.name,
@@ -71,37 +150,37 @@ function mapLabelRow(row: typeof schema.labels.$inferSelect): Label {
 
 // Build relations for tasks
 async function buildTaskRelations(
-  taskRows: (typeof schema.tasks.$inferSelect)[]
+  taskRows: (typeof tasks.$inferSelect)[]
 ): Promise<Task[]> {
   const db = getDatabase()
-  
+
   const taskIds = taskRows.map(t => t.id)
   if (taskIds.length === 0) return []
 
   // Fetch all related data in parallel
   const [
-    lists,
-    labels,
-    taskLabels,
+    allLists,
+    allLabels,
+    allTaskLabels,
     attachments,
     reminders,
     logs,
     allSubTasks,
   ] = await Promise.all([
-    db.select().from(schema.lists).all(),
-    db.select().from(schema.labels).all(),
-    db.select().from(schema.taskLabels).where(inArray(schema.taskLabels.taskId, taskIds)).all(),
-    db.select().from(schema.taskAttachments).where(inArray(schema.taskAttachments.taskId, taskIds)).all(),
-    db.select().from(schema.taskReminders).where(inArray(schema.taskReminders.taskId, taskIds)).all(),
-    db.select().from(schema.taskLogs).where(inArray(schema.taskLogs.taskId, taskIds)).all(),
-    db.select().from(schema.tasks).where(inArray(schema.tasks.parentTaskId, taskIds)).all(),
+    db.select().from(lists).all(),
+    db.select().from(labels).all(),
+    db.select().from(taskLabels).where(inArray(taskLabels.taskId, taskIds)).all(),
+    db.select().from(taskAttachments).where(inArray(taskAttachments.taskId, taskIds)).all(),
+    db.select().from(taskReminders).where(inArray(taskReminders.taskId, taskIds)).all(),
+    db.select().from(taskLogs).where(inArray(taskLogs.taskId, taskIds)).all(),
+    db.select().from(tasks).where(inArray(tasks.parentTaskId, taskIds)).all(),
   ])
 
   // Build lookup maps
-  const listMap = new Map(lists.map((l) => [l.id, mapListRow(l)]))
-  const labelMap = new Map(labels.map((l) => [l.id, mapLabelRow(l)]))
+  const listMap = new Map(allLists.map((l) => [l.id, mapListRow(l)]))
+  const labelMap = new Map(allLabels.map((l) => [l.id, mapLabelRow(l)]))
   const taskLabelsMap = new Map<string, string[]>()
-  for (const tl of taskLabels) {
+  for (const tl of allTaskLabels) {
     if (!taskLabelsMap.has(tl.taskId)) taskLabelsMap.set(tl.taskId, [])
     taskLabelsMap.get(tl.taskId)!.push(tl.labelId)
   }
@@ -140,7 +219,7 @@ async function buildTaskRelations(
       created_at: log.createdAt,
     })
   }
-  const subTasksMap = new Map<string, typeof schema.tasks.$inferSelect[]>()
+  const subTasksMap = new Map<string, typeof tasks.$inferSelect[]>()
   for (const sub of allSubTasks) {
     if (!subTasksMap.has(sub.parentTaskId!)) subTasksMap.set(sub.parentTaskId!, [])
     subTasksMap.get(sub.parentTaskId!)!.push(sub)
@@ -148,11 +227,11 @@ async function buildTaskRelations(
   const allTasksMap = new Map(taskRows.map(t => [t.id, t]))
 
   // Recursively build task with relations
-  function buildTask(taskRow: typeof schema.tasks.$inferSelect): Task {
+  function buildTask(taskRow: typeof tasks.$inferSelect): Task {
     const baseTask = mapTaskRow(taskRow)
     const subTaskRows = subTasksMap.get(taskRow.id) || []
     const sortedSubTasks = subTaskRows
-      .sort((a: typeof schema.tasks.$inferSelect, b: typeof schema.tasks.$inferSelect) => (a.position || 0) - (b.position || 0))
+      .sort((a: typeof tasks.$inferSelect, b: typeof tasks.$inferSelect) => (a.position || 0) - (b.position || 0))
       .map(buildTask)
 
     return {
@@ -175,12 +254,12 @@ async function buildTaskRelations(
 
 export function getLists(): List[] {
     const db = getDatabase()
-  const lists = db.select().from(schema.lists).all()
-  const tasks = db.select().from(schema.tasks).all()
+  const allLists = db.select().from(lists).all()
+  const allTasks = db.select().from(tasks).all()
 
-  return lists
+  return allLists
     .map((l) => {
-      const listTasks = tasks.filter((t) => t.listId === l.id)
+      const listTasks = allTasks.filter((t) => t.listId === l.id)
       return {
         ...mapListRow(l),
         task_count: listTasks.length,
@@ -199,7 +278,7 @@ export function createList(name: string, color: string, emoji: string): List {
   const id = generateId()
   const now = new Date().toISOString()
 
-  db.insert(schema.lists).values({
+  db.insert(lists).values({
     id,
     name,
     color,
@@ -213,12 +292,12 @@ export function createList(name: string, color: string, emoji: string): List {
 
 export function deleteList(id: string): void {
     const db = getDatabase()
-  db.delete(schema.lists).where(eq(schema.lists.id, id)).run()
+  db.delete(lists).where(eq(lists.id, id)).run()
 }
 
 export function getLabels(): Label[] {
     const db = getDatabase()
-  return db.select().from(schema.labels).all()
+  return db.select().from(labels).all()
     .map(mapLabelRow)
     .sort((a: Label, b: Label) => a.name.localeCompare(b.name))
 }
@@ -228,7 +307,7 @@ export function createLabel(name: string, color: string, icon: string): Label {
   const id = generateId()
   const now = new Date().toISOString()
 
-  db.insert(schema.labels).values({
+  db.insert(labels).values({
     id,
     name,
     color,
@@ -241,7 +320,7 @@ export function createLabel(name: string, color: string, icon: string): Label {
 
 export function deleteLabel(id: string): void {
     const db = getDatabase()
-  db.delete(schema.labels).where(eq(schema.labels.id, id)).run()
+  db.delete(labels).where(eq(labels.id, id)).run()
 }
 
 export async function getTasks(options?: {
@@ -253,20 +332,20 @@ export async function getTasks(options?: {
 }): Promise<Task[]> {
     const db = getDatabase()
 
-  let whereConditions = [isNull(schema.tasks.parentTaskId)]
+  let whereConditions = [isNull(tasks.parentTaskId)]
 
   if (options?.listId) {
-    whereConditions.push(eq(schema.tasks.listId, options.listId))
+    whereConditions.push(eq(tasks.listId, options.listId))
   }
 
   if (options?.labelId) {
-    const taskIdsWithLabel = db.select({ taskId: schema.taskLabels.taskId })
-      .from(schema.taskLabels)
-      .where(eq(schema.taskLabels.labelId, options.labelId))
+    const taskIdsWithLabel = db.select({ taskId: taskLabels.taskId })
+      .from(taskLabels)
+      .where(eq(taskLabels.labelId, options.labelId))
       .all()
     const ids = taskIdsWithLabel.map((t) => t.taskId)
     if (ids.length > 0) {
-      whereConditions.push(inArray(schema.tasks.id, ids))
+      whereConditions.push(inArray(tasks.id, ids))
     } else {
       return [] // No tasks with this label
     }
@@ -280,25 +359,25 @@ export async function getTasks(options?: {
       case 'today':
         whereConditions.push(
           or(
-            eq(schema.tasks.date, today),
-            eq(schema.tasks.deadline, today)
+            eq(tasks.date, today),
+            eq(tasks.deadline, today)
           )!
         )
         break
       case 'next7':
         whereConditions.push(
           and(
-            sql`${schema.tasks.date} IS NOT NULL`,
-            sql`${schema.tasks.date} >= ${today}`,
-            sql`${schema.tasks.date} <= ${next7Days}`
+            sql`${tasks.date} IS NOT NULL`,
+            sql`${tasks.date} >= ${today}`,
+            sql`${tasks.date} <= ${next7Days}`
           )!
         )
         break
       case 'upcoming':
         whereConditions.push(
           and(
-            sql`${schema.tasks.date} IS NOT NULL`,
-            sql`${schema.tasks.date} >= ${today}`
+            sql`${tasks.date} IS NOT NULL`,
+            sql`${tasks.date} >= ${today}`
           )!
         )
         break
@@ -306,26 +385,26 @@ export async function getTasks(options?: {
   }
 
   if (options?.completed !== undefined) {
-    whereConditions.push(eq(schema.tasks.completed, options.completed))
+    whereConditions.push(eq(tasks.completed, options.completed))
   }
 
   if (options?.search) {
     const search = options.search.toLowerCase()
     whereConditions.push(
       or(
-        sql`lower(${schema.tasks.name}) LIKE ${'%' + search + '%'}`,
-        sql`lower(${schema.tasks.description}) LIKE ${'%' + search + '%'}`
+        sql`lower(${tasks.name}) LIKE ${'%' + search + '%'}`,
+        sql`lower(${tasks.description}) LIKE ${'%' + search + '%'}`
       )!
     )
   }
 
   const taskRows = db.select()
-    .from(schema.tasks)
+    .from(tasks)
     .where(and(...whereConditions))
     .orderBy(
-      asc(schema.tasks.completed),
-      sql`CASE ${schema.tasks.priority} WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 ELSE 3 END`,
-      asc(schema.tasks.position)
+      asc(tasks.completed),
+      sql`CASE ${tasks.priority} WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 ELSE 3 END`,
+      asc(tasks.position)
     )
     .all()
 
@@ -334,7 +413,7 @@ export async function getTasks(options?: {
 
 export async function getTask(id: string): Promise<Task | undefined> {
     const db = getDatabase()
-  const taskRow = db.select().from(schema.tasks).where(eq(schema.tasks.id, id)).get()
+  const taskRow = db.select().from(tasks).where(eq(tasks.id, id)).get()
   if (!taskRow) return undefined
 
   const [task] = await buildTaskRelations([taskRow])
@@ -365,7 +444,7 @@ export function createTask(data: Partial<Task>): Task {
     updatedAt: now,
   }
 
-  db.insert(schema.tasks).values(taskData).run()
+  db.insert(tasks).values(taskData).run()
   logTaskAction(id, 'created', `Task "${data.name}" created`)
 
   // Return task with relations
@@ -381,13 +460,44 @@ export function createTask(data: Partial<Task>): Task {
   }
 }
 
+export function createTaskFromNaturalLanguage(input: string): Task | null {
+  const db = getDatabase()
+  const allLists = getLists()
+
+  // Parse the natural language input
+  const parsed = parseNaturalLanguage(input, { lists: allLists })
+
+  if (!parsed.name) {
+    return null
+  }
+
+  // Validate the parsed task
+  const validation = validateParsedTask(parsed)
+  if (!validation.valid) {
+    console.warn('Invalid parsed task:', validation.errors)
+  }
+
+  // Create the task
+  const task = createTask({
+    name: parsed.name,
+    date: parsed.date,
+    deadline: parsed.deadline,
+    priority: parsed.priority || 'none',
+    list_id: parsed.listId,
+    estimate: parsed.estimate,
+    recurring: parsed.recurring,
+  })
+
+  return task
+}
+
 export function updateTask(id: string, data: Partial<Task>): void {
     const db = getDatabase()
 
-  const oldTask = getDatabase().select().from(schema.tasks).where(eq(schema.tasks.id, id)).get()
+  const oldTask = getDatabase().select().from(tasks).where(eq(tasks.id, id)).get()
   if (!oldTask) return
 
-  const updateData: Partial<typeof schema.tasks.$inferInsert> = {
+  const updateData: Partial<typeof tasks.$inferInsert> = {
     updatedAt: new Date().toISOString(),
   }
 
@@ -407,9 +517,9 @@ export function updateTask(id: string, data: Partial<Task>): void {
   }
   if (data.position !== undefined) updateData.position = data.position
 
-  db.update(schema.tasks)
+  db.update(tasks)
     .set(updateData)
-    .where(eq(schema.tasks.id, id))
+    .where(eq(tasks.id, id))
     .run()
 
   if (oldTask) {
@@ -447,9 +557,9 @@ export async function toggleTaskComplete(id: string): Promise<void> {
 
   const now = new Date().toISOString()
   for (const tid of allIds) {
-    db.update(schema.tasks)
+    db.update(tasks)
       .set({ completed, completedAt, updatedAt: now })
-      .where(eq(schema.tasks.id, tid))
+      .where(eq(tasks.id, tid))
       .run()
   }
 
@@ -529,12 +639,12 @@ async function createNextOccurrence(task: Task): Promise<void> {
       updatedAt: now.toISOString(),
     }
 
-    db.insert(schema.tasks).values(newTask).run()
+    db.insert(tasks).values(newTask).run()
 
     // Copy labels to new task
     if (task.labels && task.labels.length > 0) {
       for (const label of task.labels) {
-        db.insert(schema.taskLabels).values({
+        db.insert(taskLabels).values({
           taskId: newTask.id,
           labelId: label.id,
         }).onConflictDoNothing().run()
@@ -549,34 +659,34 @@ export function deleteTask(id: string): void {
     const db = getDatabase()
 
   // Get all subtask IDs first (cascade delete will handle this via FK, but we need for related data)
-  const subtasks = db.select({ id: schema.tasks.id })
-    .from(schema.tasks)
-    .where(eq(schema.tasks.parentTaskId, id))
+  const subtasks = db.select({ id: tasks.id })
+    .from(tasks)
+    .where(eq(tasks.parentTaskId, id))
     .all()
   const allIds = [id, ...subtasks.map((s) => s.id)]
 
   // Delete related data
-  db.delete(schema.taskLabels).where(inArray(schema.taskLabels.taskId, allIds)).run()
-  db.delete(schema.taskAttachments).where(inArray(schema.taskAttachments.taskId, allIds)).run()
-  db.delete(schema.taskReminders).where(inArray(schema.taskReminders.taskId, allIds)).run()
-  db.delete(schema.taskLogs).where(inArray(schema.taskLogs.taskId, allIds)).run()
-  db.delete(schema.taskDependencies).where(
+  db.delete(taskLabels).where(inArray(taskLabels.taskId, allIds)).run()
+  db.delete(taskAttachments).where(inArray(taskAttachments.taskId, allIds)).run()
+  db.delete(taskReminders).where(inArray(taskReminders.taskId, allIds)).run()
+  db.delete(taskLogs).where(inArray(taskLogs.taskId, allIds)).run()
+  db.delete(taskDependencies).where(
     or(
-      inArray(schema.taskDependencies.blockingTaskId, allIds),
-      inArray(schema.taskDependencies.blockedTaskId, allIds)
+      inArray(taskDependencies.blockingTaskId, allIds),
+      inArray(taskDependencies.blockedTaskId, allIds)
     )!
   ).run()
 
   // Delete tasks (cascade handles subtasks)
-  db.delete(schema.tasks).where(eq(schema.tasks.id, id)).run()
+  db.delete(tasks).where(eq(tasks.id, id)).run()
 }
 
 export function clearCompletedTasks(): void {
     const db = getDatabase()
 
-  const completedTasks = db.select({ id: schema.tasks.id })
-    .from(schema.tasks)
-    .where(eq(schema.tasks.completed, true))
+  const completedTasks = db.select({ id: tasks.id })
+    .from(tasks)
+    .where(eq(tasks.completed, true))
     .all()
 
   if (completedTasks.length === 0) return
@@ -584,49 +694,49 @@ export function clearCompletedTasks(): void {
   const ids = completedTasks.map((t) => t.id)
 
   // Delete related data
-  db.delete(schema.taskLabels).where(inArray(schema.taskLabels.taskId, ids)).run()
-  db.delete(schema.taskAttachments).where(inArray(schema.taskAttachments.taskId, ids)).run()
-  db.delete(schema.taskReminders).where(inArray(schema.taskReminders.taskId, ids)).run()
-  db.delete(schema.taskLogs).where(inArray(schema.taskLogs.taskId, ids)).run()
-  db.delete(schema.taskDependencies).where(
+  db.delete(taskLabels).where(inArray(taskLabels.taskId, ids)).run()
+  db.delete(taskAttachments).where(inArray(taskAttachments.taskId, ids)).run()
+  db.delete(taskReminders).where(inArray(taskReminders.taskId, ids)).run()
+  db.delete(taskLogs).where(inArray(taskLogs.taskId, ids)).run()
+  db.delete(taskDependencies).where(
     or(
-      inArray(schema.taskDependencies.blockingTaskId, ids),
-      inArray(schema.taskDependencies.blockedTaskId, ids)
+      inArray(taskDependencies.blockingTaskId, ids),
+      inArray(taskDependencies.blockedTaskId, ids)
     )!
   ).run()
 
-  db.delete(schema.tasks).where(inArray(schema.tasks.id, ids)).run()
+  db.delete(tasks).where(inArray(tasks.id, ids)).run()
 }
 
 export function getTaskLabels(taskId: string): Label[] {
     const db = getDatabase()
-  const labels = db.select()
-    .from(schema.labels)
-    .innerJoin(schema.taskLabels, eq(schema.labels.id, schema.taskLabels.labelId))
-    .where(eq(schema.taskLabels.taskId, taskId))
+  const taskLabelsResult = db.select()
+    .from(labels)
+    .innerJoin(taskLabels, eq(labels.id, taskLabels.labelId))
+    .where(eq(taskLabels.taskId, taskId))
     .all()
 
-  return labels.map((l) => mapLabelRow(l.labels))
+  return taskLabelsResult.map((l) => mapLabelRow(l.labels))
 }
 
 export function addTaskLabel(taskId: string, labelId: string): void {
     const db = getDatabase()
-  db.insert(schema.taskLabels).values({ taskId, labelId }).onConflictDoNothing().run()
+  db.insert(taskLabels).values({ taskId, labelId }).onConflictDoNothing().run()
   logTaskAction(taskId, 'label_added', `Label ${labelId} added`)
 }
 
 export function removeTaskLabel(taskId: string, labelId: string): void {
     const db = getDatabase()
-  db.delete(schema.taskLabels)
-    .where(and(eq(schema.taskLabels.taskId, taskId), eq(schema.taskLabels.labelId, labelId)))
+  db.delete(taskLabels)
+    .where(and(eq(taskLabels.taskId, taskId), eq(taskLabels.labelId, labelId)))
     .run()
   logTaskAction(taskId, 'label_removed', `Label ${labelId} removed`)
 }
 
 export function getTaskAttachments(taskId: string): TaskAttachment[] {
     const db = getDatabase()
-  return db.select().from(schema.taskAttachments)
-    .where(eq(schema.taskAttachments.taskId, taskId))
+  return db.select().from(taskAttachments)
+    .where(eq(taskAttachments.taskId, taskId))
     .all()
     .map((att) => ({
       id: att.id,
@@ -650,7 +760,7 @@ export function addTaskAttachment(
   const id = generateId()
   const now = new Date().toISOString()
 
-  db.insert(schema.taskAttachments).values({
+  db.insert(taskAttachments).values({
     id,
     taskId,
     fileName,
@@ -665,17 +775,17 @@ export function addTaskAttachment(
 
 export function removeTaskAttachment(attachmentId: string): void {
     const db = getDatabase()
-  const att = db.select().from(schema.taskAttachments).where(eq(schema.taskAttachments.id, attachmentId)).get()
+  const att = db.select().from(taskAttachments).where(eq(taskAttachments.id, attachmentId)).get()
   if (att) {
-    db.delete(schema.taskAttachments).where(eq(schema.taskAttachments.id, attachmentId)).run()
+    db.delete(taskAttachments).where(eq(taskAttachments.id, attachmentId)).run()
     logTaskAction(att.taskId, 'attachment_removed', `File "${att.fileName}" removed`)
   }
 }
 
 export function getTaskReminders(taskId: string): TaskReminder[] {
     const db = getDatabase()
-  return db.select().from(schema.taskReminders)
-    .where(eq(schema.taskReminders.taskId, taskId))
+  return db.select().from(taskReminders)
+    .where(eq(taskReminders.taskId, taskId))
     .all()
     .map((rem) => ({
       id: rem.id,
@@ -691,7 +801,7 @@ export function addTaskReminder(taskId: string, reminderTime: string): void {
   const id = generateId()
   const now = new Date().toISOString()
 
-  db.insert(schema.taskReminders).values({
+  db.insert(taskReminders).values({
     id,
     taskId,
     reminderTime,
@@ -704,14 +814,14 @@ export function addTaskReminder(taskId: string, reminderTime: string): void {
 
 export function removeTaskReminder(reminderId: string): void {
     const db = getDatabase()
-  db.delete(schema.taskReminders).where(eq(schema.taskReminders.id, reminderId)).run()
+  db.delete(taskReminders).where(eq(taskReminders.id, reminderId)).run()
 }
 
 export function getTaskLogs(taskId: string): TaskLog[] {
     const db = getDatabase()
-  return db.select().from(schema.taskLogs)
-    .where(eq(schema.taskLogs.taskId, taskId))
-    .orderBy(desc(schema.taskLogs.createdAt))
+  return db.select().from(taskLogs)
+    .where(eq(taskLogs.taskId, taskId))
+    .orderBy(desc(taskLogs.createdAt))
     .all()
     .map((log) => ({
       id: log.id,
@@ -727,7 +837,7 @@ function logTaskAction(taskId: string, action: string, details: string): void {
   const id = generateId()
   const now = new Date().toISOString()
 
-  db.insert(schema.taskLogs).values({
+  db.insert(taskLogs).values({
     id,
     taskId,
     action,
@@ -742,18 +852,18 @@ export async function getOverdueTasks(): Promise<Task[]> {
   const today = new Date().toISOString().split('T')[0]
 
   const taskRows = db.select()
-    .from(schema.tasks)
+    .from(tasks)
     .where(
       and(
-        eq(schema.tasks.completed, false),
-        isNull(schema.tasks.parentTaskId),
+        eq(tasks.completed, false),
+        isNull(tasks.parentTaskId),
         or(
-          and(sql`${schema.tasks.date} IS NOT NULL`, sql`${schema.tasks.date} < ${today}`),
-          and(sql`${schema.tasks.deadline} IS NOT NULL`, sql`${schema.tasks.deadline} < ${today}`)
+          and(sql`${tasks.date} IS NOT NULL`, sql`${tasks.date} < ${today}`),
+          and(sql`${tasks.deadline} IS NOT NULL`, sql`${tasks.deadline} < ${today}`)
         )!
       )
     )
-    .orderBy(asc(schema.tasks.date), asc(schema.tasks.deadline))
+    .orderBy(asc(tasks.date), asc(tasks.deadline))
     .all()
 
   return buildTaskRelations(taskRows)
@@ -765,17 +875,17 @@ export async function searchTasks(query: string): Promise<Task[]> {
   const search = query.toLowerCase()
 
   const taskRows = db.select()
-    .from(schema.tasks)
+    .from(tasks)
     .where(
       and(
-        isNull(schema.tasks.parentTaskId),
+        isNull(tasks.parentTaskId),
         or(
-          sql`lower(${schema.tasks.name}) LIKE ${'%' + search + '%'}`,
-          sql`lower(${schema.tasks.description}) LIKE ${'%' + search + '%'}`
+          sql`lower(${tasks.name}) LIKE ${'%' + search + '%'}`,
+          sql`lower(${tasks.description}) LIKE ${'%' + search + '%'}`
         )!
       )
     )
-    .orderBy(desc(schema.tasks.createdAt))
+    .orderBy(desc(tasks.createdAt))
     .limit(50)
     .all()
 
@@ -787,15 +897,15 @@ export function getTaskDependencies(taskId: string): { blocking: Task[]; blocked
     const db = getDatabase()
 
   const blocking = db.select()
-    .from(schema.taskDependencies)
-    .innerJoin(schema.tasks, eq(schema.taskDependencies.blockingTaskId, schema.tasks.id))
-    .where(eq(schema.taskDependencies.blockedTaskId, taskId))
+    .from(taskDependencies)
+    .innerJoin(tasks, eq(taskDependencies.blockingTaskId, tasks.id))
+    .where(eq(taskDependencies.blockedTaskId, taskId))
     .all()
 
   const blocked = db.select()
-    .from(schema.taskDependencies)
-    .innerJoin(schema.tasks, eq(schema.taskDependencies.blockedTaskId, schema.tasks.id))
-    .where(eq(schema.taskDependencies.blockingTaskId, taskId))
+    .from(taskDependencies)
+    .innerJoin(tasks, eq(taskDependencies.blockedTaskId, tasks.id))
+    .where(eq(taskDependencies.blockingTaskId, taskId))
     .all()
 
   return {
@@ -808,7 +918,7 @@ export function addTaskDependency(blockingTaskId: string, blockedTaskId: string,
     const db = getDatabase()
   const id = generateId()
 
-  db.insert(schema.taskDependencies).values({
+  db.insert(taskDependencies).values({
     id,
     blockingTaskId,
     blockedTaskId,
@@ -819,10 +929,10 @@ export function addTaskDependency(blockingTaskId: string, blockedTaskId: string,
 
 export function removeTaskDependency(blockingTaskId: string, blockedTaskId: string): void {
     const db = getDatabase()
-  db.delete(schema.taskDependencies)
+  db.delete(taskDependencies)
     .where(and(
-      eq(schema.taskDependencies.blockingTaskId, blockingTaskId),
-      eq(schema.taskDependencies.blockedTaskId, blockedTaskId)
+      eq(taskDependencies.blockingTaskId, blockingTaskId),
+      eq(taskDependencies.blockedTaskId, blockedTaskId)
     ))
     .run()
 }
@@ -831,13 +941,13 @@ export function canCompleteTask(taskId: string): { canComplete: boolean; blockin
     const db = getDatabase()
 
   const blocking = db.select()
-    .from(schema.taskDependencies)
-    .innerJoin(schema.tasks, eq(schema.taskDependencies.blockingTaskId, schema.tasks.id))
+    .from(taskDependencies)
+    .innerJoin(tasks, eq(taskDependencies.blockingTaskId, tasks.id))
     .where(
       and(
-        eq(schema.taskDependencies.blockedTaskId, taskId),
-        eq(schema.taskDependencies.type, 'blocks'),
-        eq(schema.tasks.completed, false)
+        eq(taskDependencies.blockedTaskId, taskId),
+        eq(taskDependencies.type, 'blocks'),
+        eq(tasks.completed, false)
       )
     )
     .all()
