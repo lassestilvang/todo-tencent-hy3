@@ -54,7 +54,12 @@ const RECURRING_PATTERNS = [
 ]
 
 // Date/time patterns
-const DATE_PATTERNS = [
+const DATE_PATTERNS: Array<{
+  pattern: RegExp
+  days?: number
+  months?: number
+  endOfWeek?: boolean
+}> = [
   { pattern: /\b(today)\b/i, days: 0 },
   { pattern: /\b(tomorrow|tmr)\b/i, days: 1 },
   { pattern: /\b(day after tomorrow)\b/i, days: 2 },
@@ -168,8 +173,11 @@ export function parseNaturalLanguage(input: string, options?: {
         const day = targetDate.getDay()
         const diff = 6 - day // Saturday
         targetDate.setDate(targetDate.getDate() + diff)
-      } else {
+      } else if (days !== undefined) {
         targetDate = addDays(baseDate, days)
+      } else {
+        // Should not happen with current patterns, but handle gracefully
+        targetDate = baseDate
       }
 
       result.date = formatDate(targetDate)
@@ -249,8 +257,10 @@ function parseRelativeDate(str: string): string | null {
       let targetDate: Date
       if (months) {
         targetDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + months, baseDate.getDate())
-      } else {
+      } else if (days !== undefined) {
         targetDate = addDays(baseDate, days)
+      } else {
+        targetDate = baseDate
       }
       return formatDate(targetDate)
     }
@@ -325,7 +335,7 @@ export const parsedTaskSchema = z.object({
 export function validateParsedTask(task: ParsedTask): { valid: boolean; errors: string[] } {
   const result = parsedTaskSchema.safeParse(task)
   if (!result.success) {
-    return { valid: false, errors: result.error.errors.map(e => e.message) }
+    return { valid: false, errors: result.error.issues.map((e) => e.message) }
   }
   return { valid: true, errors: [] }
 }
