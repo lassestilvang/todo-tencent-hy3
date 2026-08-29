@@ -14,6 +14,67 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
+// Mock @/lib/db before any tests run - must be done before importing @/lib/tasks
+jest.mock('@/lib/db', () => {
+  const { drizzle } = require('drizzle-orm/better-sqlite3')
+  const Database = require('better-sqlite3')
+  const schema = require('@/lib/db/schema')
+
+  const sqlite = new Database(':memory:')
+  sqlite.pragma('journal_mode = WAL')
+  sqlite.pragma('foreign_keys = ON')
+
+  const testDb = drizzle(sqlite, { schema })
+
+  return {
+    getDb: () => testDb,
+    runMigrations: jest.fn(),
+    initializeDatabase: () => {
+      const now = new Date().toISOString()
+      testDb.insert(schema.lists).values({
+        id: 'inbox',
+        name: 'Inbox',
+        color: '#6366f1',
+        emoji: '📥',
+        createdAt: now,
+        updatedAt: now,
+      }).run()
+    },
+    closeDb: jest.fn(),
+    ...schema,
+  }
+})
+
+jest.mock('@/lib/db/index', () => {
+  const { drizzle } = require('drizzle-orm/better-sqlite3')
+  const Database = require('better-sqlite3')
+  const schema = require('@/lib/db/schema')
+
+  const sqlite = new Database(':memory:')
+  sqlite.pragma('journal_mode = WAL')
+  sqlite.pragma('foreign_keys = ON')
+
+  const testDb = drizzle(sqlite, { schema })
+
+  return {
+    getDb: () => testDb,
+    runMigrations: jest.fn(),
+    initializeDatabase: () => {
+      const now = new Date().toISOString()
+      testDb.insert(schema.lists).values({
+        id: 'inbox',
+        name: 'Inbox',
+        color: '#6366f1',
+        emoji: '📥',
+        createdAt: now,
+        updatedAt: now,
+      }).run()
+    },
+    closeDb: jest.fn(),
+    ...schema,
+  }
+})
+
 // Mock IntersectionObserver
 Object.defineProperty(window, 'IntersectionObserver', {
   writable: true,
