@@ -83,12 +83,31 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioRef = useRef<{ play: () => void; gainNode?: GainNode } | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
 
-  // Initialize audio
+  // Initialize audio with generated tone using Web Audio API
   useEffect(() => {
-    audioRef.current = new Audio('/sounds/bell.mp3')
-    audioRef.current.volume = settings.volume
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    audioContextRef.current = audioContext
+
+    // Create a reusable gain node for volume control
+    const gainNode = audioContext.createGain()
+    gainNode.connect(audioContext.destination)
+    gainNode.gain.value = settings.volume * 0.3
+
+    audioRef.current = {
+      play: () => {
+        // Create a new oscillator each time for clean playback
+        const oscillator = audioContext.createOscillator()
+        oscillator.connect(gainNode)
+        oscillator.frequency.value = 800
+        oscillator.type = 'sine'
+        oscillator.start()
+        setTimeout(() => oscillator.stop(), 300)
+      },
+      gainNode,
+    }
 
     // Load persisted settings
     if (typeof window !== 'undefined') {
@@ -133,6 +152,13 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
       JSON.stringify({ sessionsCompleted, totalFocusTime })
     )
   }, [sessionsCompleted, totalFocusTime])
+
+  // Update audio volume when settings change
+  useEffect(() => {
+    if (audioRef.current?.gainNode) {
+      audioRef.current.gainNode.gain.value = settings.soundEnabled ? settings.volume * 0.3 : 0
+    }
+  }, [settings.volume, settings.soundEnabled])
 
   // Keyboard shortcuts
   useKeyPress(['Space'], () => {
