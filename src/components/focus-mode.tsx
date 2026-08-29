@@ -83,7 +83,7 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const audioRef = useRef<{ play: () => void; gainNode?: GainNode } | null>(null)
+  const audioRef = useRef<{ play: () => Promise<void>; gainNode?: GainNode } | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
 
   // Initialize audio with generated tone using Web Audio API
@@ -97,14 +97,19 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
     gainNode.gain.value = settings.volume * 0.3
 
     audioRef.current = {
-      play: () => {
+      play: async () => {
         // Create a new oscillator each time for clean playback
         const oscillator = audioContext.createOscillator()
         oscillator.connect(gainNode)
         oscillator.frequency.value = 800
         oscillator.type = 'sine'
         oscillator.start()
-        setTimeout(() => oscillator.stop(), 300)
+        return new Promise<void>((resolve) => {
+          setTimeout(() => {
+            oscillator.stop()
+            resolve()
+          }, 300)
+        })
       },
       gainNode,
     }
