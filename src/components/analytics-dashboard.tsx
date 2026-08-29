@@ -166,8 +166,8 @@ export function AnalyticsDashboard() {
                 />
                 <YAxis className="text-xs" />
                 <Tooltip
-                  formatter={(value: number | undefined, name: string) => [
-                    value ?? 0,
+                  formatter={(value, name) => [
+                    (value as number) ?? 0,
                     name === 'completed' ? 'Completed' : 'Created',
                   ]}
                 />
@@ -205,8 +205,8 @@ export function AnalyticsDashboard() {
                 <XAxis type="number" className="text-xs" />
                 <YAxis dataKey="date" type="category" tickFormatter={(v) => format(new Date(v), 'MMM d')} className="text-xs" width={60} />
                 <Tooltip
-                  formatter={(value: number | undefined, name: string) => [
-                    value ?? 0,
+                  formatter={(value, name) => [
+                    (value as number) ?? 0,
                     name === 'estimatedTime' ? 'Estimated' : 'Actual',
                   ]}
                 />
@@ -256,7 +256,7 @@ export function AnalyticsDashboard() {
                   paddingAngle={2}
                   dataKey="value"
                   nameKey="name"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                 >
                   {[
                     { name: 'High', value: Math.round(data.completedTasks * 0.4), color: '#ef4444' },
@@ -267,7 +267,7 @@ export function AnalyticsDashboard() {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => [value, 'Tasks']} />
+                <Tooltip formatter={(value) => [(value as number) ?? 0, 'Tasks']} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
