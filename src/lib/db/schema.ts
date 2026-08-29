@@ -6,6 +6,7 @@ import {
   index,
 } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
+import type { AnySQLiteColumn } from 'drizzle-orm/sqlite-core'
 
 // Lists table
 export const lists = sqliteTable('lists', {
@@ -26,7 +27,7 @@ export const labels = sqliteTable('labels', {
   createdAt: text('created_at').notNull().default(sql`(CURRENT_TIMESTAMP)`),
 })
 
-// Tasks table
+// Tasks table - declare type first to break circular reference
 export const tasks = sqliteTable('tasks', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -42,7 +43,8 @@ export const tasks = sqliteTable('tasks', {
     enum: ['every_day', 'every_week', 'every_weekday', 'every_month', 'every_year', 'custom'],
   }),
   listId: text('list_id').references(() => lists.id, { onDelete: 'set null' }),
-  parentTaskId: text('parent_task_id').references(() => tasks.id, { onDelete: 'cascade' }),
+  // Self-referential FK - use AnySQLiteColumn to break circular reference
+  parentTaskId: text('parent_task_id').references(((): AnySQLiteColumn => tasks.id), { onDelete: 'cascade' }),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
   completedAt: text('completed_at'),
   position: integer('position').notNull().default(0),
