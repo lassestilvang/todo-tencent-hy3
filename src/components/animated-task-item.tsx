@@ -14,7 +14,7 @@ import { handleDelete } from '@/lib/actions'
 import type { Task } from '@/types'
 import { Button } from '@/components/ui/button'
 import { PriorityIcon } from '@/components/priority-icon'
-import { TaskCheckbox } from '@/components/task-checkbox'
+import { SelectableTaskCheckbox } from '@/components/selectable-task-checkbox'
 import { useState } from 'react'
 import {
   Dialog,
@@ -25,7 +25,17 @@ import {
 } from '@/components/ui/dialog'
 import { EditTaskForm } from '@/components/edit-task-form'
 
-export function AnimatedTaskItem({ task }: { task: Task }) {
+export function AnimatedTaskItem({
+  task,
+  selectionMode = false,
+  isSelected = false,
+  onSelectionChange,
+}: {
+  task: Task
+  selectionMode?: boolean
+  isSelected?: boolean
+  onSelectionChange?: (taskId: string, selected: boolean) => void
+}) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   const sorted = task.sub_tasks
@@ -49,10 +59,13 @@ export function AnimatedTaskItem({ task }: { task: Task }) {
         )}
         suppressHydrationWarning
       >
-        <TaskCheckbox
+        <SelectableTaskCheckbox
           taskId={task.id}
           checked={task.completed}
           taskName={task.name}
+          selectionMode={selectionMode}
+          isSelected={isSelected}
+          onSelectionChange={onSelectionChange}
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -165,10 +178,13 @@ export function AnimatedTaskItem({ task }: { task: Task }) {
               key={sub.id}
               className="hover:bg-accent/50 flex items-center gap-3 rounded-lg px-3 py-2"
             >
-              <TaskCheckbox
+              <SelectableTaskCheckbox
                 taskId={sub.id}
                 checked={sub.completed}
                 taskName={sub.name}
+                selectionMode={selectionMode}
+                isSelected={isSelected}
+                onSelectionChange={onSelectionChange}
               />
               <span
                 className={cn(
