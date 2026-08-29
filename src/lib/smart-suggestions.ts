@@ -1,4 +1,4 @@
-import { Task, List } from '@/lib/db/schema'
+import type { Task, List } from '@/types'
 
 export interface Suggestion {
   id: string
