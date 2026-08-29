@@ -1,4 +1,4 @@
-import { getDb } from './db'
+import { getDb } from '@/lib/db'
 import { eq, and, or, isNull, desc, asc, sql, inArray } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
@@ -10,7 +10,7 @@ import {
   taskReminders,
   taskLogs,
   taskDependencies,
-} from './db/schema'
+} from '@/lib/db/schema'
 import type {
   Task,
   List,
