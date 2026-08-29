@@ -4,6 +4,7 @@ import * as schema from './schema'
 import { env } from '../env'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -11,9 +12,9 @@ const __dirname = path.dirname(__filename)
 const dbPath = env.TEST_DB_PATH || path.join(process.cwd(), 'tasks.db')
 
 // Singleton database instance
-let dbInstance: ReturnType<typeof drizzle> | null = null
+let dbInstance: BetterSQLite3Database<typeof schema> | null = null
 
-export function getDb() {
+export function getDb(): BetterSQLite3Database<typeof schema> {
   if (dbInstance) return dbInstance
 
   const sqlite = new Database(dbPath)
