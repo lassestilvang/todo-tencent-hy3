@@ -45,9 +45,10 @@ export async function subscribeToPushNotifications(): Promise<PushSubscriptionDa
 
   try {
     const registration = await navigator.serviceWorker.ready
+    const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      applicationServerKey: applicationServerKey as BufferSource,
     })
 
     const subscriptionData: PushSubscriptionData = {
@@ -136,7 +137,6 @@ export async function sendLocalNotification(payload: NotificationPayload): Promi
     tag: payload.tag,
     requireInteraction: payload.requireInteraction,
     silent: payload.silent,
-    actions: payload.actions,
   })
 
   notification.onclick = () => {
