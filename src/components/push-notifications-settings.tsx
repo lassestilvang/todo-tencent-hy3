@@ -67,8 +67,8 @@ export function PushNotificationsSettings() {
 
   const handleSubscribe = async () => {
     if (permission !== 'granted') {
-      await handlePermissionRequest()
-      if (permission !== 'granted') return
+      const newPermission = await requestNotificationPermission()
+      if (newPermission !== 'granted') return
     }
 
     setIsLoading(true)
