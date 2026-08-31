@@ -10,10 +10,13 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { PushNotificationsSettings } from '@/components/push-notifications-settings'
 import { FocusModeSettings } from '@/components/focus-mode-settings'
+import { CalendarSettings } from '@/components/calendar-settings'
+import { ShareDialog } from '@/components/share-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Bell, Palette, Database, Key, User, Shield } from 'lucide-react'
+import { Bell, Palette, Database, Key, User, Shield, Calendar, Share2, ListChecks } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import type { List } from '@/types'
 
 export function SettingsClient() {
   const [activeTab, setActiveTab] = useState('general')
@@ -21,6 +24,8 @@ export function SettingsClient() {
   const [compactMode, setCompactMode] = useState(false)
   const [autoSave, setAutoSave] = useState(true)
   const [language, setLanguage] = useState('en')
+  const [lists, setLists] = useState<List[]>([])
+  const [listsLoading, setListsLoading] = useState(true)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -29,6 +34,23 @@ export function SettingsClient() {
       setAutoSave(localStorage.getItem('auto-save') !== 'false')
       setLanguage(localStorage.getItem('language') || 'en')
     }
+  }, [])
+
+  useEffect(() => {
+    const fetchLists = async () => {
+      try {
+        const res = await fetch('/api/lists')
+        if (res.ok) {
+          const data = await res.json()
+          setLists(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch lists:', error)
+      } finally {
+        setListsLoading(false)
+      }
+    }
+    fetchLists()
   }, [])
 
   const handleAnimationsChange = (enabled: boolean) => {
@@ -145,7 +167,7 @@ export function SettingsClient() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="general">
             <span className="flex items-center gap-1">
               <User className="h-4 w-4" /> General
@@ -164,6 +186,16 @@ export function SettingsClient() {
           <TabsTrigger value="focus">
             <span className="flex items-center gap-1">
               <Shield className="h-4 w-4" /> Focus Mode
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="calendar">
+            <span className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" /> Calendar
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="sharing">
+            <span className="flex items-center gap-1">
+              <Share2 className="h-4 w-4" /> Sharing
             </span>
           </TabsTrigger>
           <TabsTrigger value="data">
@@ -297,6 +329,45 @@ export function SettingsClient() {
         {/* Focus Mode Tab */}
         <TabsContent value="focus" className="space-y-6">
           <FocusModeSettings />
+        </TabsContent>
+
+        {/* Calendar Tab */}
+        <TabsContent value="calendar" className="space-y-6">
+          <CalendarSettings />
+        </TabsContent>
+
+        {/* Sharing Tab */}
+        <TabsContent value="sharing" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Share2 className="h-5 w-5 text-primary" />
+                Shareable Lists
+              </CardTitle>
+              <CardDescription>
+                Create secure links to share your lists with others. Control permissions, expiration, and password protection.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {listsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              ) : lists.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ListChecks className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="font-medium">No lists yet</p>
+                  <p className="text-sm">Create a list first to enable sharing</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {lists.map((list) => (
+                    <ShareDialog key={list.id} listId={list.id} listName={list.name} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Data Tab */}
