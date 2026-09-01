@@ -3,7 +3,9 @@ import {
   getLists,
   createList,
   deleteList,
+  updateList,
 } from '@/lib/tasks'
+import { triggerWebhooks } from '@/lib/webhooks'
 import { z } from 'zod'
 
 const createListSchema = z.object({
@@ -48,6 +50,8 @@ export async function POST(request: Request) {
       )
     }
     const list = createList(result.data.name, result.data.color, result.data.emoji || '📝')
+    // Trigger webhook for list creation
+    triggerWebhooks('list.created', list)
     return NextResponse.json(list, { status: 201 })
   } catch (error) {
     console.error('List creation error:', error)
@@ -73,14 +77,31 @@ export async function PATCH(request: Request) {
     const { id, action, data } = result.data
 
     if (action === 'delete') {
+      // Get list before deleting for webhook
+      const lists = getLists()
+      const list = lists.find(l => l.id === id)
       deleteList(id)
+      if (list) {
+        triggerWebhooks('list.deleted', list)
+      }
       return NextResponse.json({ success: true })
     }
 
     if (action === 'update' && data) {
-      // Note: updateList function would need to be added to tasks.ts
-      // For now, we'll use the existing updateTask pattern
-      return NextResponse.json({ error: 'Update not implemented yet' }, { status: 501 })
+      // Filter out null values for emoji
+      const updateData: { name?: string; color?: string; emoji?: string } = {}
+      if (data.name !== undefined) updateData.name = data.name
+      if (data.color !== undefined) updateData.color = data.color
+      if (data.emoji !== undefined && data.emoji !== null) updateData.emoji = data.emoji
+
+      updateList(id, updateData)
+      // Get updated list for webhook
+      const lists = getLists()
+      const updatedList = lists.find(l => l.id === id)
+      if (updatedList) {
+        triggerWebhooks('list.updated', updatedList)
+      }
+      return NextResponse.json({ success: true })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
