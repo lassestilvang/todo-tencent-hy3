@@ -12,8 +12,9 @@ import { PushNotificationsSettings } from '@/components/push-notifications-setti
 import { FocusModeSettings } from '@/components/focus-mode-settings'
 import { CalendarSettings } from '@/components/calendar-settings'
 import { ShareDialog } from '@/components/share-dialog'
+import { WebhookSettings } from '@/components/webhook-settings'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Bell, Palette, Database, Key, User, Shield, Calendar, Share2, ListChecks } from 'lucide-react'
+import { Bell, Palette, Database, Key, User, Shield, Calendar, Share2, ListChecks, Webhook } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { List } from '@/types'
@@ -167,7 +168,7 @@ export function SettingsClient() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="general">
             <span className="flex items-center gap-1">
               <User className="h-4 w-4" /> General
@@ -196,6 +197,11 @@ export function SettingsClient() {
           <TabsTrigger value="sharing">
             <span className="flex items-center gap-1">
               <Share2 className="h-4 w-4" /> Sharing
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="webhooks">
+            <span className="flex items-center gap-1">
+              <Webhook className="h-4 w-4" /> Webhooks
             </span>
           </TabsTrigger>
           <TabsTrigger value="data">
@@ -368,6 +374,11 @@ export function SettingsClient() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Webhooks Tab */}
+        <TabsContent value="webhooks" className="space-y-6">
+          <WebhookSettings />
         </TabsContent>
 
         {/* Data Tab */}
