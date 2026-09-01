@@ -6,6 +6,7 @@ import {
   deleteTask,
   updateTask,
 } from '@/lib/tasks'
+import { triggerWebhooks } from '@/lib/webhooks'
 import { z } from 'zod'
 
 const createTaskSchema = z.object({
@@ -72,6 +73,8 @@ export async function POST(request: Request) {
       )
     }
     const task = createTask(result.data)
+    // Trigger webhook for task creation
+    triggerWebhooks('task.created', task)
     return NextResponse.json(task, { status: 201 })
   } catch (error) {
     console.error('Task creation error:', error)
@@ -97,17 +100,44 @@ export async function PATCH(request: Request) {
     const { id, action, data } = result.data
 
     if (action === 'toggle') {
+      // Get task before toggling to know the old state
+      const { getTask } = await import('@/lib/tasks')
+      const oldTask = await getTask(id)
+      const wasCompleted = oldTask?.completed ?? false
+
       toggleTaskComplete(id)
+
+      // Trigger webhook based on new state
+      const newTask = await getTask(id)
+      if (newTask) {
+        if (!wasCompleted && newTask.completed) {
+          triggerWebhooks('task.completed', newTask)
+        } else if (wasCompleted && !newTask.completed) {
+          triggerWebhooks('task.updated', newTask)
+        }
+      }
       return NextResponse.json({ success: true })
     }
 
     if (action === 'delete') {
+      // Get task before deleting for webhook
+      const { getTask } = await import('@/lib/tasks')
+      const task = await getTask(id)
       deleteTask(id)
+      if (task) {
+        triggerWebhooks('task.deleted', task)
+      }
       return NextResponse.json({ success: true })
     }
 
     if (action === 'update' && data) {
       updateTask(id, data)
+      // Get updated task for webhook
+      const { getTask } = await import('@/lib/tasks')
+      const updatedTask = await getTask(id)
+      if (updatedTask) {
+        triggerWebhooks('task.updated', updatedTask)
+      }
       return NextResponse.json({ success: true })
     }
 
