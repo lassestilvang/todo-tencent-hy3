@@ -295,6 +295,21 @@ export function deleteList(id: string): void {
   db.delete(lists).where(eq(lists.id, id)).run()
 }
 
+export function updateList(id: string, data: { name?: string; color?: string; emoji?: string }): void {
+    const db = getDatabase()
+  const updateData: Partial<typeof lists.$inferInsert> = {
+    updatedAt: new Date().toISOString(),
+  }
+  if (data.name !== undefined) updateData.name = data.name
+  if (data.color !== undefined) updateData.color = data.color
+  if (data.emoji !== undefined) updateData.emoji = data.emoji
+
+  db.update(lists)
+    .set(updateData)
+    .where(eq(lists.id, id))
+    .run()
+}
+
 export function getLabels(): Label[] {
     const db = getDatabase()
   return db.select().from(labels).all()
