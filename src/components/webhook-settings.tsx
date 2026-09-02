@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Plus, Trash2, Eye, EyeOff, Copy, Check, AlertCircle, RotateCcw } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Plus, Trash2, Eye, EyeOff, Copy, AlertCircle, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -15,8 +15,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Separator } from '@/components/ui/separator'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Webhook, WebhookEvent, generateWebhookSecret } from '@/lib/webhooks'
@@ -45,25 +43,35 @@ export function WebhookSettings() {
   const [active, setActive] = useState(true)
   const [showSecret, setShowSecret] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const mountedRef = useRef(true)
 
-  useEffect(() => {
-    loadWebhooks()
-  }, [])
-
-  const loadWebhooks = async () => {
+  const loadWebhooks = useCallback(async () => {
     setIsLoading(true)
     try {
       const res = await fetch('/api/webhooks')
       if (res.ok) {
         const data = await res.json()
-        setWebhooks(data.webhooks || [])
+        if (mountedRef.current) {
+          setWebhooks(data.webhooks || [])
+        }
       }
-    } catch (error) {
-      console.error('Failed to load webhooks:', error)
+    } catch {
+      console.error('Failed to load webhooks')
     } finally {
-      setIsLoading(false)
+      if (mountedRef.current) {
+        setIsLoading(false)
+      }
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    mountedRef.current = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadWebhooks()
+    return () => {
+      mountedRef.current = false
+    }
+  }, [loadWebhooks])
 
   const resetForm = () => {
     setName('')
@@ -116,8 +124,8 @@ export function WebhookSettings() {
       setShowCreateDialog(false)
       setEditingWebhook(null)
       loadWebhooks()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Operation failed')
+    } catch {
+      toast.error('Operation failed')
     } finally {
       setIsSubmitting(false)
     }
@@ -130,7 +138,7 @@ export function WebhookSettings() {
         if (!res.ok) throw new Error('Failed to delete webhook')
         toast.success('Webhook deleted')
         loadWebhooks()
-      } catch (error) {
+      } catch {
         toast.error('Failed to delete webhook')
       }
     }
