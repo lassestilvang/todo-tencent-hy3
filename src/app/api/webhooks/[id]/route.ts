@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getWebhook, updateWebhook, deleteWebhook } from '@/lib/webhooks'
+import type { Webhook } from '@/lib/webhooks'
 
 export async function GET(
   request: NextRequest,
@@ -47,7 +48,7 @@ export async function PATCH(
     const body = await request.json()
     const { name, url, events, active, maxRetries } = body
 
-    const updates: Record<string, any> = {}
+    const updates: Partial<Webhook> = {}
     if (name !== undefined) updates.name = name
     if (url !== undefined) updates.url = url
     if (events !== undefined) updates.events = events
