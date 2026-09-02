@@ -1,4 +1,4 @@
-import { parse, isValid, addDays, startOfDay, endOfDay } from 'date-fns'
+import { parse, isValid, addDays } from 'date-fns'
 import { z } from 'zod'
 
 // NLP Parser for natural language task input
@@ -44,13 +44,13 @@ const RECURRING_PATTERNS = [
   { pattern: /\b(weekdays|every weekday|mon-fri|monday to friday)\b/i, recurring: 'every_weekday' as const },
   { pattern: /\b(monthly|every month)\b/i, recurring: 'every_month' as const },
   { pattern: /\b(yearly|every year)\b/i, recurring: 'every_year' as const },
-  { pattern: /\b(mon|monday)\b/i, recurring: 'every_week' as const, dayOfWeek: 1 },
-  { pattern: /\b(tue|tuesday)\b/i, recurring: 'every_week' as const, dayOfWeek: 2 },
-  { pattern: /\b(wed|wednesday)\b/i, recurring: 'every_week' as const, dayOfWeek: 3 },
-  { pattern: /\b(thu|thursday)\b/i, recurring: 'every_week' as const, dayOfWeek: 4 },
-  { pattern: /\b(fri|friday)\b/i, recurring: 'every_week' as const, dayOfWeek: 5 },
-  { pattern: /\b(sat|saturday)\b/i, recurring: 'every_week' as const, dayOfWeek: 6 },
-  { pattern: /\b(sun|sunday)\b/i, recurring: 'every_week' as const, dayOfWeek: 0 },
+  { pattern: /\b(mon|monday)\b/i, recurring: 'every_week' as const },
+  { pattern: /\b(tue|tuesday)\b/i, recurring: 'every_week' as const },
+  { pattern: /\b(wed|wednesday)\b/i, recurring: 'every_week' as const },
+  { pattern: /\b(thu|thursday)\b/i, recurring: 'every_week' as const },
+  { pattern: /\b(fri|friday)\b/i, recurring: 'every_week' as const },
+  { pattern: /\b(sat|saturday)\b/i, recurring: 'every_week' as const },
+  { pattern: /\b(sun|sunday)\b/i, recurring: 'every_week' as const },
 ]
 
 // Date/time patterns
@@ -80,7 +80,6 @@ export function parseNaturalLanguage(input: string, options?: {
 }): ParsedTask {
   const originalInput = input.trim()
   let workingInput = originalInput
-  let confidence = 1.0
 
   const result: ParsedTask = {
     name: '',
@@ -140,7 +139,7 @@ export function parseNaturalLanguage(input: string, options?: {
   }
 
   // Extract recurring pattern
-  for (const { pattern, recurring, dayOfWeek } of RECURRING_PATTERNS) {
+  for (const { pattern, recurring } of RECURRING_PATTERNS) {
     if (pattern.test(workingInput)) {
       result.recurring = recurring
       workingInput = workingInput.replace(pattern, '').trim()
