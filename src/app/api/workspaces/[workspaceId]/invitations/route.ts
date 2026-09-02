@@ -4,8 +4,6 @@ import {
   getWorkspaceInvitations,
   getInvitation,
   revokeInvitation,
-  acceptInvitation,
-  declineInvitation,
   canUserInvite,
   getInvitationUrl,
 } from '@/lib/workspaces'
@@ -81,12 +79,8 @@ export async function POST(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-) {
+export async function DELETE(request: NextRequest) {
   try {
-    const { workspaceId } = await params
     const { searchParams } = new URL(request.url)
     const invitationId = searchParams.get('invitationId')
 
