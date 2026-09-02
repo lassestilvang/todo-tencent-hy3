@@ -19,15 +19,14 @@ import { ToggleCompletedButton } from '@/components/toggle-completed-button'
 import { SmartSuggestions } from '@/components/smart-suggestions'
 import { Suspense } from 'react'
 import { formatTime } from '@/lib/utils'
-import type { Task } from '@/types'
+import type { Task, List } from '@/types'
 
 interface TodayClientProps {
   tasks: Task[]
-  lists: any[]
-  showCompleted?: boolean
+  lists: List[]
 }
 
-export function TodayClient({ tasks, lists, showCompleted = true }: TodayClientProps) {
+export function TodayClient({ tasks, lists }: TodayClientProps) {
   const totalTasks = tasks.length
   const completedTasks = tasks.filter((t) => t.completed).length
   const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100)
@@ -105,7 +104,7 @@ export function TodayClient({ tasks, lists, showCompleted = true }: TodayClientP
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
           }>
-            <SmartSuggestions tasks={tasks} lists={lists} view="today" />
+            <SmartSuggestions tasks={tasks} lists={lists} />
           </Suspense>
           <QuickAddTask listId={undefined} />
           {tasks.length === 0 ? (
