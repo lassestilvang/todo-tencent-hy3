@@ -25,7 +25,7 @@ export default async function TodayPage({
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     }>
-      <TodayClient tasks={tasks} lists={lists} showCompleted={completed !== 'false'} />
+      <TodayClient tasks={tasks} lists={lists} />
     </Suspense>
   )
 }
