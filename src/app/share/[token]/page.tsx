@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Lock, Unlock, Copy, Check, ExternalLink, AlertCircle, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
 import { AnimatedTaskItem } from '@/components/animated-task-item'
+import Link from 'next/link'
+import type { Task } from '@/types'
 
 interface SharedListData {
   list: {
@@ -19,17 +20,7 @@ interface SharedListData {
     color: string
     emoji: string
   }
-  tasks: Array<{
-    id: string
-    name: string
-    description?: string | null
-    date?: string | null
-    deadline?: string | null
-    estimate?: number | null
-    priority?: string
-    completed: boolean
-    position: number
-  }>
+  tasks: Task[]
   shareInfo: {
     permission: 'view' | 'comment' | 'edit'
     expiresAt?: number
@@ -49,41 +40,55 @@ export default function SharedListPage() {
   const [password, setPassword] = useState(urlPassword || '')
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState(false)
+  const mountedRef = useRef(true)
 
   useEffect(() => {
-    loadSharedList()
-  }, [token, password])
+    mountedRef.current = true
 
-  const loadSharedList = async () => {
-    setIsLoading(true)
-    setError(null)
+    async function loadSharedList() {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const params = new URLSearchParams()
+        if (password) params.set('password', password)
 
-    try {
-      const params = new URLSearchParams()
-      if (password) params.set('password', password)
+        const res = await fetch(`/api/share/${token}?${params.toString()}`)
 
-      const res = await fetch(`/api/share/${token}?${params.toString()}`)
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error || 'Failed to load shared list')
+        }
 
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Failed to load shared list')
+        const result = await res.json()
+        if (mountedRef.current) {
+          setData(result)
+        }
+
+        // Record access after successful load
+        await fetch(`/api/share/${token}/access`, { method: 'POST' })
+      } catch (err) {
+        if (mountedRef.current) {
+          setError(err instanceof Error ? err.message : 'Failed to load shared list')
+        }
+      } finally {
+        if (mountedRef.current) {
+          setIsLoading(false)
+        }
       }
-
-      const result = await res.json()
-      setData(result)
-
-      // Record access after successful load
-      await fetch(`/api/share/${token}/access`, { method: 'POST' })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load shared list')
-    } finally {
-      setIsLoading(false)
     }
-  }
+
+    loadSharedList()
+
+    return () => {
+      mountedRef.current = false
+    }
+  }, [token, password])
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    loadSharedList()
+    // Trigger reload by updating a state or using a key
+    // For now, we'll just call the effect again by changing a dep
+    // This is handled by the effect re-running when password changes
   }
 
   const copyLink = () => {
@@ -220,7 +225,7 @@ export default function SharedListPage() {
                   .map(task => (
                     <AnimatedTaskItem
                       key={task.id}
-                      task={task as any}
+                      task={task}
                     />
                   ))}
               </div>
@@ -233,9 +238,9 @@ export default function SharedListPage() {
         <div className="text-center text-sm text-muted-foreground">
           <p>Shared via TaskFlow</p>
           <p className="mt-1">
-            <a href="/" className="text-primary hover:underline">
+            <Link href="/" className="text-primary hover:underline">
               Create your own lists
-            </a>
+            </Link>
           </p>
         </div>
       </div>
