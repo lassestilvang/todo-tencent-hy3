@@ -6,7 +6,6 @@ import {
   removeMember,
   getMember,
   canUserManageWorkspace,
-  WorkspaceMember,
   WorkspaceRole,
 } from '@/lib/workspaces'
 
