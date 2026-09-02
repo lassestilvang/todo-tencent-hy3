@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Lightbulb, X, ChevronRight, AlertTriangle, Zap, ListTodo, Calendar } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { X, ChevronRight, AlertTriangle, Zap, ListTodo, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -11,7 +11,6 @@ import type { Task, List } from '@/types'
 interface SmartSuggestionsProps {
   tasks: Task[]
   lists: List[]
-  view?: string
 }
 
 const ICONS: Record<Suggestion['type'], React.ReactNode> = {
@@ -23,34 +22,23 @@ const ICONS: Record<Suggestion['type'], React.ReactNode> = {
   habit: <Zap className="h-5 w-5 text-green-500" />,
 }
 
-export function SmartSuggestions({ tasks, lists, view = 'today' }: SmartSuggestionsProps) {
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
-  const [isLoading, setIsLoading] = useState(true)
-
+function computeSuggestions(tasks: Task[], lists: List[]) {
   const incompleteTasks = tasks.filter((t) => !t.completed)
+  if (incompleteTasks.length === 0) {
+    return []
+  }
+  const allSuggestions = generateSmartSuggestions(tasks, lists, incompleteTasks)
+  return allSuggestions.filter((s) => !isSuggestionDismissed(s.id))
+}
 
-  const generateAndFilter = useCallback(() => {
-    if (incompleteTasks.length === 0) {
-      setSuggestions([])
-      setIsLoading(false)
-      return
-    }
+export function SmartSuggestions({ tasks, lists }: SmartSuggestionsProps) {
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set())
 
-    const allSuggestions = generateSmartSuggestions(tasks, lists, incompleteTasks)
-    const filtered = allSuggestions.filter((s) => !isSuggestionDismissed(s.id))
-    setSuggestions(filtered)
-    setIsLoading(false)
-  }, [tasks, lists, incompleteTasks])
-
-  useEffect(() => {
-    generateAndFilter()
-  }, [generateAndFilter])
+  const suggestions = useMemo(() => computeSuggestions(tasks, lists), [tasks, lists])
 
   const handleDismiss = (suggestionId: string) => {
     dismissSuggestion(suggestionId)
-    setDismissedIds((prev) => new Set([...prev, suggestionId]))
-    setSuggestions((prev) => prev.filter((s) => s.id !== suggestionId))
+    setDismissedSuggestions((prev) => new Set([...prev, suggestionId]))
   }
 
   const handleAction = (suggestion: Suggestion) => {
@@ -82,13 +70,15 @@ export function SmartSuggestions({ tasks, lists, view = 'today' }: SmartSuggesti
     handleDismiss(suggestion.id)
   }
 
-  if (isLoading || suggestions.length === 0) {
+  const visibleSuggestions = suggestions.filter((s) => !dismissedSuggestions.has(s.id))
+
+  if (visibleSuggestions.length === 0) {
     return null
   }
 
   return (
     <div className="mb-6 animate-slide-down">
-      {suggestions.map((suggestion) => (
+      {visibleSuggestions.map((suggestion) => (
         <Card
           key={suggestion.id}
           className={cn(
@@ -146,27 +136,16 @@ export function SmartSuggestions({ tasks, lists, view = 'today' }: SmartSuggesti
 
 // Client-side hook for using suggestions in other components
 export function useSmartSuggestions(tasks: Task[], lists: List[]) {
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
-    const incompleteTasks = tasks.filter((t) => !t.completed)
-    if (incompleteTasks.length === 0) {
-      setSuggestions([])
-      setIsLoading(false)
-      return
-    }
-
-    const allSuggestions = generateSmartSuggestions(tasks, lists, incompleteTasks)
-    const filtered = allSuggestions.filter((s) => !isSuggestionDismissed(s.id))
-    setSuggestions(filtered)
-    setIsLoading(false)
-  }, [tasks, lists])
+  const suggestions = useMemo(() => computeSuggestions(tasks, lists), [tasks, lists])
 
   const dismiss = (id: string) => {
     dismissSuggestion(id)
-    setSuggestions((prev) => prev.filter((s) => s.id !== id))
+    setDismissedSuggestions((prev) => new Set([...prev, id]))
   }
 
-  return { suggestions, isLoading, dismiss }
+  const visibleSuggestions = suggestions.filter((s) => !dismissedSuggestions.has(s.id))
+
+  return { suggestions: visibleSuggestions, dismiss }
 }
