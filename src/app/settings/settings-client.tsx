@@ -7,14 +7,13 @@ import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
 import { PushNotificationsSettings } from '@/components/push-notifications-settings'
 import { FocusModeSettings } from '@/components/focus-mode-settings'
 import { CalendarSettings } from '@/components/calendar-settings'
 import { ShareDialog } from '@/components/share-dialog'
 import { WebhookSettings } from '@/components/webhook-settings'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Bell, Palette, Database, Key, User, Shield, Calendar, Share2, ListChecks, Webhook } from 'lucide-react'
+import { Bell, Palette, Database, User, Shield, Calendar, Share2, ListChecks, Webhook } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { List } from '@/types'
@@ -30,10 +29,13 @@ export function SettingsClient() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setAnimationsEnabled(localStorage.getItem('animations-enabled') !== 'false')
-      setCompactMode(localStorage.getItem('compact-mode') === 'true')
-      setAutoSave(localStorage.getItem('auto-save') !== 'false')
-      setLanguage(localStorage.getItem('language') || 'en')
+      const initializeSettings = () => {
+        setAnimationsEnabled(localStorage.getItem('animations-enabled') !== 'false')
+        setCompactMode(localStorage.getItem('compact-mode') === 'true')
+        setAutoSave(localStorage.getItem('auto-save') !== 'false')
+        setLanguage(localStorage.getItem('language') || 'en')
+      }
+      initializeSettings()
     }
   }, [])
 
