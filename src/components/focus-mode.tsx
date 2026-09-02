@@ -9,10 +9,8 @@ import {
   X,
   Volume2,
   VolumeX,
-  Bell,
   Coffee,
   Zap,
-  Sun,
   Moon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -41,7 +39,7 @@ type TimerMode = 'pomodoro' | 'shortBreak' | 'longBreak'
 type TimerStatus = 'idle' | 'running' | 'paused'
 
 interface FocusModeProps {
-  taskId?: string
+  _taskId?: string
   taskName?: string
   onClose: () => void
 }
@@ -64,37 +62,71 @@ const MODE_ICONS: Record<TimerMode, React.ReactNode> = {
   longBreak: <Moon className="h-6 w-6" />,
 }
 
-export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
+const defaultSettings = {
+  pomodoroDuration: 25,
+  shortBreakDuration: 5,
+  longBreakDuration: 15,
+  autoStartBreaks: true,
+  autoStartPomodoros: false,
+  soundEnabled: true,
+  notificationsEnabled: true,
+  volume: 0.5,
+}
+
+function loadSettings() {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('focus-mode-settings')
+    if (saved) {
+      try {
+        return { ...defaultSettings, ...JSON.parse(saved) }
+      } catch {}
+    }
+  }
+  return defaultSettings
+}
+
+function loadStats() {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('focus-mode-stats')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch {}
+    }
+  }
+  return { sessionsCompleted: 0, totalFocusTime: 0 }
+}
+
+export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
   const [mode, setMode] = useState<TimerMode>('pomodoro')
   const [status, setStatus] = useState<TimerStatus>('idle')
   const [timeRemaining, setTimeRemaining] = useState(DURATIONS.pomodoro)
-  const [sessionsCompleted, setSessionsCompleted] = useState(0)
-  const [totalFocusTime, setTotalFocusTime] = useState(0)
-  const [settings, setSettings] = useState({
-    pomodoroDuration: 25,
-    shortBreakDuration: 5,
-    longBreakDuration: 15,
-    autoStartBreaks: true,
-    autoStartPomodoros: false,
-    soundEnabled: true,
-    notificationsEnabled: true,
-    volume: 0.5,
-  })
+  const [sessionsCompleted, setSessionsCompleted] = useState(() => loadStats().sessionsCompleted)
+  const [totalFocusTime, setTotalFocusTime] = useState(() => loadStats().totalFocusTime)
+  const [settings, setSettings] = useState(loadSettings)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const audioRef = useRef<{ play: () => Promise<void>; gainNode?: GainNode } | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
+  const settingsRef = useRef(settings)
+  const handleTimerCompleteRef = useRef<() => void | undefined>(undefined)
+
+  // Keep refs in sync
+  useEffect(() => {
+    settingsRef.current = settings
+  }, [settings])
 
   // Initialize audio with generated tone using Web Audio API
   useEffect(() => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const audioContext = new AudioContextClass()
     audioContextRef.current = audioContext
 
     // Create a reusable gain node for volume control
     const gainNode = audioContext.createGain()
     gainNode.connect(audioContext.destination)
-    gainNode.gain.value = settings.volume * 0.3
+    gainNode.gain.value = settingsRef.current.volume * 0.3
 
     audioRef.current = {
       play: async () => {
@@ -114,56 +146,92 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
       gainNode,
     }
 
-    // Load persisted settings
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('focus-mode-settings')
-      if (saved) {
-        try {
-          setSettings(JSON.parse(saved))
-          // Apply durations
-          setTimeRemaining(DURATIONS[mode])
-        } catch {}
-      }
-
-      const savedStats = localStorage.getItem('focus-mode-stats')
-      if (savedStats) {
-        try {
-          const stats = JSON.parse(savedStats)
-          setSessionsCompleted(stats.sessionsCompleted || 0)
-          setTotalFocusTime(stats.totalFocusTime || 0)
-        } catch {}
-      }
+    return () => {
+      audioContext.close()
     }
   }, [])
 
-  // Save settings
-  useEffect(() => {
-    localStorage.setItem('focus-mode-settings', JSON.stringify(settings))
-    // Update durations based on settings
-    const newDurations = {
-      pomodoro: settings.pomodoroDuration * 60,
-      shortBreak: settings.shortBreakDuration * 60,
-      longBreak: settings.longBreakDuration * 60,
-    }
-    if (status === 'idle') {
-      setTimeRemaining(newDurations[mode])
-    }
-  }, [settings, status, mode])
+  // Timer logic - defined before useKeyPress hooks
+  const tick = useCallback(() => {
+    setTimeRemaining((prev) => {
+      if (prev <= 1) {
+        handleTimerCompleteRef.current?.()
+        return 0
+      }
+      return prev - 1
+    })
+  }, [])
 
-  // Save stats
-  useEffect(() => {
-    localStorage.setItem(
-      'focus-mode-stats',
-      JSON.stringify({ sessionsCompleted, totalFocusTime })
-    )
-  }, [sessionsCompleted, totalFocusTime])
-
-  // Update audio volume when settings change
-  useEffect(() => {
-    if (audioRef.current?.gainNode) {
-      audioRef.current.gainNode.gain.value = settings.soundEnabled ? settings.volume * 0.3 : 0
+  const pauseTimer = useCallback(() => {
+    setStatus('paused')
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
     }
-  }, [settings.volume, settings.soundEnabled])
+  }, [])
+
+  const startTimer = useCallback(() => {
+    setStatus('running')
+    intervalRef.current = setInterval(tick, 1000)
+  }, [tick])
+
+  const resetTimer = useCallback(() => {
+    pauseTimer()
+    setStatus('idle')
+    setTimeRemaining(DURATIONS[mode] * (mode === 'pomodoro' ? settings.pomodoroDuration / 25 : 1))
+  }, [mode, settings, pauseTimer])
+
+  const handleTimerComplete = useCallback(() => {
+    pauseTimer()
+
+    // Play sound
+    if (settingsRef.current.soundEnabled && audioRef.current) {
+      audioRef.current.play().catch(() => {})
+    }
+
+    // Show notification
+    if (settingsRef.current.notificationsEnabled && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        new Notification('Focus Mode', {
+          body: `${MODE_LABELS[mode]} complete!`,
+          icon: '/icon-192.png',
+        })
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission()
+      }
+    }
+
+    toast.success(`${MODE_LABELS[mode]} complete!`)
+
+    if (mode === 'pomodoro') {
+      setSessionsCompleted((prev: number) => prev + 1)
+      setTotalFocusTime((prev: number) => prev + settingsRef.current.pomodoroDuration * 60)
+
+      // Determine next break
+      const nextMode = sessionsCompleted + 1 >= 4 ? 'longBreak' : 'shortBreak'
+      setMode(nextMode)
+
+      if (settingsRef.current.autoStartBreaks) {
+        setTimeout(() => startTimer(), 1000)
+      }
+    } else {
+      // Break complete, back to pomodoro
+      setMode('pomodoro')
+      if (settingsRef.current.autoStartPomodoros) {
+        setTimeout(() => startTimer(), 1000)
+      }
+    }
+  }, [mode, sessionsCompleted, pauseTimer, startTimer])
+
+  // Keep handleTimerCompleteRef in sync
+  useEffect(() => {
+    handleTimerCompleteRef.current = handleTimerComplete
+  }, [handleTimerComplete])
+
+  const handleModeChange = useCallback((newMode: TimerMode) => {
+    setMode(newMode)
+    resetTimer()
+  }, [resetTimer])
 
   // Keyboard shortcuts
   useKeyPress(['Space'], () => {
@@ -182,82 +250,35 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
     }
   })
 
-  // Timer logic
-  const tick = useCallback(() => {
-    setTimeRemaining((prev) => {
-      if (prev <= 1) {
-        handleTimerComplete()
-        return 0
-      }
-      return prev - 1
-    })
-  }, [])
-
-  const startTimer = useCallback(() => {
-    setStatus('running')
-    intervalRef.current = setInterval(tick, 1000)
-  }, [tick])
-
-  const pauseTimer = useCallback(() => {
-    setStatus('paused')
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
+  // Save settings
+  useEffect(() => {
+    localStorage.setItem('focus-mode-settings', JSON.stringify(settings))
+    // Update durations based on settings
+    const newDurations = {
+      pomodoro: settings.pomodoroDuration * 60,
+      shortBreak: settings.shortBreakDuration * 60,
+      longBreak: settings.longBreakDuration * 60,
     }
-  }, [])
-
-  const resetTimer = useCallback(() => {
-    pauseTimer()
-    setStatus('idle')
-    setTimeRemaining(DURATIONS[mode] * (mode === 'pomodoro' ? settings.pomodoroDuration / 25 : 1))
-  }, [mode, settings, pauseTimer])
-
-  const handleTimerComplete = useCallback(() => {
-    pauseTimer()
-
-    // Play sound
-    if (settings.soundEnabled && audioRef.current) {
-      audioRef.current.play().catch(() => {})
+    if (status === 'idle') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTimeRemaining(newDurations[mode])
     }
+  }, [settings, status, mode])
 
-    // Show notification
-    if (settings.notificationsEnabled && 'Notification' in window) {
-      if (Notification.permission === 'granted') {
-        new Notification('Focus Mode', {
-          body: `${MODE_LABELS[mode]} complete!`,
-          icon: '/icon-192.png',
-        })
-      } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission()
-      }
+  // Save stats
+  useEffect(() => {
+    localStorage.setItem(
+      'focus-mode-stats',
+      JSON.stringify({ sessionsCompleted, totalFocusTime })
+    )
+  }, [sessionsCompleted, totalFocusTime])
+
+  // Update audio volume when settings change
+  useEffect(() => {
+    if (audioRef.current?.gainNode) {
+      audioRef.current.gainNode.gain.value = settingsRef.current.soundEnabled ? settingsRef.current.volume * 0.3 : 0
     }
-
-    toast.success(`${MODE_LABELS[mode]} complete!`)
-
-    if (mode === 'pomodoro') {
-      setSessionsCompleted((prev) => prev + 1)
-      setTotalFocusTime((prev) => prev + settings.pomodoroDuration * 60)
-
-      // Determine next break
-      const nextMode = sessionsCompleted + 1 >= 4 ? 'longBreak' : 'shortBreak'
-      setMode(nextMode)
-
-      if (settings.autoStartBreaks) {
-        setTimeout(() => startTimer(), 1000)
-      }
-    } else {
-      // Break complete, back to pomodoro
-      setMode('pomodoro')
-      if (settings.autoStartPomodoros) {
-        setTimeout(() => startTimer(), 1000)
-      }
-    }
-  }, [mode, sessionsCompleted, settings, pauseTimer, startTimer])
-
-  const handleModeChange = useCallback((newMode: TimerMode) => {
-    setMode(newMode)
-    resetTimer()
-  }, [resetTimer])
+  }, [settings.volume, settings.soundEnabled])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -391,13 +412,13 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSettings((s) => ({ ...s, soundEnabled: !s.soundEnabled }))}
+            onClick={() => setSettings((s: typeof settings) => ({ ...s, soundEnabled: !s.soundEnabled }))}
           >
             {settings.soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </Button>
           <Slider
             value={[settings.volume * 100]}
-            onValueChange={([v]: number[]) => setSettings((s) => ({ ...s, volume: v / 100 }))}
+            onValueChange={([v]: number[]) => setSettings((s: typeof settings) => ({ ...s, volume: v / 100 }))}
             max={100}
             step={10}
             className="flex-1"
@@ -420,7 +441,7 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
                 <Label>Focus Duration (min)</Label>
                 <Select
                   value={String(settings.pomodoroDuration)}
-                  onValueChange={(v) => setSettings((s) => ({ ...s, pomodoroDuration: Number(v) }))}
+                  onValueChange={(v) => setSettings((s: typeof settings) => ({ ...s, pomodoroDuration: Number(v) }))}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -434,7 +455,7 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
                 <Label>Short Break (min)</Label>
                 <Select
                   value={String(settings.shortBreakDuration)}
-                  onValueChange={(v) => setSettings((s) => ({ ...s, shortBreakDuration: Number(v) }))}
+                  onValueChange={(v) => setSettings((s: typeof settings) => ({ ...s, shortBreakDuration: Number(v) }))}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -448,7 +469,7 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
                 <Label>Long Break (min)</Label>
                 <Select
                   value={String(settings.longBreakDuration)}
-                  onValueChange={(v) => setSettings((s) => ({ ...s, longBreakDuration: Number(v) }))}
+                  onValueChange={(v) => setSettings((s: typeof settings) => ({ ...s, longBreakDuration: Number(v) }))}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -481,7 +502,7 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
                 </div>
                 <Switch
                   checked={settings.autoStartBreaks}
-                  onCheckedChange={(c: boolean) => setSettings((s) => ({ ...s, autoStartBreaks: c }))}
+                  onCheckedChange={(c: boolean) => setSettings((s: typeof settings) => ({ ...s, autoStartBreaks: c }))}
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -491,7 +512,7 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
                 </div>
                 <Switch
                   checked={settings.autoStartPomodoros}
-                  onCheckedChange={(c: boolean) => setSettings((s) => ({ ...s, autoStartPomodoros: c }))}
+                  onCheckedChange={(c: boolean) => setSettings((s: typeof settings) => ({ ...s, autoStartPomodoros: c }))}
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -501,7 +522,7 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
                 </div>
                 <Switch
                   checked={settings.soundEnabled}
-                  onCheckedChange={(c) => setSettings((s) => ({ ...s, soundEnabled: c }))}
+                  onCheckedChange={(c: boolean) => setSettings((s: typeof settings) => ({ ...s, soundEnabled: c }))}
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -511,7 +532,7 @@ export function FocusMode({ taskId, taskName, onClose }: FocusModeProps) {
                 </div>
                 <Switch
                   checked={settings.notificationsEnabled}
-                  onCheckedChange={(c) => setSettings((s) => ({ ...s, notificationsEnabled: c }))}
+                  onCheckedChange={(c: boolean) => setSettings((s: typeof settings) => ({ ...s, notificationsEnabled: c }))}
                 />
               </div>
             </div>
