@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bell, BellOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { Bell, BellOff, Loader2, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -28,24 +28,23 @@ export function PushNotificationsSettings() {
   } | null>(null)
 
   useEffect(() => {
-    checkSupport()
-  }, [])
+    const init = async () => {
+      const supported = await isPushSupported()
+      setIsSupported(supported)
 
-  const checkSupport = async () => {
-    const supported = await isPushSupported()
-    setIsSupported(supported)
+      if (supported && typeof window !== 'undefined') {
+        const perm = Notification.permission
+        setPermission(perm)
 
-    if (supported && typeof window !== 'undefined') {
-      const perm = Notification.permission
-      setPermission(perm)
-
-      const sub = getPushSubscription()
-      if (sub) {
-        setSubscription(sub)
-        setIsSubscribed(true)
+        const sub = getPushSubscription()
+        if (sub) {
+          setSubscription(sub)
+          setIsSubscribed(true)
+        }
       }
     }
-  }
+    init()
+  }, [])
 
   const handlePermissionRequest = async () => {
     setIsLoading(true)
@@ -58,7 +57,7 @@ export function PushNotificationsSettings() {
       } else {
         toast.error('Notifications permission denied')
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to request permission')
     } finally {
       setIsLoading(false)
@@ -81,7 +80,7 @@ export function PushNotificationsSettings() {
       } else {
         toast.error('Failed to enable push notifications')
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to enable push notifications')
     } finally {
       setIsLoading(false)
@@ -99,7 +98,7 @@ export function PushNotificationsSettings() {
       } else {
         toast.error('Failed to disable push notifications')
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to disable push notifications')
     } finally {
       setIsLoading(false)
@@ -120,7 +119,7 @@ export function PushNotificationsSettings() {
         tag: 'test-notification',
       })
       toast.success('Test notification sent')
-    } catch (error) {
+    } catch {
       toast.error('Failed to send test notification')
     }
   }
@@ -140,7 +139,7 @@ export function PushNotificationsSettings() {
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
             <BellOff className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Your browser doesn't support the Push API.</p>
+            <p>Your browser doesn&apos;t support the Push API.</p>
             <p className="text-sm mt-2">Try using Chrome, Firefox, Edge, or Safari.</p>
           </div>
         </CardContent>
@@ -299,19 +298,20 @@ interface NotificationTypeToggleProps {
   defaultEnabled?: boolean
 }
 
-function NotificationTypeToggle({ id, label, description, defaultEnabled = false }: NotificationTypeToggleProps) {
-  const [enabled, setEnabled] = useState(defaultEnabled)
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`notification-${id}`)
-      if (saved !== null) {
-        setEnabled(JSON.parse(saved))
-      } else {
-        setEnabled(defaultEnabled)
-      }
+function loadNotificationSetting(id: string, defaultEnabled: boolean) {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem(`notification-${id}`)
+    if (saved !== null) {
+      try {
+        return JSON.parse(saved)
+      } catch {}
     }
-  }, [id, defaultEnabled])
+  }
+  return defaultEnabled
+}
+
+function NotificationTypeToggle({ id, label, description, defaultEnabled = false }: NotificationTypeToggleProps) {
+  const [enabled, setEnabled] = useState(() => loadNotificationSetting(id, defaultEnabled))
 
   const handleChange = (checked: boolean) => {
     setEnabled(checked)
