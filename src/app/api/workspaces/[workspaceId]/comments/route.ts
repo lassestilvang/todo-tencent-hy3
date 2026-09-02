@@ -6,12 +6,8 @@ import {
   deleteComment,
 } from '@/lib/workspaces'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const { workspaceId } = await params
     const { searchParams } = new URL(request.url)
     const taskId = searchParams.get('taskId')
 
@@ -64,12 +60,8 @@ export async function POST(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-) {
+export async function PATCH(request: NextRequest) {
   try {
-    const { workspaceId } = await params
     const body = await request.json()
     const { commentId, content, userId } = body
 
@@ -99,12 +91,8 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-) {
+export async function DELETE(request: NextRequest) {
   try {
-    const { workspaceId } = await params
     const { searchParams } = new URL(request.url)
     const commentId = searchParams.get('commentId')
     const userId = searchParams.get('userId')
