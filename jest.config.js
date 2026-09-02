@@ -1,3 +1,5 @@
+// Jest loads this file as CommonJS, so require() is required here.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const nextJest = require('next/jest')
 
 const createJestConfig = nextJest({
