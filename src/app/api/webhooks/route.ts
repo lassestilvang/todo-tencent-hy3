@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createWebhook, getWebhooks, WebhookEvent, generateWebhookSecret } from '@/lib/webhooks'
+import { createWebhook, getWebhooks, WebhookEvent } from '@/lib/webhooks'
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const webhooks = getWebhooks()
 
