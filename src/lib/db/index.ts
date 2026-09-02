@@ -14,21 +14,8 @@ import {
 } from './schema'
 import { env } from '../env'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import fs from 'fs'
-
-// Get __dirname in a way that works with both ESM and Jest
-const getDirname = () => {
-  try {
-    return path.dirname(fileURLToPath(import.meta.url))
-  } catch {
-    // Fallback for Jest/test environments
-    return path.dirname(process.cwd() + '/src/lib/db/index.ts')
-  }
-}
-
-const __dirname = getDirname()
 
 const dbPath = env.TEST_DB_PATH || path.join(process.cwd(), 'tasks.db')
 
@@ -37,8 +24,6 @@ const dbDir = path.dirname(dbPath)
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true })
 }
-
-import type { SQLiteTableWithColumns } from 'drizzle-orm/sqlite-core'
 
 // Schema object with only table definitions - explicitly typed to prevent inference issues
 const dbSchema = {
@@ -50,7 +35,7 @@ const dbSchema = {
   taskReminders,
   taskLogs,
   taskDependencies,
-} as const satisfies Record<string, SQLiteTableWithColumns<any>>
+} as const
 
 // Singleton database instance
 type DbSchema = typeof dbSchema
