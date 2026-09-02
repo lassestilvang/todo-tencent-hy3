@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Users, Mail, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { Users, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -31,49 +31,58 @@ export default function WorkspaceInvitationPage() {
   const [isAccepting, setIsAccepting] = useState(false)
   const [name, setName] = useState('')
   const [showNameInput, setShowNameInput] = useState(false)
+  const mountedRef = useRef(true)
 
   useEffect(() => {
+    mountedRef.current = true
+
+    function loadInvitation() {
+      setIsLoading(true)
+      setError(null)
+      const inv = getInvitation(token)
+      if (!inv) {
+        setError('Invalid or expired invitation link')
+        setIsLoading(false)
+        return
+      }
+
+      if (inv.status !== 'pending') {
+        setError('This invitation has already been used')
+        setIsLoading(false)
+        return
+      }
+
+      if (Date.now() > inv.expiresAt) {
+        setError('This invitation has expired')
+        setIsLoading(false)
+        return
+      }
+
+      const workspace = getWorkspace(inv.workspaceId)
+      if (!workspace) {
+        setError('Workspace not found')
+        setIsLoading(false)
+        return
+      }
+
+      setInvitation({
+        workspaceId: inv.workspaceId,
+        email: inv.email,
+        role: inv.role,
+        invitedByName: inv.invitedByName,
+        workspaceName: workspace.name,
+        workspaceDescription: workspace.description,
+        expiresAt: inv.expiresAt,
+      })
+      setIsLoading(false)
+    }
+
     loadInvitation()
+
+    return () => {
+      mountedRef.current = false
+    }
   }, [token])
-
-  const loadInvitation = () => {
-    const inv = getInvitation(token)
-    if (!inv) {
-      setError('Invalid or expired invitation link')
-      setIsLoading(false)
-      return
-    }
-
-    if (inv.status !== 'pending') {
-      setError('This invitation has already been used')
-      setIsLoading(false)
-      return
-    }
-
-    if (Date.now() > inv.expiresAt) {
-      setError('This invitation has expired')
-      setIsLoading(false)
-      return
-    }
-
-    const workspace = getWorkspace(inv.workspaceId)
-    if (!workspace) {
-      setError('Workspace not found')
-      setIsLoading(false)
-      return
-    }
-
-    setInvitation({
-      workspaceId: inv.workspaceId,
-      email: inv.email,
-      role: inv.role,
-      invitedByName: inv.invitedByName,
-      workspaceName: workspace.name,
-      workspaceDescription: workspace.description,
-      expiresAt: inv.expiresAt,
-    })
-    setIsLoading(false)
-  }
 
   const handleAccept = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,7 +93,7 @@ export default function WorkspaceInvitationPage() {
 
     // Get or ask for user name
     const userName = name.trim() || invitation.email.split('@')[0]
-    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 
     try {
       const result = acceptInvitation(token, userId, userName)
@@ -95,7 +104,7 @@ export default function WorkspaceInvitationPage() {
       } else {
         setError(result.error || 'Failed to accept invitation')
       }
-    } catch (err) {
+    } catch {
       setError('Failed to accept invitation')
     } finally {
       setIsAccepting(false)
@@ -109,13 +118,12 @@ export default function WorkspaceInvitationPage() {
       declineInvitation(token)
       toast.success('Invitation declined')
       router.push('/')
-    } catch (err) {
+    } catch {
       toast.error('Failed to decline invitation')
     }
   }
 
   const formatExpiry = (timestamp: number) => {
-    const date = new Date(timestamp)
     const now = new Date()
     const diffMs = timestamp - now.getTime()
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
