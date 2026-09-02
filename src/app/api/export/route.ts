@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getTasks, getLists, getLabels } from '@/lib/tasks'
 import { stringify } from 'csv-stringify/sync'
 import { format as formatDate } from 'date-fns'
+import { z } from 'zod'
+import type { Task } from '@/types'
 
 const exportSchema = z.object({
   format: z.enum(['json', 'csv', 'ical']),
@@ -18,7 +20,7 @@ const exportSchema = z.object({
   }).optional(),
 })
 
-function tasksToCSV(tasks: any[]): string {
+function tasksToCSV(tasks: Task[]): string {
   return stringify(tasks.map(task => ({
     id: task.id,
     name: task.name,
@@ -44,7 +46,7 @@ function tasksToCSV(tasks: any[]): string {
   })
 }
 
-function tasksToICAL(tasks: any[]): string {
+function tasksToICAL(tasks: Task[]): string {
   const now = new Date()
   const dtStamp = formatDate(now, "yyyyMMdd'T'HHmmss'Z'")
 
@@ -79,8 +81,6 @@ METHOD:PUBLISH
 ${events}
 END:VCALENDAR`
 }
-
-import { z } from 'zod'
 
 export async function GET(request: Request) {
   try {
