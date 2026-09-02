@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
 import { Plus, Clock } from 'lucide-react'
 import { getTasks } from '@/lib/tasks-client'
@@ -64,8 +64,14 @@ export function SelectableTaskList({
   }, [view, listId, labelId, showCompleted, searchQuery])
 
   // Initial load
+  const mountedRef = useRef(true)
   useEffect(() => {
+    mountedRef.current = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadTasks()
+    return () => {
+      mountedRef.current = false
+    }
   }, [loadTasks])
 
   const totalTasks = tasks.length
@@ -102,7 +108,7 @@ export function SelectableTaskList({
               if (value) await updateTask(taskId, { list_id: value })
               break
             case 'priority':
-              if (value) await updateTask(taskId, { priority: value as any })
+              if (value) await updateTask(taskId, { priority: value as 'low' | 'medium' | 'high' })
               break
             case 'date':
               if (value === 'clear') {
