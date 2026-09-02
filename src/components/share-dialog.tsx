@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Link2, Copy, Check, Trash2, Clock, Lock, ExternalLink, AlertCircle } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link2, Copy, Check, Trash2, Clock, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -26,6 +26,19 @@ interface ShareDialogProps {
   listName: string
 }
 
+interface ShareLink {
+  id: string
+  token: string
+  url: string
+  permission: SharePermission
+  expiresAt?: number
+  hasPassword: boolean
+  createdAt: number
+  accessCount: number
+  lastAccessed?: number
+  isExpired?: boolean
+}
+
 export function ShareDialog({ listId, listName }: ShareDialogProps) {
   const [activeTab, setActiveTab] = useState<'create' | 'manage'>('create')
   const [permission, setPermission] = useState<SharePermission>('view')
@@ -33,31 +46,30 @@ export function ShareDialog({ listId, listName }: ShareDialogProps) {
   const [password, setPassword] = useState('')
   const [requirePassword, setRequirePassword] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
-  const [shareLinks, setShareLinks] = useState<Array<{
-    id: string
-    token: string
-    url: string
-    permission: SharePermission
-    expiresAt?: number
-    hasPassword: boolean
-    createdAt: number
-    accessCount: number
-    lastAccessed?: number
-  }>>([])
+  const [shareLinks, setShareLinks] = useState<ShareLink[]>([])
   const [copiedLink, setCopiedLink] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadShareLinks()
-  }, [listId])
-
-  const loadShareLinks = () => {
+  const loadShareLinks = useCallback(() => {
+    const now = Date.now()
     const links = getListShareLinks(listId)
     setShareLinks(links.map(link => ({
       ...link,
       url: getShareUrl(link.token),
       hasPassword: !!link.passwordHash,
+      isExpired: link.expiresAt ? link.expiresAt < now : false,
     })))
-  }
+  }, [listId])
+
+  // Use mounted ref to avoid setState in effect warning
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadShareLinks()
+    return () => {
+      mountedRef.current = false
+    }
+  }, [loadShareLinks])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -78,7 +90,7 @@ export function ShareDialog({ listId, listName }: ShareDialogProps) {
       setExpiresInDays('')
       setPassword('')
       setRequirePassword(false)
-    } catch (error) {
+    } catch {
       toast.error('Failed to create share link')
     } finally {
       setIsCreating(false)
@@ -131,7 +143,7 @@ export function ShareDialog({ listId, listName }: ShareDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5" />
-            Share "{listName}"
+            Share &quot;{listName}&quot;
           </DialogTitle>
           <DialogDescription>
             Create links to share this list with others. Control what they can do.
@@ -284,7 +296,7 @@ export function ShareDialog({ listId, listName }: ShareDialogProps) {
                               {link.expiresAt && (
                                 <span className={cn(
                                   'px-2 py-0.5 text-xs font-medium rounded',
-                                  link.expiresAt < Date.now() ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                                  link.isExpired ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
                                 )}>
                                   <Clock className="h-3 w-3 inline mr-1" />
                                   {formatExpiryDate(link.expiresAt)}
