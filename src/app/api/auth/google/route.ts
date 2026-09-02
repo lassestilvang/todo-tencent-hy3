@@ -5,7 +5,7 @@ import { createHash, randomBytes } from 'crypto'
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   if (!GOOGLE_CLIENT_ID) {
     return NextResponse.json(
       { error: 'Google OAuth not configured' },
