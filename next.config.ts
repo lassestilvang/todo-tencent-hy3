@@ -114,4 +114,4 @@ const nextConfig: NextConfig = {
 };
 
 // Type assertion to avoid conflicts between next-pwa types and Next.js 16
-export default withBundleAnalyzer(pwaConfig(nextConfig as any));
+export default withBundleAnalyzer(pwaConfig(nextConfig as NextConfig));
