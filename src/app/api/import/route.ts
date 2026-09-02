@@ -5,7 +5,7 @@ import { parse as parseCSVSync } from 'csv-parse/sync'
 
 const importSchema = z.object({
   format: z.enum(['json', 'csv']),
-  data: z.any(),
+  data: z.unknown(),
   options: z.object({
     skipDuplicates: z.boolean().optional(),
     defaultListId: z.string().optional(),
@@ -47,7 +47,7 @@ const importDataSchema = z.object({
   labels: z.array(importLabelSchema).optional(),
 })
 
-function parseCSV(csvText: string): any[] {
+function parseCSV(csvText: string): Record<string, string>[] {
   return parseCSVSync(csvText, {
     columns: true,
     skip_empty_lines: true,
@@ -55,7 +55,7 @@ function parseCSV(csvText: string): any[] {
   })
 }
 
-function parseCSVTasks(csvData: any[]): z.infer<typeof importTaskSchema>[] {
+function parseCSVTasks(csvData: Record<string, string>[]): z.infer<typeof importTaskSchema>[] {
   return csvData.map(row => ({
     name: row.name || row.title || '',
     description: row.description || row.notes || undefined,
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   try {
     const contentType = request.headers.get('content-type') || ''
     let format = 'json'
-    let data: any
+    let data: unknown
     let options: { skipDuplicates?: boolean; defaultListId?: string } = {}
 
     if (contentType.includes('multipart/form-data')) {
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'CSV data must be an array' }, { status: 400 })
       }
       importData = {
-        tasks: parseCSVTasks(data),
+        tasks: parseCSVTasks(data as Record<string, string>[]),
         lists: [],
         labels: [],
       }
