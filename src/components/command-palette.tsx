@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useKeyPress } from '@/lib/hooks'
-import { Search, X, Zap, Calendar, Clock, Flag, List, Tag, RotateCcw } from 'lucide-react'
+import { Search, X, Zap, Calendar, Clock, Flag, List, RotateCcw } from 'lucide-react'
 import { parseNaturalLanguage, generatePreview } from '@/lib/nlp'
 import { createTask, getLists } from '@/lib/tasks-client'
 
@@ -16,22 +16,30 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
   const [input, setInput] = useState('')
   const [parsed, setParsed] = useState<ReturnType<typeof parseNaturalLanguage> | null>(null)
   const [lists, setLists] = useState<Array<{ id: string; name: string }>>([])
-  const [selectedIndex, setSelectedIndex] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const mountedRef = useRef(true)
 
   // Fetch lists on mount
   useEffect(() => {
+    mountedRef.current = true
+
     if (isOpen) {
       const fetchLists = async () => {
         try {
           const allLists = await getLists()
-          setLists(allLists)
+          if (mountedRef.current) {
+            setLists(allLists)
+          }
         } catch (error) {
           console.error('Failed to fetch lists:', error)
         }
       }
       fetchLists()
+    }
+
+    return () => {
+      mountedRef.current = false
     }
   }, [isOpen])
 
@@ -39,13 +47,43 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
   useEffect(() => {
     if (input.trim()) {
       const parsedResult = parseNaturalLanguage(input, { lists })
-      setParsed(parsedResult)
-      setShowPreview(true)
+      if (mountedRef.current) {
+        setParsed(parsedResult)
+        setShowPreview(true)
+      }
     } else {
-      setParsed(null)
-      setShowPreview(false)
+      if (mountedRef.current) {
+        setParsed(null)
+        setShowPreview(false)
+      }
     }
   }, [input, lists])
+
+  const handleCreateTask = useCallback(async () => {
+    if (!parsed || !parsed.name) return
+
+    try {
+      await createTask({
+        name: parsed.name,
+        date: parsed.date,
+        deadline: parsed.deadline,
+        priority: parsed.priority,
+        list_id: parsed.listId,
+        estimate: parsed.estimate,
+        recurring: parsed.recurring,
+      })
+
+      setInput('')
+      setParsed(null)
+      setShowPreview(false)
+      onTaskCreated?.()
+
+      // Close after short delay to show success
+      setTimeout(() => onClose(), 300)
+    } catch (error) {
+      console.error('Failed to create task:', error)
+    }
+  }, [parsed, onTaskCreated, onClose])
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -76,7 +114,7 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
         }
         break
     }
-  }, [isOpen, parsed, onClose])
+  }, [isOpen, parsed, onClose, handleCreateTask])
 
   // Global key press for opening palette (Cmd/Ctrl + K)
   useKeyPress(['Meta', 'k'], () => {
@@ -84,32 +122,6 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
       // This would be handled by parent to open the palette
     }
   })
-
-  const handleCreateTask = async () => {
-    if (!parsed || !parsed.name) return
-
-    try {
-      await createTask({
-        name: parsed.name,
-        date: parsed.date,
-        deadline: parsed.deadline,
-        priority: parsed.priority,
-        list_id: parsed.listId,
-        estimate: parsed.estimate,
-        recurring: parsed.recurring,
-      })
-
-      setInput('')
-      setParsed(null)
-      setShowPreview(false)
-      onTaskCreated?.()
-
-      // Close after short delay to show success
-      setTimeout(() => onClose(), 300)
-    } catch (error) {
-      console.error('Failed to create task:', error)
-    }
-  }
 
   if (!isOpen) return null
 
@@ -129,7 +141,7 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                onBlur={(e) => {
+                onBlur={() => {
                   // Don't close if clicking on preview
                   setTimeout(() => {
                     if (!showPreview) onClose()
