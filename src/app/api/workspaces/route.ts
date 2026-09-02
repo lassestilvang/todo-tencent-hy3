@@ -6,7 +6,6 @@ import {
   getWorkspace,
   updateWorkspace,
   deleteWorkspace,
-  Workspace,
 } from '@/lib/workspaces'
 
 export async function GET(request: NextRequest) {
