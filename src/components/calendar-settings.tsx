@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Calendar, RefreshCw, CheckCircle, AlertCircle, ExternalLink, Settings, Trash2 } from 'lucide-react'
+import { Calendar, RefreshCw, CheckCircle, AlertCircle, ExternalLink, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -21,7 +21,6 @@ interface CalendarInfo {
 
 export function CalendarSettings() {
   const [isConnected, setIsConnected] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [calendars, setCalendars] = useState<CalendarInfo[]>([])
   const [selectedCalendar, setSelectedCalendar] = useState<string>('')
   const [autoSync, setAutoSync] = useState(false)
@@ -31,34 +30,40 @@ export function CalendarSettings() {
   const [syncError, setSyncError] = useState<string | null>(null)
 
   useEffect(() => {
+    let mounted = true
+
+    function loadSettings() {
+      if (typeof window !== 'undefined') {
+        setAutoSync(localStorage.getItem('calendar-auto-sync') === 'true')
+        setSyncDirection((localStorage.getItem('calendar-sync-direction') as 'one-way' | 'two-way') || 'one-way')
+        setSelectedCalendar(localStorage.getItem('calendar-selected') || '')
+      }
+    }
+
+    async function checkConnection() {
+      try {
+        const res = await fetch('/api/calendar/status')
+        if (res.ok && mounted) {
+          const data = await res.json()
+          setIsConnected(data.connected)
+          if (data.calendars) {
+            setCalendars(data.calendars)
+            setSelectedCalendar(data.selectedCalendar || data.calendars[0]?.id || '')
+          }
+          setLastSync(data.lastSync)
+        }
+      } catch (error) {
+        console.error('Failed to check calendar connection:', error)
+      }
+    }
+
     checkConnection()
     loadSettings()
+
+    return () => {
+      mounted = false
+    }
   }, [])
-
-  const checkConnection = async () => {
-    try {
-      const res = await fetch('/api/calendar/status')
-      if (res.ok) {
-        const data = await res.json()
-        setIsConnected(data.connected)
-        if (data.calendars) {
-          setCalendars(data.calendars)
-          setSelectedCalendar(data.selectedCalendar || data.calendars[0]?.id || '')
-        }
-        setLastSync(data.lastSync)
-      }
-    } catch (error) {
-      console.error('Failed to check calendar connection:', error)
-    }
-  }
-
-  const loadSettings = () => {
-    if (typeof window !== 'undefined') {
-      setAutoSync(localStorage.getItem('calendar-auto-sync') === 'true')
-      setSyncDirection((localStorage.getItem('calendar-sync-direction') as 'one-way' | 'two-way') || 'one-way')
-      setSelectedCalendar(localStorage.getItem('calendar-selected') || '')
-    }
-  }
 
   const handleConnect = () => {
     window.location.href = '/api/auth/google'
@@ -73,7 +78,7 @@ export function CalendarSettings() {
         setSelectedCalendar('')
         localStorage.removeItem('calendar-selected')
         toast.success('Calendar disconnected')
-      } catch (error) {
+      } catch {
         toast.error('Failed to disconnect')
       }
     }
@@ -96,7 +101,7 @@ export function CalendarSettings() {
         setSyncError(data.errors?.join(', ') || data.error || 'Sync failed')
         toast.error(`Sync failed: ${data.error}`)
       }
-    } catch (error) {
+    } catch {
       setSyncStatus('error')
       setSyncError('Network error')
       toast.error('Sync failed: Network error')
@@ -150,7 +155,7 @@ export function CalendarSettings() {
             <div className="flex items-center gap-2">
               {isConnected ? (
                 <>
-                  <Button variant="outline" size="sm" onClick={handleSync} disabled={isLoading || syncStatus === 'syncing'}>
+                  <Button variant="outline" size="sm" onClick={handleSync} disabled={syncStatus === 'syncing'}>
                     {syncStatus === 'syncing' && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
                     Sync Now
                   </Button>
