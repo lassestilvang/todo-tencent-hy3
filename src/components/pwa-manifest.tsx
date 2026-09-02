@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Download, X, Monitor, Smartphone } from 'lucide-react'
+import { Download, Monitor, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,37 +9,36 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
-import { cn } from '@/lib/utils'
+
+function checkStandalone() {
+  if (typeof window === 'undefined') return false
+  const nav = window.navigator as Navigator & { standalone?: boolean }
+  return window.matchMedia('(display-mode: standalone)').matches ||
+    nav.standalone === true
+}
+
+function checkIOS() {
+  if (typeof window === 'undefined') return false
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window)
+}
 
 export function PWAManifest() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [isInstallable, setIsInstallable] = useState(false)
-  const [isIOS, setIsIOS] = useState(false)
-  const [isStandalone, setIsStandalone] = useState(false)
+  const [isIOS] = useState(() => checkIOS())
+  const [isStandalone] = useState(() => checkStandalone())
 
   useEffect(() => {
-    // Check if running in standalone mode (already installed)
-    const standalone = window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true
-    setIsStandalone(standalone)
-
-    // Check if iOS
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
-    setIsIOS(iOS)
-
     // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      setIsInstallable(true)
 
       // Show prompt after a delay if not dismissed before
       if (typeof window !== 'undefined') {
         const dismissed = localStorage.getItem('pwa-install-dismissed')
-        if (!dismissed && !standalone) {
+        if (!dismissed && !isStandalone) {
           setTimeout(() => setShowInstallPrompt(true), 30000) // 30 seconds
         }
       }
@@ -47,7 +46,6 @@ export function PWAManifest() {
 
     const handleAppInstalled = () => {
       setDeferredPrompt(null)
-      setIsInstallable(false)
       setShowInstallPrompt(false)
       if (typeof window !== 'undefined') {
         localStorage.setItem('pwa-installed', 'true')
@@ -66,7 +64,7 @@ export function PWAManifest() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('appinstalled', handleAppInstalled)
     }
-  }, [])
+  }, [isStandalone])
 
   const handleInstall = async () => {
     if (!deferredPrompt) return
@@ -77,7 +75,6 @@ export function PWAManifest() {
     if (outcome === 'accepted') {
       setShowInstallPrompt(false)
       setDeferredPrompt(null)
-      setIsInstallable(false)
     }
   }
 
