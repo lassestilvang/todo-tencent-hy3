@@ -13,7 +13,11 @@ export default function OfflinePage() {
     const handleOnline = () => setIsOnline(true)
     const handleOffline = () => setIsOnline(false)
 
-    setIsOnline(navigator.onLine)
+    // Initialize state after mount to avoid synchronous setState in effect
+    const initializeOnlineStatus = () => {
+      setIsOnline(navigator.onLine)
+    }
+    initializeOnlineStatus()
 
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
@@ -37,7 +41,7 @@ export default function OfflinePage() {
           <WifiOff className="h-12 w-12 text-white" />
         </div>
 
-        <h1 className="text-3xl font-bold mb-2">You're Offline</h1>
+        <h1 className="text-3xl font-bold mb-2">You&apos;re Offline</h1>
         <p className="text-muted-foreground mb-8">
           No internet connection detected. Some features may be limited.
         </p>
@@ -63,7 +67,7 @@ export default function OfflinePage() {
                 <RefreshCw className="h-5 w-5 text-green-500" />
                 <div>
                   <p className="font-medium">Auto Reconnect</p>
-                  <p className="text-sm text-muted-foreground">We'll redirect when back online</p>
+                  <p className="text-sm text-muted-foreground">We&apos;ll redirect when back online</p>
                 </div>
               </div>
             </div>
