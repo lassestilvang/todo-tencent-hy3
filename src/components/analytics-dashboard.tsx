@@ -1,9 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -18,7 +16,6 @@ import {
   Cell,
 } from 'recharts'
 import { Calendar, TrendingUp, Target, Clock, Trophy, Zap } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -27,7 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, addDays } from 'date-fns'
+import { format, subDays, addDays } from 'date-fns'
 import { cn } from '@/lib/utils'
 
 interface TaskStats {
@@ -49,30 +46,37 @@ interface AnalyticsData {
   longestStreak: number
 }
 
-const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
-
 export function AnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter' | 'year'>('week')
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  const fetchAnalytics = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      // In a real app, this would call an API endpoint
-      // For now, we'll generate mock data
-      const mockData = generateMockData(timeRange)
-      setData(mockData)
-    } catch (error) {
-      console.error('Failed to fetch analytics:', error)
-    } finally {
-      setIsLoading(false)
+  useEffect(() => {
+    let mounted = true
+
+    async function fetchAnalytics() {
+      try {
+        // In a real app, this would call an API endpoint
+        // For now, we'll generate mock data
+        const mockData = generateMockData(timeRange)
+        if (mounted) {
+          setData(mockData)
+        }
+      } catch (error) {
+        console.error('Failed to fetch analytics:', error)
+      } finally {
+        if (mounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    fetchAnalytics()
+
+    return () => {
+      mounted = false
     }
   }, [timeRange])
-
-  useEffect(() => {
-    fetchAnalytics()
-  }, [fetchAnalytics])
 
   if (isLoading) {
     return (
@@ -370,7 +374,6 @@ function generateMockData(range: 'week' | 'month' | 'quarter' | 'year'): Analyti
   let totalCompleted = 0
   let totalCreated = 0
   let totalTime = 0
-  let totalEstimated = 0
 
   for (let i = days - 1; i >= 0; i--) {
     const date = format(subDays(new Date(), i), 'yyyy-MM-dd')
@@ -390,7 +393,6 @@ function generateMockData(range: 'week' | 'month' | 'quarter' | 'year'): Analyti
     totalCompleted += completed
     totalCreated += created
     totalTime += time
-    totalEstimated += estimated
   }
 
   // Calculate streak
