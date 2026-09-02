@@ -1,15 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Link,
   Link2,
   X,
   AlertCircle,
-  Copy,
   Plus,
   Search,
-  Minus,
   Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -20,7 +18,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -42,7 +39,6 @@ export function TaskDependencies({ taskId }: TaskDependenciesProps) {
   const [blocking, setBlocking] = useState<Task[]>([])
   const [blocked, setBlocked] = useState<Task[]>([])
   const [canComplete, setCanComplete] = useState(true)
-  const [blockingTasks, setBlockingTasks] = useState<Task[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTaskId, setSelectedTaskId] = useState<string>('')
@@ -50,45 +46,58 @@ export function TaskDependencies({ taskId }: TaskDependenciesProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [availableTasks, setAvailableTasks] = useState<Task[]>([])
 
-  const loadDependencies = async () => {
+  const mountedRef = useRef(true)
+
+  const loadDependencies = useCallback(async () => {
     try {
       setIsLoading(true)
       const [deps, canCompleteResult] = await Promise.all([
         getTaskDependencies(taskId),
         canCompleteTask(taskId),
       ])
-      setBlocking(deps.blocking)
-      setBlocked(deps.blocked)
-      setCanComplete(canCompleteResult.canComplete)
-      setBlockingTasks(canCompleteResult.blockingTasks)
+      if (mountedRef.current) {
+        setBlocking(deps.blocking)
+        setBlocked(deps.blocked)
+        setCanComplete(canCompleteResult.canComplete)
+      }
     } catch (error) {
       console.error('Failed to load dependencies:', error)
       toast.error('Failed to load dependencies')
     } finally {
-      setIsLoading(false)
+      if (mountedRef.current) {
+        setIsLoading(false)
+      }
     }
-  }
+  }, [taskId])
 
-  const loadAvailableTasks = async () => {
+  const loadAvailableTasks = useCallback(async () => {
     try {
       const tasks = await getTasks({ view: 'all', completed: false })
       // Filter out current task and already linked tasks
       const linkedIds = new Set([...blocking.map(t => t.id), ...blocked.map(t => t.id), taskId])
-      setAvailableTasks(tasks.filter(t => !linkedIds.has(t.id)))
+      if (mountedRef.current) {
+        setAvailableTasks(tasks.filter(t => !linkedIds.has(t.id)))
+      }
     } catch (error) {
       console.error('Failed to load available tasks:', error)
     }
-  }
+  }, [blocking, blocked, taskId])
 
   useEffect(() => {
+    mountedRef.current = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDependencies()
-  }, [taskId])
+    return () => {
+      mountedRef.current = false
+    }
+  }, [loadDependencies])
 
   useEffect(() => {
     if (isAddDialogOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadAvailableTasks()
     }
-  }, [isAddDialogOpen])
+  }, [isAddDialogOpen, loadAvailableTasks])
 
   const handleAddDependency = async () => {
     if (!selectedTaskId) return
