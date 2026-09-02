@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Clock, Coffee, Moon, Zap, Bell, Volume2, VolumeX } from 'lucide-react'
+import { useState } from 'react'
+import { Coffee, Moon, Zap, Volume2, VolumeX } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -17,31 +17,34 @@ import {
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
 
-export function FocusModeSettings() {
-  const [settings, setSettings] = useState({
-    pomodoroDuration: 25,
-    shortBreakDuration: 5,
-    longBreakDuration: 15,
-    autoStartBreaks: true,
-    autoStartPomodoros: false,
-    soundEnabled: true,
-    notificationsEnabled: true,
-    volume: 0.5,
-  })
+const defaultSettings = {
+  pomodoroDuration: 25,
+  shortBreakDuration: 5,
+  longBreakDuration: 15,
+  autoStartBreaks: true,
+  autoStartPomodoros: false,
+  soundEnabled: true,
+  notificationsEnabled: true,
+  volume: 0.5,
+}
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('focus-mode-settings')
-      if (saved) {
-        try {
-          setSettings(JSON.parse(saved))
-        } catch {}
-      }
+function loadSettings() {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('focus-mode-settings')
+    if (saved) {
+      try {
+        return { ...defaultSettings, ...JSON.parse(saved) }
+      } catch {}
     }
-  }, [])
+  }
+  return defaultSettings
+}
+
+export function FocusModeSettings() {
+  const [settings, setSettings] = useState(loadSettings)
 
   const updateSetting = <K extends keyof typeof settings>(key: K, value: typeof settings[K]) => {
-    setSettings((prev) => {
+    setSettings((prev: typeof settings) => {
       const next = { ...prev, [key]: value }
       localStorage.setItem('focus-mode-settings', JSON.stringify(next))
       return next
@@ -240,7 +243,7 @@ export function FocusModeSettings() {
             />
           </div>
           <p className="text-sm text-muted-foreground">
-            After 4 focus sessions, you'll get a long break instead of a short break.
+            After 4 focus sessions, you&apos;ll get a long break instead of a short break.
           </p>
         </div>
       </CardContent>
