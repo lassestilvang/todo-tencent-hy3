@@ -11,7 +11,6 @@ if (!existsSync(outputDir)) {
 
 function drawIcon(ctx, size) {
   const radius = size * 0.25;
-  const center = size / 2;
 
   // Background gradient
   const gradient = ctx.createLinearGradient(0, 0, size, size);
