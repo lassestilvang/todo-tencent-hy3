@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { revokeShareLink, validateShareAccess } from '@/lib/share'
+import { revokeShareLink, validateShareAccess } from '@/lib/share-store'
 import { getTasks, getLists } from '@/lib/tasks'
 
 export async function DELETE(
