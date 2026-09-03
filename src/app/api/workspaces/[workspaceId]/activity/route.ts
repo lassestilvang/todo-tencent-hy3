@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getWorkspaceActivity } from '@/lib/workspaces'
+import { getWorkspaceActivity } from '@/lib/workspace-store'
 
 export async function GET(
   request: NextRequest,
