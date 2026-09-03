@@ -4,7 +4,7 @@ import { setDbInstanceForTesting } from '@/lib/tasks'
 // Set up test database before importing tasks module
 setDbInstanceForTesting(testDb)
 
-import { exportAllData, importAllData, createTask, createList, createLabel, addTaskLabel, type ExportData } from '@/lib/tasks'
+import { exportAllData, importAllData, createTask, createList, createLabel, addTaskLabel, getTask, type ExportData } from '@/lib/tasks'
 
 describe('Data Export/Import', () => {
   beforeAll(() => {
@@ -64,6 +64,19 @@ describe('Data Export/Import', () => {
       expect(exportData.labels[0]).toHaveProperty('name', 'Test Label')
     })
 
+    it('should calculate task counts per list', async () => {
+      const list = createList('Counted List', '#00ff00', '🔢')
+      createTask({ name: 'Open Task', list_id: list.id })
+      createTask({ name: 'Done Task', list_id: list.id, completed: true })
+
+      const exportData = await exportAllData()
+      const exported = exportData.lists.find(l => l.id === list.id)
+
+      expect(exported).toBeDefined()
+      expect(exported!.task_count).toBe(2)
+      expect(exported!.incomplete_count).toBe(1)
+    })
+
     it('should export empty arrays when no user data exists (only inbox)', async () => {
       const exportData = await exportAllData()
 
@@ -115,8 +128,44 @@ describe('Data Export/Import', () => {
         taskLogs: []
       }
 
-      const result = await importAllData(exportData, { merge: true, onConflict: 'skip' })
+      const result = await importAllData(exportData, { onConflict: 'skip' })
       expect(result.success).toBe(true)
+    })
+
+    it('should leave existing records untouched under skip', async () => {
+      const task = await createTask({ name: 'Original Name', description: 'Old description' })
+      const exportData = await exportAllData()
+
+      const modified = {
+        ...exportData,
+        tasks: exportData.tasks.map(t =>
+          t.id === task.id ? { ...t, name: 'Replaced Name' } : t
+        ),
+      }
+
+      await importAllData(modified, { onConflict: 'skip' })
+
+      const unchanged = await getTask(task.id)
+      expect(unchanged!.name).toBe('Original Name')
+    })
+
+    it('should replace existing records when onConflict is replace', async () => {
+      const task = await createTask({ name: 'Original Name', description: 'Old description' })
+      const exportData = await exportAllData()
+
+      const modified = {
+        ...exportData,
+        tasks: exportData.tasks.map(t =>
+          t.id === task.id ? { ...t, name: 'Replaced Name', description: 'New description' } : t
+        ),
+      }
+
+      const result = await importAllData(modified, { onConflict: 'replace' })
+      expect(result.success).toBe(true)
+
+      const updated = await getTask(task.id)
+      expect(updated!.name).toBe('Replaced Name')
+      expect(updated!.description).toBe('New description')
     })
   })
 })
