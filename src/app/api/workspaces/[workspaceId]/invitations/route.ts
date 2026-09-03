@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getInvitationUrl } from '@/lib/workspaces'
 import {
   createInvitation,
   getWorkspaceInvitations,
   getInvitation,
   revokeInvitation,
   canUserInvite,
-  getInvitationUrl,
-} from '@/lib/workspaces'
+} from '@/lib/workspace-store'
 
 export async function GET(
   request: NextRequest,
