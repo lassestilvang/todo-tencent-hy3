@@ -27,6 +27,15 @@ export function initializeTestDatabase() {
 }
 
 export function clearTestDatabase() {
+  testDb.delete(schema.pushSubscriptions).run()
+  testDb.delete(schema.taskComments).run()
+  testDb.delete(schema.workspaceActivity).run()
+  testDb.delete(schema.workspaceInvitations).run()
+  testDb.delete(schema.workspaceMembers).run()
+  testDb.delete(schema.workspaces).run()
+  testDb.delete(schema.shareLinks).run()
+  testDb.delete(schema.webhooks).run()
+  testDb.delete(schema.taskTemplates).run()
   testDb.delete(schema.taskDependencies).run()
   testDb.delete(schema.taskLogs).run()
   testDb.delete(schema.taskReminders).run()
