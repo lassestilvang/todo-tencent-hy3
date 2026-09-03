@@ -10,6 +10,7 @@ import {
   taskReminders,
   taskLogs,
   taskDependencies,
+  taskTemplates,
 } from '@/lib/db/schema'
 import type {
   Task,
@@ -37,64 +38,85 @@ export interface TaskTemplate {
   updatedAt: number
 }
 
-const TEMPLATES_KEY = 'task-templates'
-
-function getStoredTemplates(): TaskTemplate[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const stored = localStorage.getItem(TEMPLATES_KEY)
-    return stored ? JSON.parse(stored) : []
-  } catch {
-    return []
+// Tags are stored as a JSON-encoded string[]; nullable columns map to undefined
+// to match the optional-field interface.
+function mapTemplateRow(row: typeof taskTemplates.$inferSelect): TaskTemplate {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? undefined,
+    priority: row.priority ?? undefined,
+    estimate: row.estimate ?? undefined,
+    recurring: row.recurring ?? undefined,
+    listId: row.listId ?? undefined,
+    tags: row.tags ? (JSON.parse(row.tags) as string[]) : undefined,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   }
-}
-
-function saveTemplates(templates: TaskTemplate[]): void {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates))
 }
 
 export function getTemplates(): TaskTemplate[] {
-  return getStoredTemplates()
+  const db = getDatabase()
+  return db.select().from(taskTemplates).all().map(mapTemplateRow)
 }
 
 export function getTemplate(id: string): TaskTemplate | null {
-  return getStoredTemplates().find(t => t.id === id) || null
+  const db = getDatabase()
+  const row = db.select().from(taskTemplates).where(eq(taskTemplates.id, id)).get()
+  return row ? mapTemplateRow(row) : null
 }
 
 export function createTemplate(data: Omit<TaskTemplate, 'id' | 'createdAt' | 'updatedAt'>): TaskTemplate {
-  const templates = getStoredTemplates()
-  const template: TaskTemplate = {
-    ...data,
-    id: generateId(),
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  }
-  templates.push(template)
-  saveTemplates(templates)
-  return template
+  const db = getDatabase()
+  const id = generateId()
+  const now = Date.now()
+
+  db.insert(taskTemplates).values({
+    id,
+    name: data.name,
+    description: data.description,
+    priority: data.priority,
+    estimate: data.estimate,
+    recurring: data.recurring,
+    listId: data.listId,
+    tags: data.tags ? JSON.stringify(data.tags) : null,
+    createdAt: now,
+    updatedAt: now,
+  }).run()
+
+  return { ...data, id, createdAt: now, updatedAt: now }
 }
 
 export function updateTemplate(id: string, data: Partial<Omit<TaskTemplate, 'id' | 'createdAt'>>): TaskTemplate | null {
-  const templates = getStoredTemplates()
-  const index = templates.findIndex(t => t.id === id)
-  if (index === -1) return null
+  const db = getDatabase()
+  const existing = db.select().from(taskTemplates).where(eq(taskTemplates.id, id)).get()
+  if (!existing) return null
 
-  templates[index] = {
-    ...templates[index],
-    ...data,
+  const updateData: Partial<typeof taskTemplates.$inferInsert> = {
     updatedAt: Date.now(),
   }
-  saveTemplates(templates)
-  return templates[index]
+  if (data.name !== undefined) updateData.name = data.name
+  if (data.description !== undefined) updateData.description = data.description
+  if (data.priority !== undefined) updateData.priority = data.priority
+  if (data.estimate !== undefined) updateData.estimate = data.estimate
+  if (data.recurring !== undefined) updateData.recurring = data.recurring
+  if (data.listId !== undefined) updateData.listId = data.listId
+  if (data.tags !== undefined) updateData.tags = JSON.stringify(data.tags)
+
+  db.update(taskTemplates)
+    .set(updateData)
+    .where(eq(taskTemplates.id, id))
+    .run()
+
+  const updated = db.select().from(taskTemplates).where(eq(taskTemplates.id, id)).get()
+  return updated ? mapTemplateRow(updated) : null
 }
 
 export function deleteTemplate(id: string): boolean {
-  const templates = getStoredTemplates()
-  const index = templates.findIndex(t => t.id === id)
-  if (index === -1) return false
-  templates.splice(index, 1)
-  saveTemplates(templates)
+  const db = getDatabase()
+  const existing = db.select().from(taskTemplates).where(eq(taskTemplates.id, id)).get()
+  if (!existing) return false
+  db.delete(taskTemplates).where(eq(taskTemplates.id, id)).run()
   return true
 }
 
@@ -123,6 +145,7 @@ type DatabaseInstance = BetterSQLite3Database<{
   taskReminders: typeof taskReminders
   taskLogs: typeof taskLogs
   taskDependencies: typeof taskDependencies
+  taskTemplates: typeof taskTemplates
 }>
 
 // Database instance can be overridden for testing
@@ -215,6 +238,7 @@ function mapTaskRow(row: typeof tasks.$inferSelect): Task {
     priority: row.priority,
     recurring: row.recurring,
     list_id: row.listId,
+    source_event_id: row.sourceEventId,
     parent_task_id: row.parentTaskId,
     completed: row.completed,
     completed_at: row.completedAt,
@@ -353,17 +377,6 @@ export async function getLists(): Promise<List[]> {
 
   const allLists = db.select().from(lists).all()
 
-  // Use efficient COUNT queries instead of loading all tasks
-  const [allTasksCountResult, incompleteTasksCountResult] = await Promise.all([
-    db.select({ count: sql`count(*)` }).from(tasks).all(),
-    db.select({ count: sql`count(*)` }).from(tasks)
-      .where(eq(tasks.completed, false))
-      .all(),
-  ])
-
-  const totalCount = Number(allTasksCountResult?.[0]?.count ?? 0)
-  const incompleteCount = Number(incompleteTasksCountResult?.[0]?.count ?? 0)
-
   return allLists
     .map((l) => {
       // Per-list counts require a per-list query
@@ -445,6 +458,26 @@ export function createLabel(name: string, color: string, icon: string): Label {
   }).run()
 
   return { id, name, color, icon, created_at: now }
+}
+
+export function updateLabel(
+  id: string,
+  data: { name?: string; color?: string; icon?: string | null }
+): Label | null {
+    const db = getDatabase()
+  const updateData: Partial<typeof labels.$inferInsert> = {}
+  if (data.name !== undefined) updateData.name = data.name
+  if (data.color !== undefined) updateData.color = data.color
+  // icon is NOT NULL in the schema; a null clear becomes an empty string
+  if (data.icon !== undefined) updateData.icon = data.icon ?? ''
+
+  db.update(labels)
+    .set(updateData)
+    .where(eq(labels.id, id))
+    .run()
+
+  const updated = db.select().from(labels).where(eq(labels.id, id)).get()
+  return updated ? mapLabelRow(updated) : null
 }
 
 export function deleteLabel(id: string): void {
@@ -565,6 +598,7 @@ export function createTask(data: Partial<Task>): Task {
     priority: data.priority || 'none',
     recurring: data.recurring || null,
     listId: data.list_id || null,
+    sourceEventId: data.source_event_id || null,
     parentTaskId: data.parent_task_id || null,
     completed: data.completed || false,
     completedAt: null,
@@ -1122,16 +1156,19 @@ export async function exportAllData(): Promise<ExportData> {
   return {
     version: 1,
     exportedAt: new Date().toISOString(),
-    lists: listRows.map(l => ({
-      id: l.id,
-      name: l.name,
-      color: l.color,
-      emoji: l.emoji,
-      created_at: l.createdAt,
-      updated_at: l.updatedAt,
-      task_count: 0, // TODO: Calculate from tasks
-      incomplete_count: 0, // TODO: Calculate from tasks
-    })),
+    lists: listRows.map(l => {
+      const listTaskRows = taskRows.filter(t => t.listId === l.id)
+      return {
+        id: l.id,
+        name: l.name,
+        color: l.color,
+        emoji: l.emoji,
+        created_at: l.createdAt,
+        updated_at: l.updatedAt,
+        task_count: listTaskRows.length,
+        incomplete_count: listTaskRows.filter(t => !t.completed).length,
+      }
+    }),
     labels: labelRows.map(l => ({
       id: l.id,
       name: l.name,
@@ -1177,10 +1214,17 @@ export async function exportAllData(): Promise<ExportData> {
   }
 }
 
-export async function importAllData(data: ExportData, options?: { merge?: boolean; onConflict?: 'skip' | 'replace' }): Promise<{ success: boolean; errors: string[] }> {
+/**
+ * Import an exported dataset.
+ *
+ * Import is always additive (an upsert): existing records are left alone unless
+ * `onConflict` is 'replace'. There is deliberately no "replace everything"
+ * mode — wiping the database is not something an import should do implicitly.
+ */
+export async function importAllData(data: ExportData, options?: { onConflict?: 'skip' | 'replace' }): Promise<{ success: boolean; errors: string[] }> {
   const db = getDatabase()
   const errors: string[] = []
-  const { merge = true, onConflict = 'skip' } = options || {}
+  const { onConflict = 'skip' } = options || {}
 
   try {
     // Import lists
