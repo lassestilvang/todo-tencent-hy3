@@ -6,7 +6,7 @@ import {
   deleteTask,
   updateTask,
 } from '@/lib/tasks'
-import { triggerWebhooks } from '@/lib/webhooks'
+import { triggerWebhooks } from '@/lib/webhook-store'
 import { z } from 'zod'
 
 const createTaskSchema = z.object({
