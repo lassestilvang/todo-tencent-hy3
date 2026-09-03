@@ -20,7 +20,6 @@ describe('Task Templates', () => {
   })
 
   beforeEach(() => {
-    localStorage.clear()
     clearTestDatabase()
   })
 
