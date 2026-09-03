@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link2, Copy, Check, Trash2, Clock, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,7 +19,7 @@ import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { createShareLink, getListShareLinks, revokeShareLink, getShareUrl, formatExpiryDate, formatPermission, getPermissionColor, SharePermission } from '@/lib/share'
+import { formatExpiryDate, formatPermission, getPermissionColor, type SharePermission } from '@/lib/share'
 
 interface ShareDialogProps {
   listId: string
@@ -49,26 +49,26 @@ export function ShareDialog({ listId, listName }: ShareDialogProps) {
   const [shareLinks, setShareLinks] = useState<ShareLink[]>([])
   const [copiedLink, setCopiedLink] = useState<string | null>(null)
 
-  const loadShareLinks = useCallback(() => {
-    const now = Date.now()
-    const links = getListShareLinks(listId)
-    setShareLinks(links.map(link => ({
-      ...link,
-      url: getShareUrl(link.token),
-      hasPassword: !!link.passwordHash,
-      isExpired: link.expiresAt ? link.expiresAt < now : false,
-    })))
+  const loadShareLinks = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/share?listId=${encodeURIComponent(listId)}`)
+      if (!res.ok) return
+
+      const data = await res.json()
+      const now = Date.now()
+      const links: ShareLink[] = (data.links || []).map((link: ShareLink) => ({
+        ...link,
+        isExpired: link.expiresAt ? link.expiresAt < now : false,
+      }))
+      setShareLinks(links)
+    } catch {
+      // Silently fail - keep existing links
+    }
   }, [listId])
 
-  // Use mounted ref to avoid setState in effect warning
-  const mountedRef = useRef(true)
   useEffect(() => {
-    mountedRef.current = true
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadShareLinks()
-    return () => {
-      mountedRef.current = false
-    }
   }, [loadShareLinks])
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -76,10 +76,21 @@ export function ShareDialog({ listId, listName }: ShareDialogProps) {
     setIsCreating(true)
 
     try {
-      const link = createShareLink(listId, permission, {
-        expiresInDays: expiresInDays ? parseInt(expiresInDays) : undefined,
-        password: requirePassword && password ? password : undefined,
+      const res = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listId,
+          permission,
+          expiresInDays: expiresInDays ? parseInt(expiresInDays) : undefined,
+          password: requirePassword && password ? password : undefined,
+        }),
       })
+
+      if (!res.ok) throw new Error('Failed to create share link')
+
+      const data = await res.json()
+      const link = data.shareLink
 
       toast.success('Share link created!')
       setCopiedLink(link.token)
@@ -97,11 +108,20 @@ export function ShareDialog({ listId, listName }: ShareDialogProps) {
     }
   }
 
-  const handleRevoke = (token: string) => {
-    if (confirm('Revoke this share link? Anyone with the link will lose access.')) {
-      revokeShareLink(token)
+  const handleRevoke = async (token: string) => {
+    if (!confirm('Revoke this share link? Anyone with the link will lose access.')) return
+
+    try {
+      const res = await fetch(`/api/share/${encodeURIComponent(token)}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) throw new Error('Failed to revoke share link')
+
       loadShareLinks()
       toast.success('Share link revoked')
+    } catch {
+      toast.error('Failed to revoke share link')
     }
   }
 
