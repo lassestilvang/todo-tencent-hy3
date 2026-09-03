@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto'
+
 export interface PushSubscriptionData {
   endpoint: string
   keys: {
@@ -157,6 +159,10 @@ export async function scheduleNotification(payload: NotificationPayload, delayMs
 
 export function cancelScheduledNotification(timeoutId: NodeJS.Timeout): void {
   clearTimeout(timeoutId)
+}
+
+export function generatePushSubscriptionId(): string {
+  return `push_${randomBytes(12).toString('base64url')}`
 }
 
 export function generateVapidKeys(): { publicKey: string; privateKey: string } {
