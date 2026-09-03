@@ -1,436 +1,211 @@
-# Comprehensive Test Suite Implementation Plan
+# TaskFlow Enhancement Implementation Plan
 
-## Executive Summary
+## Overview
+Implementing all proposed features to transform TaskFlow into an AI-powered productivity platform.
 
-The current todo-tencent-hy3 project has **NO TEST SUITE** - the original comprehensive test suite was completely removed in commit 472042f. This document outlines a plan to implement a "bulletproof" test suite that provides 100% test coverage and robust testing for all application functionality.
+> **Status note:** AI/ML features are implemented as heuristic engines (hash-based
+> embeddings, weighted multi-factor scoring, pattern learning from task logs) rather
+> than on-device transformer/ONNX models — no `@xenova/transformers` or
+> `onnxruntime-web` dependency. Calendar uses hand-rolled Google REST calls instead
+> of `googleapis`. Items below are checked only when the code exists in the tree.
 
-## Project Overview
+## Phase 1: Foundation & AI Infrastructure (Week 1)
 
-### Application Stack
-- **Framework**: Next.js 16.2.6 (React 19.2.4)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS with Radix UI components
-- **State Management**: Custom state management (lib/)
-- **Database**: SQLite (tasks.db)
+### 1.1 AI/ML Infrastructure Setup
+- [ ] Add AI dependencies (transformers.js, onnxruntime-web, or similar) — deferred; heuristic implementations used instead
+- [x] Create AI service layer (`src/lib/ai/`) — `index.ts`, `task-prioritizer.ts`, `embeddings.ts`, `patterns.ts`
+- [x] Implement local models for task scoring — weighted multi-factor engine, no runtime model
+- [x] Add embedding generation for semantic search — hash-based embedder with cosine similarity
+- [x] Create model training/update pipeline — `patterns.ts` learns from task logs; export/import included
 
-### Core Features
-1. **Task Management**: Create, read, update, delete tasks
-2. **List Management**: Organize tasks into lists
-3. **Label Management**: Tag and categorize tasks
-4. **Search & Filtering**: Advanced search with multiple criteria
-5. **Progress Tracking**: Task completion analytics
-6. **Date Management**: Due dates, recurring tasks, overdue tracking
-7. **Attachments & Reminders**: File attachments and task notifications
+### 1.2 Enhanced Analytics Dashboard
+- [x] Add productivity trend analysis — `lib/analytics/trends.ts`, `components/analytics/productivity-trends.tsx`, `/analytics` page
+- [x] Implement focus time tracking — sessions logged to `focus-mode-history` (completed + abandoned with elapsed minutes) and aggregated on `/analytics` via `components/analytics/focus-analytics.tsx`
+- [x] Add habit formation metrics — `lib/focus/habit-metrics.ts`: completion rate, current/longest streak, average session, 7-day breakdown
+- [x] Create energy level tracking — inferred from task logs via pattern learning
+- [x] Add predictive analytics — `predictFutureStats` + `generateInsights`
 
-## Test Suite Architecture
+### 1.3 Smart Suggestions Enhancement
+- [x] Improve suggestion algorithm with ML — pattern-based (recurring scheduling, common list/priority)
+- [x] Add context-aware suggestions — time-of-day aware suggestions
+- [x] Implement suggestion acceptance tracking — `acceptSuggestion`/`isSuggestionAccepted` log accepts (with type + timestamp) to `taskflow_accepted_suggestions`, separate from the dismissal log
+- [x] Add suggestion feedback loop — `applyFeedbackLoop` in `generateSmartSuggestions` drops a suggestion type after 3 interactions when its acceptance rate falls below 25%; stats via `getSuggestionFeedbackStats`
 
-### 1. Testing Strategy
+### 1.4 Performance Optimizations
+- [ ] Implement React Query for server state — SWR already in use; React Query deliberately not added
+- [ ] Add edge caching
+- [ ] Optimize bundle size
+- [x] Add proper error boundaries — `components/error-boundary.tsx` (class boundary, named fallback, custom fallback prop, reset); each `/analytics` widget is wrapped so one failing section can't take down the dashboard
 
-**Three-Tier Testing Approach:**
+## Phase 2: Core AI Features (Week 2)
 
-#### Unit Tests (src/test/unit/)
-- Pure functions and utility functions
-- Business logic (lib/tasks.ts, lib/utils.ts)
-- Database operations (lib/db.ts)
-- **Coverage Target**: 95%+ for core logic
+### 2.1 AI Task Prioritization System
+- [x] Multi-factor scoring engine — 7 weighted factors (deadline, effort, dependencies, energy, project phase, history, priority tag)
+- [ ] Machine learning model integration — heuristic scoring; no trained model
+- [x] Contextual awareness (time, energy, project phase) — `UserContext` (energy level, available time, focus mode, work hours)
+- [x] Explainable AI - show reasoning — per-factor score breakdown returned with each priority
+- [x] UI for AI recommendations — `components/ai/ai-recommendations.tsx`, `components/ai/smart-scheduler.tsx`
 
-#### Component Tests (src/test/components/)
-- React component rendering and behavior
-- User interactions and form handling
-- Accessibility and keyboard navigation
-- **Coverage Target**: 90%+ for all components
+### 2.2 Enhanced Command Palette
+- [ ] AI-powered command suggestions
+- [ ] Command history with learning
+- [ ] Shortcut customization
+- [ ] Natural language commands
 
-#### Integration Tests (src/test/integration/)
-- API endpoint testing
-- Database workflow testing
-- Component integration testing
-- **Coverage Target**: 85%+ for workflows
+### 2.3 Quick Actions Panel
+- [ ] Common task operations
+- [ ] Bulk action buttons
+- [ ] Context-aware suggestions
+- [ ] Keyboard shortcuts
 
-### 2. Test Infrastructure
+### 2.4 Advanced Filters
+- [ ] AI-powered filtering
+- [ ] Saved filter presets
+- [ ] Filter sharing capabilities
+- [ ] Natural language filter queries
 
-#### Jest Configuration (jest.config.js)
-```javascript
+## Phase 3: Advanced Features (Week 3)
+
+### 3.1 Smart Calendar Integration
+- [x] Google Calendar API integration — hand-rolled REST (`lib/calendar.ts`), OAuth flow (`/api/auth/google`), token refresh (`lib/calendar/tokens.ts`)
+- [ ] Apple Calendar (CalDAV) support
+- [x] Bidirectional sync — push (TaskFlow → Calendar) plus optional pull (`?pull=true`): imports unlinked Google events as tasks linked via `source_event_id`, so the next sync updates the source event instead of duplicating it; orchestration in `src/lib/calendar/sync.ts`
+- [ ] Automatic task creation from events — helper exists, not wired
+- [ ] Conflict detection and resolution
+- [ ] Calendar event search
+
+### 3.2 Workflow Automation Builder
+- [x] Visual workflow editor — `components/workflows/workflow-builder.tsx`, `/workflows` page
+- [x] Trigger system (time, event, condition) — schedule, task_created/completed/updated, deadline_approaching, webhook
+- [x] Action library (create task, notify, webhook, etc.) — create/update task, notification, webhook, email, list, label, priority, deadline, activity log
+- [x] Condition logic (if/then/else) — `ConditionType` branching in the engine
+- [ ] Integration connectors (GitHub, Slack, Email) — generic webhook action only
+- [ ] Workflow templates
+
+### 3.3 Enhanced Collaboration
+- [ ] Real-time collaborative editing — requires socket.io; not implemented
+- [ ] Presence indicators
+- [x] Inline threaded comments — task comments via `/api/workspaces/[workspaceId]/comments?taskId=` (create/read/update/delete, author-only edits, @mention extraction)
+- [ ] Task assignment with notifications — workspace roles/invitations exist; no per-task assignment
+- [x] Activity feed improvements — workspace activity log (27 event types, trimmed to 1000 per workspace, `/api/workspaces/[workspaceId]/activity`)
+
+### 3.4 Advanced Focus Mode
+- [x] AI-selected optimal focus times — `suggestOptimalTime` in smart-scheduler
+- [x] Adaptive Pomodoro — `lib/focus/adaptive-pomodoro.ts` adapts the focus duration one step (15–60 min ladder) after 4 sessions: ≥80% completion lengthens, ≤40% shortens; abandoned (reset mid-session) pomodoros counted in `focus-mode-stats`, completion rate shown in the stats grid
+- [ ] Background task management
+- [x] Focus session analytics — `FocusAnalytics` card on `/analytics` (streak, completion rate, focus time, avg session, 7-day bar chart); session history in `lib/focus/session-log.ts`
+- [x] Energy pattern learning — peak/low energy hours inferred in `patterns.ts`
+
+## Phase 4: Polish & Integration (Week 4)
+
+### 4.1 Knowledge Base & Learning
+- [x] User pattern learning — `getUserPatterns`/`updatePatterns`/`getPatternInsights`
+- [x] Template suggestions from history — `lib/template-suggestions.ts` flags one-off tasks created ≥3 times (recurring and already-templated names excluded), surfaced on `/today` with create-template and dismiss actions via `/api/templates`
+- [x] Optimal categorization prediction — `analyzeTaskNaming` suggests categories from naming patterns
+- [x] Completion time prediction — `predictCompletionTime` (category average → calibrated estimate → raw estimate → default), used by the smart scheduler to plan against learned durations
+
+### 4.2 Offline Capabilities
+- [ ] IndexedDB fallback
+- [ ] Offline queue for mutations
+- [ ] Conflict resolution on sync
+- [ ] Progressive enhancement
+
+### 4.3 Security Hardening
+- [x] Rate limiting on API endpoints — `src/proxy.ts` (Next.js 16 proxy) + `src/lib/rate-limit.ts`: default 120 req/min per IP, stricter per-path limits (push 30/min per API key, OAuth 10/min, share 30/min, webhook trigger 60/min); 429 + `Retry-After`/`X-RateLimit-*` headers, documented in `openapi.yaml`
+- [ ] CSRF protection
+- [ ] Request validation middleware — routes validate input individually (400 responses); no centralized middleware
+- [x] Audit logging — workspace activity feed + task logs API (`/api/task-logs`)
+
+### 4.4 Testing & Documentation
+- [x] Comprehensive test coverage — 314 tests across 22 suites (tasks, templates, export/import, security, share, webhooks, workspaces, push, rate-limit, completion-time, calendar-sync, adaptive-pomodoro, focus-analytics, suggestion-feedback, template-suggestions, error-boundary)
+- [x] API documentation updates — `openapi.yaml`: 52 schemas, 34 paths, validated against the filesystem
+- [x] User guide updates — README added
+- [ ] Performance benchmarks
+
+## File Structure Changes
+
+```
+src/
+├── lib/
+│   ├── ai/
+│   │   ├── index.ts              # Main AI service
+│   │   ├── task-prioritizer.ts   # Multi-factor scoring engine
+│   │   ├── embeddings.ts         # Hash-based semantic embeddings
+│   │   └── patterns.ts           # User pattern learning
+│   ├── analytics/
+│   │   └── trends.ts             # Stats, trends, predictions, insights
+│   ├── calendar/
+│   │   └── tokens.ts             # Google OAuth token storage/refresh
+│   ├── focus/
+│   │   ├── adaptive-pomodoro.ts  # Duration adaptation from completion rate
+│   │   ├── session-log.ts        # localStorage focus-session history
+│   │   └── habit-metrics.ts      # Streaks, completion rate, 7-day breakdown
+│   ├── workflows/
+│   │   └── engine.ts             # Triggers, actions, conditions
+│   ├── db/
+│   │   ├── schema.ts             # Drizzle schema (17 tables)
+│   │   ├── instance.ts           # Store DB instance + test hook
+│   │   └── migrations/           # Hand-written SQL + journal
+│   ├── *-store.ts                # Server-only Drizzle-backed stores:
+│   │                             # workspace-store, push-store, share-store,
+│   │                             # webhook-store, task-store
+│   ├── calendar.ts               # Google Calendar REST client
+│   ├── smart-suggestions.ts      # Pattern-based suggestions + NLP date parsing
+│   ├── share.ts / webhooks.ts / workspaces.ts  # Pure helpers + generators
+│   └── push-notifications.ts     # Client push helper (VAPID, localStorage cache)
+├── components/
+│   ├── ai/
+│   │   ├── ai-recommendations.tsx
+│   │   └── smart-scheduler.tsx
+│   ├── analytics/
+│   │   ├── productivity-trends.tsx
+│   │   └── focus-analytics.tsx
+│   └── workflows/
+│       └── workflow-builder.tsx
+├── app/
+│   ├── analytics/page.tsx
+│   ├── workflows/page.tsx
+│   ├── workspace/invite/[token]/page.tsx
+│   └── api/                      # 34 routes: tasks, lists, labels, search,
+│                                 # templates, task-logs, export/import, share,
+│                                 # webhooks, workspaces (+members/activity/
+│                                 # comments/invitations), invitations, push,
+│                                 # calendar (status/sync/disconnect),
+│                                 # auth/google (+callback), workflows
+└── test/                         # 13 suites, db-test in-memory harness
+```
+
+## Dependencies
+
+Added for the implemented features:
+
+```json
 {
-  "rootDir": ".",
-  "setupFilesAfterEnv": ["src/test/setup.ts"],
-  "testEnvironment": "jest-environment-jsdom",
-  "preset": "ts-jest",
-  "testPathIgnorePatterns": ["node_modules", ".next"],
-  "collectCoverageFrom": [
-    "src/**/*.{ts,tsx}",
-    "!src/**/*.d.ts",
-    "!src/test/**/*",
-    "!src/**/setup.ts"
-  ],
-  "coverageThreshold": {
-    "global": {
-      "branches": 80,
-      "functions": 80,
-      "lines": 80,
-      "statements": 80
-    }
-  },
-  "moduleNameMapping": {
-    "^@/(.*)$": "<rootDir>/src/$1"
+  "dependencies": {
+    "better-sqlite3": "^12.x",
+    "csv-parse": "^5.x",
+    "csv-stringify": "^6.x",
+    "date-fns": "^4.x",
+    "drizzle-orm": "^0.44.x",
+    "recharts": "^3.x",
+    "swr": "^2.x",
+    "web-push": "^3.x",
+    "zod": "^4.x"
   }
 }
 ```
 
-#### Test Setup (src/test/setup.ts)
-```typescript
-// Comprehensive mocking for testing environment
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
-
-// Mock IntersectionObserver and ResizeObserver
-Object.defineProperty(window, 'IntersectionObserver', {
-  writable: true,
-  value: jest.fn().mockImplementation(() => ({
-    observe: jest.fn(),
-    unobserve: jest.fn(),
-    disconnect: jest.fn(),
-  })),
-});
-```
-
-### 3. Test Coverage Goals
-
-#### Function Coverage
-- **Task Operations**: 100% (create, read, update, delete)
-- **Search & Filter**: 100% (all search criteria)
-- **Date Handling**: 100% (all date functions)
-- **Utility Functions**: 100% (formatTime, generateId, etc.)
-
-#### Component Coverage
-- **TaskList**: 100% (rendering, interactions, edge cases)
-- **Forms**: 100% (create, edit, validation)
-- **UI Components**: 100% (all Radix UI wrappers)
-- **Navigation**: 100% (all routing components)
-
-#### API Coverage
-- **All Endpoints**: 100% (GET, POST, PUT, DELETE)
-- **Error Handling**: 100% (all error scenarios)
-- **Authentication**: 100% (auth flows and permissions)
-
-## Implementation Phases
-
-### Phase 1: Foundation (Week 1)
-
-#### Core Infrastructure
-1. **Package.json Updates**
-   - Add comprehensive test scripts
-   - Include all testing devDependencies
-   - Configure test environment
-
-2. **Jest Configuration**
-   - Create jest.config.js with full configuration
-   - Set up TypeScript support with ts-jest
-   - Configure coverage reporting
-
-3. **Test Setup**
-   - Create src/test/setup.ts
-   - Mock all external dependencies
-   - Set up test environment
-
-#### Basic Tests
-1. **Utility Function Tests**
-   - formatTime()
-   - generateId()
-   - date formatting functions
-
-2. **Database Operation Tests**
-   - Basic CRUD operations
-   - Query filtering tests
-   - Transaction handling
-
-### Phase 2: Core Functionality (Week 2-3)
-
-#### Task Management Tests
-1. **Task Creation Tests**
-   - Valid task creation
-   - Invalid task rejection
-   - Task with all fields
-   - Task with minimal fields
-
-2. **Task Query Tests**
-   - View-based filtering (today, next7, upcoming, all)
-   - List-based filtering
-   - Label-based filtering
-   - Search functionality
-   - Completed status filtering
-
-3. **Task Update/Delete Tests**
-   - Partial updates
-   - Full updates
-   - Task deletion
-   - Bulk operations
-
-#### Business Logic Tests
-1. **Search Algorithm Tests**
-   - Simple keyword search
-   - Case-insensitive search
-   - Search in description
-   - Result limiting (50 items)
-   - Search performance
-
-2. **Date/Deadline Tests**
-   - Overdue detection
-   - Today's tasks
-   - Upcoming tasks
-   - Recurring tasks
-   - Date formatting
-
-### Phase 3: Component Testing (Week 4-5)
-
-#### React Component Tests
-1. **TaskList Component**
-   - Rendering with data
-   - Empty state handling
-   - Progress display
-   - Search integration
-   - List/label filtering
-
-2. **Form Components**
-   - Create task form
-   - Edit task form
-   - Validation testing
-   - Submission handling
-
-3. **UI Components**
-   - Button interactions
-   - Dialog handling
-   - Navigation components
-   - Theme switching
-
-### Phase 4: API Testing (Week 6)
-
-#### API Endpoint Tests
-1. **Tasks API**
-   - GET /api/tasks (all variations)
-   - POST /api/tasks (creation)
-   - PUT /api/tasks/:id (updates)
-   - DELETE /api/tasks/:id
-
-2. **Lists API**
-   - GET /api/lists
-   - Create/list operations
-
-3. **Search API**
-   - GET /api/search
-   - Query parameter testing
-
-### Phase 5: Integration & Edge Cases (Week 7-8)
-
-#### Complex Scenarios
-1. **User Workflow Tests**
-   - Complete task creation to completion
-   - Search and filtering workflows
-   - List management workflows
-
-2. **Error Handling Tests**
-   - Network error simulation
-   - Database error handling
-   - Invalid input handling
-
-3. **Performance Tests**
-   - Large dataset handling
-   - Search performance with 1000+ tasks
-   - Memory usage testing
-
-## Test Data Strategy
-
-### Mock Data Structure
-```typescript
-const mockTasks: Task[] = [
-  {
-    id: 'task-1',
-    name: 'Test Task 1',
-    description: 'Description for task 1',
-    date: '2025-01-15',
-    deadline: null,
-    estimate: 60,
-    actual_time: 30,
-    priority: 'high',
-    recurring: null,
-    list_id: 'inbox',
-    parent_task_id: null,
-    completed: false,
-    completed_at: null,
-    position: 0,
-    created_at: '2025-01-01T10:00:00Z',
-    updated_at: '2025-01-01T10:00:00Z',
-    // ... all required fields
-  }
-];
-```
-
-### Data Scenarios
-1. **Normal Cases**: Typical task data
-2. **Edge Cases**: Empty data, special characters, large values
-3. **Error Cases**: Invalid data, missing required fields
-4. **Boundary Cases**: Maximum values, minimum values, null/undefined
-
-## Test Quality Assurance
-
-### Test Naming Conventions
-- `test.describe('Task Creation', () => { ... })`
-- `test.it('creates task with valid data', () => { ... })`
-- `test.it('rejects task with missing name', () => { ... })`
-
-### Test Structure
-```typescript
-describe('Task Management', () => {
-  beforeEach(() => {
-    // Setup mock data
-  });
-
-  afterEach(() => {
-    // Clean up mocks
-  });
-
-  test('creates task with valid data', () => {
-    // Test implementation
-  });
-
-  test('filters tasks by priority', () => {
-    // Test implementation
-  });
-});
-```
-
-### Assertions Standards
-- Use jest matchers appropriately
-- Test both positive and negative cases
-- Validate return values
-- Test side effects
-- Performance assertions
-
-## Testing Tools & Best Practices
-
-### Test Tools
-1. **Jest**: Primary test runner
-2. **React Testing Library**: Component testing
-3. **Jest DOM**: DOM testing utilities
-4. **Testing Library User Event**: User interaction simulation
-
-### Best Practices
-1. **Isolated Tests**: Each test should be independent
-2. **Clean Mocks**: Proper mock cleanup between tests
-3. **Deterministic Results**: Use consistent mock data
-4. **Performance**: Write fast, focused tests
-5. **Maintainability**: Clear test organization
-
-### Common Pitfalls to Avoid
-1. **Test Dependencies**: Mock external dependencies
-2. **Async Testing**: Use async/await properly
-3. **State Management**: Clear state between tests
-4. **Database Testing**: Use mock database
-
-## CI/CD Integration
-
-### GitHub Actions Configuration
-```yaml
-name: Test Suite
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-    steps:
-    - uses: actions/checkout@v3
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
-    - run: npm run test:ci
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage/lcov.info
-```
-
-### Test Reporting
-1. **Code Coverage**: Generate coverage reports
-2. **Test Results**: Detailed test output
-3. **Performance Metrics**: Test execution time
-4. **Quality Gates**: Minimum coverage requirements
-
-## Success Metrics
-
-### Quantitative Metrics
-- **Test Coverage**: 80%+ overall, 95%+ for core logic
-- **Test Execution Time**: < 5 minutes for full suite
-- **Test Pass Rate**: 95%+ in CI/CD
-- **Bug Detection Rate**: 90%+ of critical bugs caught
-
-### Qualitative Metrics
-- **Test Maintainability**: Easy to add new tests
-- **Test Coverage**: No uncovered code paths
-- **Test Reliability**: No flaky tests
-- **Test Completeness**: All functionality tested
-
-## Maintenance & Evolution
-
-### Test Maintenance
-1. **Regular Updates**: Update tests with code changes
-2. **Review Process**: Code review for test changes
-3. **Coverage Monitoring**: Track coverage over time
-4. **Test Cleanup**: Remove obsolete tests
-
-### Test Evolution
-1. **Expand Coverage**: Add tests for new features
-2. **Improve Quality**: Enhance test quality over time
-3. **Adopt New Tools**: Use modern testing approaches
-4. **Integrate CI/CD**: Full test automation
-
-## Conclusion
-
-This implementation plan provides a comprehensive, bulletproof test suite for the todo-tencent-hy3 application. The test suite will:
-
-1. **Cover 100% of Core Functionality**: All business logic, components, and APIs
-2. **Maintain High Quality**: Follow testing best practices and quality standards
-3. **Be Production-Ready**: Configured for CI/CD and automated testing
-4. **Be Future-Proof**: Scalable and maintainable for application growth
-
-The test suite will ensure the application is thoroughly tested, reliable, and ready for production deployment.
-
-## Files Created
-
-### Core Test Infrastructure
-- `package.json` - Test scripts and dependencies
-- `jest.config.js` - Jest configuration
-- `src/test/setup.ts` - Test environment setup
-
-### Test Files (Created)
-- `src/test/basic.test.ts` - Basic utility function tests
-- `src/test/tasks.test.ts` - Task management function tests
-
-### Documentation
-- `TEST_SUMMARY.md` - Current test suite status
-- `IMPLEMENTATION_PLAN.md` - Comprehensive implementation plan
-- `TEST_README.md` - Test setup and usage instructions
-
-## Current Status
-
-**PHASE 1 COMPLETE**: Foundation and basic tests implemented
-**PHASE 2 IN PROGRESS**: Core functionality testing
-**PHASE 3 PENDING**: Component testing
-**PHASE 4 PENDING**: API testing
-**PHASE 5 PENDING**: Integration and edge case testing
-
-The test suite infrastructure is in place and ready for comprehensive testing of all application functionality.
+Deliberately not added (heuristic/hand-rolled equivalents in the tree):
+`@xenova/transformers`, `onnxruntime-web`, `googleapis`, `caldav`, `socket.io`,
+`socket.io-client`, `idb`, `date-fns-tz`, `zod-to-json-schema`.
+
+## Success Criteria
+
+- [x] All tests pass — 314/314 (100% coverage for new code not yet measured)
+- [ ] Performance benchmarks meet targets
+- [ ] AI predictions > 80% accuracy
+- [ ] Calendar sync bidirectional with < 5s latency
+- [ ] Workflow execution < 100ms overhead
+- [ ] Offline mode fully functional
+- [ ] Real-time collaboration < 100ms latency
+- [ ] Bundle size increase < 100KB gzipped
