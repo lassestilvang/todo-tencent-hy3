@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { exportAllData, type ExportData } from '@/lib/tasks'
+import { exportAllData } from '@/lib/tasks'
 
 /**
  * Export all application data as JSON
