@@ -4,7 +4,7 @@ import { setDbInstanceForTesting } from '@/lib/tasks'
 // Set up test database before importing tasks module
 setDbInstanceForTesting(testDb)
 
-import { getTasks, createTask, getTask, toggleTaskComplete, deleteTask, getLists, createList, getLabels, createLabel, deleteList, deleteLabel } from '@/lib/tasks'
+import { getTasks, createTask, getTask, toggleTaskComplete, deleteTask, getLists, createList, getLabels, createLabel, updateLabel, deleteList, deleteLabel, getTaskDependencies, addTaskDependency, removeTaskDependency, canCompleteTask } from '@/lib/tasks'
 
 beforeAll(() => {
   runTestMigrations()
@@ -167,5 +167,86 @@ describe('Label operations', () => {
     deleteLabel(label.id)
     const labels = getLabels()
     expect(labels.find(l => l.id === label.id)).toBeUndefined()
+  })
+
+  it('updates a label', () => {
+    const label = createLabel('Original', '#000000', '🏷️')
+    const updated = updateLabel(label.id, { name: 'Renamed', color: '#ffffff' })
+    expect(updated).toMatchObject({ id: label.id, name: 'Renamed', color: '#ffffff', icon: '🏷️' })
+
+    const stored = getLabels().find(l => l.id === label.id)
+    expect(stored).toMatchObject({ name: 'Renamed', color: '#ffffff' })
+  })
+
+  it('clears a label icon as an empty string', () => {
+    const label = createLabel('Icon Label', '#000000', '🏷️')
+    const updated = updateLabel(label.id, { icon: null })
+    expect(updated).toMatchObject({ icon: '' })
+  })
+
+  it('returns null when updating a missing label', () => {
+    expect(updateLabel('does-not-exist', { name: 'Nope' })).toBeNull()
+  })
+})
+
+describe('Task Dependencies', () => {
+  it('tracks blocking and blocked tasks from each perspective', async () => {
+    const blocker = await createTask({ name: 'Blocker' })
+    const blocked = await createTask({ name: 'Blocked' })
+
+    addTaskDependency(blocker.id, blocked.id, 'blocks')
+
+    // From the blocked task: the blocker is "blocking"
+    const fromBlocked = getTaskDependencies(blocked.id)
+    expect(fromBlocked.blocking).toHaveLength(1)
+    expect(fromBlocked.blocking[0].id).toBe(blocker.id)
+    expect(fromBlocked.blocked).toHaveLength(0)
+
+    // From the blocker: the other task is "blocked"
+    const fromBlocker = getTaskDependencies(blocker.id)
+    expect(fromBlocker.blocked).toHaveLength(1)
+    expect(fromBlocker.blocked[0].id).toBe(blocked.id)
+    expect(fromBlocker.blocking).toHaveLength(0)
+  })
+
+  it('prevents completion while a blocks-dependency is unfinished', async () => {
+    const blocker = await createTask({ name: 'Blocker' })
+    const blocked = await createTask({ name: 'Blocked' })
+
+    addTaskDependency(blocker.id, blocked.id, 'blocks')
+
+    const check = canCompleteTask(blocked.id)
+    expect(check.canComplete).toBe(false)
+    expect(check.blockingTasks).toHaveLength(1)
+    expect(check.blockingTasks[0].id).toBe(blocker.id)
+
+    // Once the blocker is done, the task can complete
+    await toggleTaskComplete(blocker.id)
+    const after = canCompleteTask(blocked.id)
+    expect(after.canComplete).toBe(true)
+    expect(after.blockingTasks).toHaveLength(0)
+  })
+
+  it('ignores non-blocks dependencies for completion', async () => {
+    const other = await createTask({ name: 'Related' })
+    const task = await createTask({ name: 'Task' })
+
+    addTaskDependency(other.id, task.id, 'relates')
+
+    const check = canCompleteTask(task.id)
+    expect(check.canComplete).toBe(true)
+    expect(check.blockingTasks).toHaveLength(0)
+  })
+
+  it('removes a dependency', async () => {
+    const blocker = await createTask({ name: 'Blocker' })
+    const blocked = await createTask({ name: 'Blocked' })
+
+    addTaskDependency(blocker.id, blocked.id, 'blocks')
+    expect(getTaskDependencies(blocked.id).blocking).toHaveLength(1)
+
+    removeTaskDependency(blocker.id, blocked.id)
+    expect(getTaskDependencies(blocked.id).blocking).toHaveLength(0)
+    expect(getTaskDependencies(blocker.id).blocked).toHaveLength(0)
   })
 })
