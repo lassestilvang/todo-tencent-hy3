@@ -4,7 +4,7 @@ import {
   getTaskComments,
   updateComment,
   deleteComment,
-} from '@/lib/workspaces'
+} from '@/lib/workspace-store'
 
 export async function GET(request: NextRequest) {
   try {
