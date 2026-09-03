@@ -1,12 +1,11 @@
-import { AnalyticsDashboard } from './analytics-client'
+import AnalyticsDashboard from '@/app/analytics/analytics-client'
 import { Suspense } from 'react'
 
 export const metadata = {
-  title: 'Analytics - TaskFlow',
-  description: 'Track your productivity trends and insights',
+  title: 'Analytics - TaskFlow'
 }
 
-function AnalyticsPageContent() {
+export default function AnalyticsPage() {
   return (
     <div className="container mx-auto py-8 px-4">
       <Suspense fallback={
@@ -18,8 +17,4 @@ function AnalyticsPageContent() {
       </Suspense>
     </div>
   )
-}
-
-export default function AnalyticsPage() {
-  return <AnalyticsPageContent />
 }
