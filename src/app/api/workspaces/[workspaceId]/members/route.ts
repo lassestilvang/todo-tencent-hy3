@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { type WorkspaceRole } from '@/lib/workspaces'
 import {
   getWorkspaceMembers,
   addMember,
@@ -6,8 +7,7 @@ import {
   removeMember,
   getMember,
   canUserManageWorkspace,
-  WorkspaceRole,
-} from '@/lib/workspaces'
+} from '@/lib/workspace-store'
 
 export async function GET(
   request: NextRequest,
