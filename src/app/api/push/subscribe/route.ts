@@ -1,34 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-interface PushSubscriptionData {
-  endpoint: string
-  keys: {
-    p256dh: string
-    auth: string
-  }
-}
+import { saveSubscription } from '@/lib/push-store'
 
 export async function POST(request: NextRequest) {
   try {
-    const subscription = await request.json() as PushSubscriptionData
+    const subscription = await request.json() as {
+      endpoint?: string
+      keys?: { p256dh?: string; auth?: string }
+      userId?: string
+    }
 
-    if (!subscription || !subscription.endpoint) {
+    if (
+      !subscription
+      || !subscription.endpoint
+      || !subscription.keys?.p256dh
+      || !subscription.keys?.auth
+    ) {
       return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 })
     }
 
-    // In a real app, you would save this to a database
-    // For now, we'll just acknowledge it
-    console.log('Push subscription received:', subscription.endpoint)
+    const stored = saveSubscription({
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
+      userId: subscription.userId,
+    })
 
-    // TODO: Save to database
-    // await db.insert(pushSubscriptions).values({
-    //   endpoint: subscription.endpoint,
-    //   p256dh: subscription.keys.p256dh,
-    //   auth: subscription.keys.auth,
-    //   userId: getCurrentUserId(),
-    // })
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      subscription: {
+        id: stored.id,
+        endpoint: stored.endpoint,
+        userId: stored.userId,
+        createdAt: stored.createdAt,
+        updatedAt: stored.updatedAt,
+      },
+    })
   } catch (error) {
     console.error('Push subscribe error:', error)
     return NextResponse.json({ error: 'Failed to subscribe' }, { status: 500 })
