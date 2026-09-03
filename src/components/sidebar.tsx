@@ -1,4 +1,4 @@
-import { CalendarDays, Calendar, Clock, ListTodo, Plus, BarChart2, Settings } from 'lucide-react'
+import { CalendarDays, Calendar, Clock, ListTodo, Plus, BarChart2, Settings, Workflow } from 'lucide-react'
 import { getLists, getLabels, getOverdueTasks } from '@/lib/tasks'
 import { Button } from '@/components/ui/button'
 import { CreateListForm } from '@/components/create-list-form'
@@ -56,6 +56,11 @@ export async function Sidebar() {
             href="/analytics"
             icon={<BarChart2 className="h-4 w-4" />}
             label="Analytics"
+          />
+          <SidebarLink
+            href="/workflows"
+            icon={<Workflow className="h-4 w-4" />}
+            label="Workflows"
           />
         </nav>
 
