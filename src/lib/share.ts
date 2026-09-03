@@ -40,24 +40,6 @@ export interface SharedListData {
   }
 }
 
-const SHARE_LINKS_KEY = 'share_links'
-const SHARE_PREFIX = 'share_'
-
-function getStoredLinks(): ShareLink[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const stored = localStorage.getItem(SHARE_LINKS_KEY)
-    return stored ? JSON.parse(stored) : []
-  } catch {
-    return []
-  }
-}
-
-function saveLinks(links: ShareLink[]): void {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(SHARE_LINKS_KEY, JSON.stringify(links))
-}
-
 export function generateShareToken(): string {
   return randomBytes(16).toString('base64url')
 }
@@ -83,105 +65,6 @@ export function verifyPassword(password: string, hash: string): boolean {
     // If lengths don't match, it's definitely not equal
     return false
   }
-}
-
-export function createShareLink(
-  listId: string,
-  permission: SharePermission,
-  options?: {
-    expiresInDays?: number
-    password?: string
-  }
-): ShareLink {
-  const links = getStoredLinks()
-  const token = generateShareToken()
-  const now = Date.now()
-
-  const link: ShareLink = {
-    id: `${SHARE_PREFIX}${token}`,
-    token,
-    listId,
-    permission,
-    expiresAt: options?.expiresInDays ? now + options.expiresInDays * 24 * 60 * 60 * 1000 : undefined,
-    passwordHash: options?.password ? hashPassword(options.password) : undefined,
-    createdAt: now,
-    createdBy: 'current-user', // In real app, get from auth
-    accessCount: 0,
-  }
-
-  links.push(link)
-  saveLinks(links)
-  return link
-}
-
-export function getShareLink(token: string): ShareLink | null {
-  const links = getStoredLinks()
-  return links.find(l => l.token === token) || null
-}
-
-export function getShareLinkById(id: string): ShareLink | null {
-  const links = getStoredLinks()
-  return links.find(l => l.id === id) || null
-}
-
-export function getListShareLinks(listId: string): ShareLink[] {
-  const links = getStoredLinks()
-  return links.filter(l => l.listId === listId)
-}
-
-export function validateShareAccess(
-  token: string,
-  password?: string
-): { valid: boolean; link?: ShareLink; error?: string } {
-  const link = getShareLink(token)
-
-  if (!link) {
-    return { valid: false, error: 'Invalid or expired share link' }
-  }
-
-  if (link.expiresAt && Date.now() > link.expiresAt) {
-    return { valid: false, error: 'Share link has expired' }
-  }
-
-  if (link.passwordHash) {
-    if (!password) {
-      return { valid: false, error: 'Password required' }
-    }
-    if (!verifyPassword(password, link.passwordHash)) {
-      return { valid: false, error: 'Invalid password' }
-    }
-  }
-
-  return { valid: true, link }
-}
-
-export function recordShareAccess(token: string): void {
-  const links = getStoredLinks()
-  const link = links.find(l => l.token === token)
-  if (link) {
-    link.accessCount++
-    link.lastAccessed = Date.now()
-    saveLinks(links)
-  }
-}
-
-export function revokeShareLink(token: string): boolean {
-  const links = getStoredLinks()
-  const index = links.findIndex(l => l.token === token)
-  if (index !== -1) {
-    links.splice(index, 1)
-    saveLinks(links)
-    return true
-  }
-  return false
-}
-
-export function revokeAllListShares(listId: string): number {
-  const links = getStoredLinks()
-  const initialLength = links.length
-  const filtered = links.filter(l => l.listId !== listId)
-  saveLinks(filtered)
-  return initialLength - filtered.length
 }
 
 export function getShareUrl(token: string): string {
