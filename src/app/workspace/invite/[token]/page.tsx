@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { acceptInvitation, declineInvitation, getInvitation, getWorkspace } from '@/lib/workspaces'
 
 interface InvitationData {
   workspaceId: string
@@ -36,45 +35,57 @@ export default function WorkspaceInvitationPage() {
   useEffect(() => {
     mountedRef.current = true
 
-    function loadInvitation() {
+    async function loadInvitation() {
       setIsLoading(true)
       setError(null)
-      const inv = getInvitation(token)
-      if (!inv) {
-        setError('Invalid or expired invitation link')
-        setIsLoading(false)
-        return
-      }
 
-      if (inv.status !== 'pending') {
-        setError('This invitation has already been used')
-        setIsLoading(false)
-        return
-      }
+      try {
+        const invitationRes = await fetch(`/api/invitations?token=${encodeURIComponent(token)}`)
+        if (!invitationRes.ok) {
+          setError('Invalid or expired invitation link')
+          setIsLoading(false)
+          return
+        }
+        const invitationData = await invitationRes.json()
+        const inv = invitationData.invitation
 
-      if (Date.now() > inv.expiresAt) {
-        setError('This invitation has expired')
-        setIsLoading(false)
-        return
-      }
+        if (inv.status !== 'pending') {
+          setError('This invitation has already been used')
+          setIsLoading(false)
+          return
+        }
 
-      const workspace = getWorkspace(inv.workspaceId)
-      if (!workspace) {
-        setError('Workspace not found')
-        setIsLoading(false)
-        return
-      }
+        if (Date.now() > inv.expiresAt) {
+          setError('This invitation has expired')
+          setIsLoading(false)
+          return
+        }
 
-      setInvitation({
-        workspaceId: inv.workspaceId,
-        email: inv.email,
-        role: inv.role,
-        invitedByName: inv.invitedByName,
-        workspaceName: workspace.name,
-        workspaceDescription: workspace.description,
-        expiresAt: inv.expiresAt,
-      })
-      setIsLoading(false)
+        const workspaceRes = await fetch(`/api/workspaces?workspaceId=${encodeURIComponent(inv.workspaceId)}`)
+        if (!workspaceRes.ok) {
+          setError('Workspace not found')
+          setIsLoading(false)
+          return
+        }
+        const workspaceData = await workspaceRes.json()
+        const workspace = workspaceData.workspace
+
+        if (!mountedRef.current) return
+
+        setInvitation({
+          workspaceId: inv.workspaceId,
+          email: inv.email,
+          role: inv.role,
+          invitedByName: inv.invitedByName,
+          workspaceName: workspace.name,
+          workspaceDescription: workspace.description,
+          expiresAt: inv.expiresAt,
+        })
+      } catch {
+        if (mountedRef.current) setError('Failed to load invitation')
+      } finally {
+        if (mountedRef.current) setIsLoading(false)
+      }
     }
 
     loadInvitation()
@@ -96,9 +107,14 @@ export default function WorkspaceInvitationPage() {
     const userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 
     try {
-      const result = acceptInvitation(token, userId, userName)
+      const res = await fetch('/api/invitations/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, userId, userName }),
+      })
+      const result = await res.json()
 
-      if (result.success) {
+      if (res.ok && result.success) {
         toast.success(`Welcome to ${invitation.workspaceName}!`)
         router.push('/')
       } else {
@@ -115,9 +131,18 @@ export default function WorkspaceInvitationPage() {
     if (!confirm('Are you sure you want to decline this invitation?')) return
 
     try {
-      declineInvitation(token)
-      toast.success('Invitation declined')
-      router.push('/')
+      const res = await fetch('/api/invitations/decline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+
+      if (res.ok) {
+        toast.success('Invitation declined')
+        router.push('/')
+      } else {
+        toast.error('Failed to decline invitation')
+      }
     } catch {
       toast.error('Failed to decline invitation')
     }
