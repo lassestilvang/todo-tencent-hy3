@@ -1,3 +1,5 @@
+import type { Priority } from '@/types'
+
 export interface CalendarEvent {
   id: string
   summary: string
@@ -303,7 +305,7 @@ export function calendarEventToTask(event: CalendarEvent, listId: string): {
   date?: string
   deadline?: string
   estimate?: number
-  priority: string
+  priority: Priority
   list_id: string
 } {
   const start = event.start.dateTime || event.start.date
