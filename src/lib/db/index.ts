@@ -11,6 +11,15 @@ import {
   taskReminders,
   taskLogs,
   taskDependencies,
+  taskTemplates,
+  webhooks,
+  shareLinks,
+  workspaces,
+  workspaceMembers,
+  workspaceInvitations,
+  workspaceActivity,
+  taskComments,
+  pushSubscriptions,
 } from './schema'
 import { env } from '../env'
 import path from 'path'
@@ -35,6 +44,15 @@ const dbSchema = {
   taskReminders,
   taskLogs,
   taskDependencies,
+  taskTemplates,
+  webhooks,
+  shareLinks,
+  workspaces,
+  workspaceMembers,
+  workspaceInvitations,
+  workspaceActivity,
+  taskComments,
+  pushSubscriptions,
 } as const
 
 // Singleton database instance
