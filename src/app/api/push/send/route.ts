@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
+import { removeSubscription } from '@/lib/push-store'
 
 // Simple API key authentication
 const API_KEY = process.env.PUSH_API_KEY
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     const { subscription, payload } = await request.json() as SendNotificationRequest
 
-    if (!subscription || !subscription.endpoint) {
+    if (!subscription || !subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
       return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 })
     }
 
@@ -59,27 +60,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'VAPID keys not configured' }, { status: 500 })
     }
 
-    await webpush.sendNotification(
-      {
-        endpoint: subscription.endpoint,
-        keys: {
-          p256dh: subscription.keys.p256dh,
-          auth: subscription.keys.auth,
+    try {
+      await webpush.sendNotification(
+        {
+          endpoint: subscription.endpoint,
+          keys: {
+            p256dh: subscription.keys.p256dh,
+            auth: subscription.keys.auth,
+          },
         },
-      },
-      JSON.stringify(payload)
-    )
+        JSON.stringify(payload)
+      )
+    } catch (sendError: unknown) {
+      // Handle expired subscriptions (410 Gone)
+      if (sendError && typeof sendError === 'object' && 'statusCode' in sendError && sendError.statusCode === 410) {
+        // Subscription expired - remove it from the database
+        removeSubscription(subscription.endpoint)
+        return NextResponse.json({ error: 'Subscription expired' }, { status: 410 })
+      }
+      throw sendError
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: unknown) {
     console.error('Push send error:', error)
-
-    // Handle expired subscriptions
-    if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 410) {
-      // Subscription expired, should be removed from database
-      return NextResponse.json({ error: 'Subscription expired' }, { status: 410 })
-    }
-
     return NextResponse.json({ error: 'Failed to send notification' }, { status: 500 })
   }
 }
