@@ -17,6 +17,8 @@ paths:
       summary: Export all application data
       description: Download complete application data as JSON backup
       responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: JSON file download
           content:
@@ -77,6 +79,14 @@ paths:
     post:
       summary: Import application data
       description: Restore application data from JSON backup
+      parameters:
+        - name: onConflict
+          in: query
+          description: How to handle records that already exist
+          schema:
+            type: string
+            enum: [skip, replace]
+            default: skip
       requestBody:
         required: true
         content:
@@ -91,6 +101,8 @@ paths:
                   type: string
                   format: binary
       responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: Import successful
           content:
@@ -129,6 +141,8 @@ paths:
     get:
       summary: Get all task templates
       responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: List of templates
           content:
@@ -149,6 +163,8 @@ paths:
             schema:
               $ref: '#/components/schemas/TaskTemplate'
       responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '201':
           description: Template created
           content:
@@ -168,56 +184,6 @@ paths:
                   error:
                     type: string
                     example: Name is required
-  /templates/{id}:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-    get:
-      summary: Get a specific template
-      responses:
-        '200':
-          description: Template details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskTemplate'
-        '404':
-          description: Template not found
-    put:
-      summary: Update a template
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TaskTemplate'
-      responses:
-        '200':
-          description: Template updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskTemplate'
-        '404':
-          description: Template not found
-    delete:
-      summary: Delete a template
-      responses:
-        '200':
-          description: Template deleted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-        '404':
-          description: Template not found
   /tasks:
     get:
       summary: Get tasks with optional filters
@@ -244,6 +210,8 @@ paths:
           schema:
             type: string
       responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: List of tasks
           content:
@@ -261,13 +229,39 @@ paths:
             schema:
               $ref: '#/components/schemas/NewTask'
       responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: Task created
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Task'
-  /tasks/{id}:
+    patch:
+      summary: Toggle, update, or delete a task
+      description: The task is addressed by id in the request body; there is no per-id route
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchTask'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Action applied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid request
+  /tasks/{id}/dependencies:
     parameters:
       - name: id
         in: path
@@ -275,34 +269,89 @@ paths:
         schema:
           type: string
     get:
-      summary: Get a specific task
+      summary: Get a task's dependencies
       responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
-          description: Task details
+          description: Blocking and blocked tasks
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Task'
-    put:
-      summary: Update a task
+                $ref: '#/components/schemas/TaskDependencies'
+    post:
+      summary: Add a dependency to a task
+      description: The path id is the blocked task; the body supplies the blocking task
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PartialTask'
+              $ref: '#/components/schemas/NewTaskDependency'
       responses:
-        '200':
-          description: Task updated
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '201':
+          description: Dependency added
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Task'
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid request
+  /tasks/{id}/dependencies/{blockingId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: blockingId
+        in: path
+        required: true
+        schema:
+          type: string
     delete:
-      summary: Delete a task
+      summary: Remove a dependency from a task
+      description: The path id is the blocked task; blockingId is the task that blocks it
       responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
-          description: Task deleted
+          description: Dependency removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid request
+  /tasks/{id}/can-complete:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Check whether a task can be completed
+      description: A task cannot be completed while an unfinished "blocks" dependency exists
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Completion status and any blocking tasks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanCompleteResponse'
   /push/send:
     post:
       summary: Send push notification
@@ -337,6 +386,8 @@ paths:
                     data:
                       type: object
       responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: Notification sent
           content:
@@ -351,368 +402,2433 @@ paths:
           description: Unauthorized - Invalid API key
         '400':
           description: Invalid request
-  components:
-    schemas:
-      List:
-        type: object
-        properties:
-          id:
+  /labels:
+    get:
+      summary: Get all labels
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: List of labels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Label'
+    post:
+      summary: Create a new label
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewLabel'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '201':
+          description: Label created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Label'
+        '400':
+          description: Invalid request
+    patch:
+      summary: Update or delete a label
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LabelPatch'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Updated label, or success confirmation for delete
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Label'
+                  - type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+        '400':
+          description: Invalid request
+        '404':
+          description: Label not found
+  /lists:
+    get:
+      summary: Get all lists
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: List of lists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/List'
+    post:
+      summary: Create a new list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewList'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '201':
+          description: List created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/List'
+        '400':
+          description: Invalid request
+    patch:
+      summary: Update or delete a list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListPatch'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: List updated or deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid request
+  /task-logs:
+    get:
+      summary: Get the task activity log
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: List of task logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskLog'
+  /search:
+    get:
+      summary: Search tasks
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Search query (minimum 2 characters; returns an empty array if omitted or too short)
+          schema:
             type: string
-            example: inbox
-          name:
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Matching tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+  /workflows:
+    get:
+      summary: Get all workflows
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: List of workflows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Workflow'
+    post:
+      summary: Create a workflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Workflow'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '201':
+          description: Workflow created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+    put:
+      summary: Update a workflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Workflow'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Workflow updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '404':
+          description: Workflow not found
+    delete:
+      summary: Delete a workflow
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
             type: string
-            example: Inbox
-          color:
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Workflow deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Missing workflow ID
+        '404':
+          description: Workflow not found
+  /webhooks:
+    get:
+      summary: Get all webhooks
+      description: The signing secret is not included in the list view
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: List of webhooks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhooks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Webhook'
+    post:
+      summary: Create a webhook
+      description: The signing secret is returned only on creation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewWebhook'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Webhook created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  webhook:
+                    $ref: '#/components/schemas/Webhook'
+        '400':
+          description: Invalid request
+  /webhooks/trigger:
+    post:
+      summary: Trigger webhooks for an event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event
+              properties:
+                event:
+                  type: string
+                  enum: [task.created, task.updated, task.completed, task.deleted, list.created, list.updated, list.deleted]
+                data:
+                  type: object
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Webhooks triggered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid event
+  /webhooks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Get a specific webhook
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Webhook details (includes the signing secret)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhook:
+                    $ref: '#/components/schemas/Webhook'
+        '404':
+          description: Webhook not found
+    patch:
+      summary: Update a webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookPatch'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Webhook updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  webhook:
+                    $ref: '#/components/schemas/Webhook'
+        '404':
+          description: Webhook not found
+    delete:
+      summary: Delete a webhook
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Webhook deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '404':
+          description: Webhook not found
+  /auth/google:
+    get:
+      summary: Start Google Calendar OAuth
+      description: Redirects to Google's OAuth consent screen with PKCE (S256). Sets the httpOnly cookies `oauth_state` and `oauth_code_verifier` (10-minute expiry) for verification on callback.
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '302':
+          description: Redirect to Google's OAuth consent screen
+        '500':
+          description: Google OAuth not configured (GOOGLE_CLIENT_ID missing)
+  /auth/google/callback:
+    get:
+      summary: Google OAuth callback
+      description: Validates the state cookie, exchanges the authorization code for tokens, and stores them in the httpOnly `google_calendar_tokens` cookie (30-day expiry). Every error path redirects to /settings with an `error` query parameter.
+      parameters:
+        - name: code
+          in: query
+          schema:
             type: string
-            example: '#6366f1'
-          emoji:
+        - name: state
+          in: query
+          schema:
             type: string
-            example: 📥
-          created_at:
+        - name: error
+          in: query
+          schema:
             type: string
-            format: date-time
-          updated_at:
-            type: string
-            format: date-time
-          task_count:
-            type: integer
-            example: 5
-          incomplete_count:
-            type: integer
-            example: 3
-      Label:
-        type: object
-        properties:
-          id:
-            type: string
-            example: work
-          name:
-            type: string
-            example: Work
-          color:
-            type: string
-            example: '#10b981'
-          icon:
-            type: string
-            example: 🏷️
-          created_at:
-            type: string
-            format: date-time
-      Task:
-        type: object
-        properties:
-          id:
-            type: string
-            example: task-123
-          name:
-            type: string
-            example: Complete project proposal
-          description:
-            type: string
-            nullable: true
-            example: Finish the Q4 project proposal document
-          date:
-            type: string
-            format: date
-            nullable: true
-            example: 2026-10-15
-          deadline:
-            type: string
-            format: date-time
-            nullable: true
-            example: 2026-10-14T17:00:00Z
-          estimate:
-            type: integer
-            nullable: true
-            example: 120
-          actual_time:
-            type: integer
-            example: 0
-          priority:
-            type: string
-            enum: [high, medium, low, none]
-            example: high
-          recurring:
-            type: string
-            enum: [every_day, every_week, every_weekday, every_month, every_year, custom]
-            nullable: true
-          list_id:
-            type: string
-            nullable: true
-          parent_task_id:
-            type: string
-            nullable: true
-          completed:
-            type: boolean
-            example: false
-          completed_at:
-            type: string
-            format: date-time
-            nullable: true
-          position:
-            type: integer
-            example: 0
-          created_at:
-            type: string
-            format: date-time
-          updated_at:
-            type: string
-            format: date-time
-          labels:
-            type: array
-            items:
-              $ref: '#/components/schemas/Label'
-          sub_tasks:
-            type: array
-            items:
-              $ref: '#/components/schemas/Task'
-          attachments:
-            type: array
-            items:
-              $ref: '#/components/schemas/TaskAttachment'
-          reminders:
-            type: array
-            items:
-              $ref: '#/components/schemas/TaskReminder'
-          logs:
-            type: array
-            items:
-              $ref: '#/components/schemas/TaskLog'
-          list:
-            $ref: '#/components/schemas/List'
-      NewTask:
-        type: object
-        required:
-          - name
-        properties:
-          name:
-            type: string
-            example: Complete project proposal
-          description:
-            type: string
-            nullable: true
-          date:
-            type: string
-            format: date
-            nullable: true
-          deadline:
-            type: string
-            format: date-time
-            nullable: true
-          estimate:
-            type: integer
-            nullable: true
-          priority:
-            type: string
-            enum: [high, medium, low, none]
-            default: none
-          recurring:
-            type: string
-            enum: [every_day, every_week, every_weekday, every_month, every_year, custom]
-            nullable: true
-          list_id:
-            type: string
-            nullable: true
-          parent_task_id:
-            type: string
-            nullable: true
-          completed:
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '302':
+          description: Redirect to /settings (?calendar=connected on success, ?error=... otherwise)
+  /calendar/status:
+    get:
+      summary: Get Google Calendar connection status
+      description: Reads the `google_calendar_tokens` cookie, transparently refreshing it when expired (when a refresh token and Google client credentials are available). Returns connected=false when there is nothing valid to authenticate with.
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Connection status, calendar list, and current selection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarStatus'
+  /calendar/sync:
+    get:
+      summary: Sync tasks with Google Calendar
+      description: >-
+        Pushes incomplete upcoming tasks to the user's primary calendar for the
+        next 90 days. Events TaskFlow creates are keyed by the task id
+        (prefixed with `task-`) so re-syncing maps to the existing event;
+        tasks imported from Google update the source event they came from
+        (`source_event_id`). With `pull=true`, Google events that are not yet
+        in TaskFlow are imported as tasks (linked back via `source_event_id`
+        so the next sync updates rather than duplicates them). The tokens
+        cookie is transparently refreshed when expired (when a refresh token
+        and Google client credentials are available).
+      parameters:
+        - name: pull
+          in: query
+          description: Also import Google events that are not yet in TaskFlow
+          schema:
             type: boolean
             default: false
-          completed_at:
+        - name: listId
+          in: query
+          description: List to import pulled events into (defaults to the first list)
+          schema:
             type: string
-            format: date-time
-            nullable: true
-          position:
-            type: integer
-            default: 0
-      PartialTask:
-        type: object
-        properties:
-          name:
-            type: string
-          description:
-            type: string
-            nullable: true
-          date:
-            type: string
-            format: date
-            nullable: true
-          deadline:
-            type: string
-            format: date-time
-            nullable: true
-          estimate:
-            type: integer
-            nullable: true
-          priority:
-            type: string
-            enum: [high, medium, low, none]
-          recurring:
-            type: string
-            enum: [every_day, every_week, every_weekday, every_month, every_year, custom]
-            nullable: true
-          list_id:
-            type: string
-          parent_task_id:
-            type: string
-          completed:
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarSyncResult'
+        '401':
+          description: Not authenticated (no valid tokens cookie)
+        '404':
+          description: No calendars found
+        '500':
+          description: Sync failed
+    post:
+      summary: Trigger a manual sync
+      description: Delegates to GET. Accepts the same `pull` and `listId` query parameters.
+      parameters:
+        - name: pull
+          in: query
+          description: Also import Google events that are not yet in TaskFlow
+          schema:
             type: boolean
-          completed_at:
+            default: false
+        - name: listId
+          in: query
+          description: List to import pulled events into (defaults to the first list)
+          schema:
             type: string
-            format: date-time
-            nullable: true
-          position:
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarSyncResult'
+        '401':
+          description: Not authenticated (no valid tokens cookie)
+        '404':
+          description: No calendars found
+        '500':
+          description: Sync failed
+  /calendar/disconnect:
+    post:
+      summary: Disconnect Google Calendar
+      description: Clears the `google_calendar_tokens`, `calendar-selected`, and `calendar-last-sync` cookies.
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+  /push/subscribe:
+    post:
+      summary: Register a push subscription
+      description: Persists the subscription in the database, keyed by endpoint. Re-registering the same endpoint rotates its keys.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushSubscription'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Subscription saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  subscription:
+                    $ref: '#/components/schemas/StoredPushSubscription'
+        '400':
+          description: Invalid subscription
+        '500':
+          description: Failed to subscribe
+  /push/unsubscribe:
+    post:
+      summary: Remove a push subscription
+      description: Deletes the subscription from the database. Unsubscribing an unknown endpoint is still a success (idempotent).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushEndpoint'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Unsubscription processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  removed:
+                    type: boolean
+                    description: Whether a stored subscription was actually removed
+        '400':
+          description: Invalid endpoint
+        '500':
+          description: Failed to unsubscribe
+  /share:
+    get:
+      summary: List a list's share links
+      parameters:
+        - name: listId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Share links for the list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  links:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ShareLinkSummary'
+        '400':
+          description: Missing listId parameter
+        '500':
+          description: Failed to get share links
+    post:
+      summary: Create a share link for a list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewShareLink'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Share link created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  shareLink:
+                    $ref: '#/components/schemas/ShareLinkResponse'
+        '400':
+          description: Missing or invalid fields
+        '404':
+          description: List not found
+        '500':
+          description: Failed to create share link
+  /share/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Get a shared list's contents
+      description: Returns the list and its tasks. View-permission links expose only incomplete tasks; comment and edit links expose all tasks.
+      parameters:
+        - name: password
+          in: query
+          schema:
+            type: string
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Shared list data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedListData'
+        '404':
+          description: Invalid, expired, or revoked share link (or wrong password)
+        '500':
+          description: Failed to load shared list
+    delete:
+      summary: Revoke a share link
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Share link revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '404':
+          description: Share link not found
+        '500':
+          description: Failed to revoke share link
+  /share/{token}/access:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      summary: Record a share-link access
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Access recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '500':
+          description: Failed to record access
+  /workspaces:
+    get:
+      summary: List workspaces
+      description: Returns one workspace when `workspaceId` is given, the workspaces for a user when `userId` is given, or every workspace otherwise.
+      parameters:
+        - name: workspaceId
+          in: query
+          schema:
+            type: string
+        - name: userId
+          in: query
+          schema:
+            type: string
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Workspace(s)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workspace:
+                    $ref: '#/components/schemas/Workspace'
+                  workspaces:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Workspace'
+        '404':
+          description: Workspace not found
+        '500':
+          description: Failed to get workspaces
+    post:
+      summary: Create a workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewWorkspace'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Workspace created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  workspace:
+                    $ref: '#/components/schemas/Workspace'
+        '400':
+          description: Missing required fields
+        '500':
+          description: Failed to create workspace
+    patch:
+      summary: Update a workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspacePatch'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Workspace updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  workspace:
+                    $ref: '#/components/schemas/Workspace'
+        '400':
+          description: Missing workspaceId
+        '404':
+          description: Workspace not found
+        '500':
+          description: Failed to update workspace
+    delete:
+      summary: Delete a workspace
+      parameters:
+        - name: workspaceId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Workspace deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Missing workspaceId
+        '404':
+          description: Workspace not found
+        '500':
+          description: Failed to delete workspace
+  /workspaces/{workspaceId}/members:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: List workspace members
+      description: Returns one member when `userId` is given, or every member otherwise.
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Member(s)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  member:
+                    $ref: '#/components/schemas/WorkspaceMember'
+                  members:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkspaceMember'
+        '404':
+          description: Member not found
+        '500':
+          description: Failed to get members
+    post:
+      summary: Add a member to a workspace
+      description: When `requestedBy` is supplied, the caller must be able to manage the workspace.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddWorkspaceMember'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Member added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  member:
+                    $ref: '#/components/schemas/WorkspaceMember'
+        '400':
+          description: Missing required fields
+        '403':
+          description: Insufficient permissions to add members
+        '500':
+          description: Failed to add member
+    patch:
+      summary: Change a member's role
+      description: The owner's role cannot be changed. When `requestedBy` is supplied, the caller must be able to manage the workspace.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkspaceMemberRole'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  member:
+                    $ref: '#/components/schemas/WorkspaceMember'
+        '400':
+          description: Missing fields, invalid role, or cannot change owner role
+        '403':
+          description: Insufficient permissions to change roles
+        '404':
+          description: Member not found
+        '500':
+          description: Failed to update member role
+    delete:
+      summary: Remove a member from a workspace
+      description: The owner cannot be removed. When `requestedBy` differs from `userId`, the caller must be able to manage the workspace.
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: requestedBy
+          in: query
+          schema:
+            type: string
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Member removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Missing userId, or cannot remove workspace owner
+        '403':
+          description: Insufficient permissions to remove members
+        '404':
+          description: Member not found
+        '500':
+          description: Failed to remove member
+  /workspaces/{workspaceId}/activity:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Get workspace activity
+      parameters:
+        - name: limit
+          in: query
+          schema:
             type: integer
-      TaskLabel:
-        type: object
-        properties:
-          taskId:
+            default: 50
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Recent workspace activity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activity:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkspaceActivity'
+        '500':
+          description: Failed to get activity
+  /workspaces/{workspaceId}/comments:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: List comments on a task
+      parameters:
+        - name: taskId
+          in: query
+          required: true
+          schema:
             type: string
-          labelId:
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Task comments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskComment'
+        '400':
+          description: Missing taskId
+        '500':
+          description: Failed to get comments
+    post:
+      summary: Add a comment to a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewTaskComment'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Comment added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  comment:
+                    $ref: '#/components/schemas/TaskComment'
+        '400':
+          description: Missing required fields
+        '500':
+          description: Failed to add comment
+    patch:
+      summary: Update a comment
+      description: Only the comment's author (`userId`) may update it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCommentPatch'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Comment updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  comment:
+                    $ref: '#/components/schemas/TaskComment'
+        '400':
+          description: Missing required fields
+        '404':
+          description: Comment not found or unauthorized
+        '500':
+          description: Failed to update comment
+    delete:
+      summary: Delete a comment
+      description: Only the comment's author (`userId`) may delete it.
+      parameters:
+        - name: commentId
+          in: query
+          required: true
+          schema:
             type: string
-      TaskAttachment:
-        type: object
-        properties:
-          id:
+        - name: userId
+          in: query
+          required: true
+          schema:
             type: string
-          taskId:
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Comment deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Missing commentId or userId
+        '404':
+          description: Comment not found or unauthorized
+        '500':
+          description: Failed to delete comment
+  /workspaces/{workspaceId}/invitations:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: List workspace invitations
+      description: Returns one invitation when `token` is given, or every invitation for the workspace otherwise.
+      parameters:
+        - name: token
+          in: query
+          schema:
             type: string
-          fileName:
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Invitation(s)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation:
+                    $ref: '#/components/schemas/WorkspaceInvitation'
+                  invitations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkspaceInvitation'
+        '404':
+          description: Invitation not found
+        '500':
+          description: Failed to get invitations
+    post:
+      summary: Send a workspace invitation
+      description: The inviter must be allowed to invite (owner or admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewWorkspaceInvitation'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Invitation created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  invitation:
+                    $ref: '#/components/schemas/WorkspaceInvitation'
+        '400':
+          description: Missing required fields
+        '403':
+          description: Insufficient permissions to send invitations
+        '500':
+          description: Failed to create invitation
+    delete:
+      summary: Revoke a workspace invitation
+      parameters:
+        - name: invitationId
+          in: query
+          required: true
+          schema:
             type: string
-          filePath:
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Invitation revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Missing invitationId
+        '404':
+          description: Invitation not found
+        '500':
+          description: Failed to revoke invitation
+  /invitations:
+    get:
+      summary: Look up an invitation by token
+      description: Used by the invitation acceptance page before the workspace id is known.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
             type: string
-          fileSize:
-            type: integer
-          mimeType:
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Invitation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation:
+                    $ref: '#/components/schemas/WorkspaceInvitation'
+        '400':
+          description: Missing token parameter
+        '404':
+          description: Invitation not found
+        '500':
+          description: Failed to get invitation
+  /invitations/accept:
+    post:
+      summary: Accept a workspace invitation
+      description: Adds the user to the workspace with the invited role and marks the invitation accepted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationAcceptRequest'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Invitation accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  workspace:
+                    $ref: '#/components/schemas/Workspace'
+        '400':
+          description: Missing required fields
+        '404':
+          description: Invalid, used, or expired invitation, or workspace not found
+        '500':
+          description: Failed to accept invitation
+  /invitations/decline:
+    post:
+      summary: Decline a workspace invitation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationDeclineRequest'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Invitation declined
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Missing token
+        '404':
+          description: Invitation not found
+        '500':
+          description: Failed to decline invitation
+components:
+  schemas:
+    List:
+      type: object
+      properties:
+        id:
+          type: string
+          example: inbox
+        name:
+          type: string
+          example: Inbox
+        color:
+          type: string
+          example: '#6366f1'
+        emoji:
+          type: string
+          example: 📥
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        task_count:
+          type: integer
+          example: 5
+        incomplete_count:
+          type: integer
+          example: 3
+    Label:
+      type: object
+      properties:
+        id:
+          type: string
+          example: work
+        name:
+          type: string
+          example: Work
+        color:
+          type: string
+          example: '#10b981'
+        icon:
+          type: string
+          example: 🏷️
+        created_at:
+          type: string
+          format: date-time
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          example: task-123
+        name:
+          type: string
+          example: Complete project proposal
+        description:
+          type: string
+          nullable: true
+          example: Finish the Q4 project proposal document
+        date:
+          type: string
+          format: date
+          nullable: true
+          example: 2026-10-15
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-14T17:00:00Z
+        estimate:
+          type: integer
+          nullable: true
+          example: 120
+        actual_time:
+          type: integer
+          example: 0
+        priority:
+          type: string
+          enum: [high, medium, low, none]
+          example: high
+        recurring:
+          type: string
+          enum: [every_day, every_week, every_weekday, every_month, every_year, custom]
+          nullable: true
+        list_id:
+          type: string
+          nullable: true
+        parent_task_id:
+          type: string
+          nullable: true
+        completed:
+          type: boolean
+          example: false
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        position:
+          type: integer
+          example: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Label'
+        sub_tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskAttachment'
+        reminders:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskReminder'
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskLog'
+        list:
+          $ref: '#/components/schemas/List'
+    NewTask:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: Complete project proposal
+        description:
+          type: string
+          nullable: true
+        date:
+          type: string
+          format: date
+          nullable: true
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        estimate:
+          type: integer
+          nullable: true
+        priority:
+          type: string
+          enum: [high, medium, low, none]
+          default: none
+        recurring:
+          type: string
+          enum: [every_day, every_week, every_weekday, every_month, every_year, custom]
+          nullable: true
+        list_id:
+          type: string
+          nullable: true
+        parent_task_id:
+          type: string
+          nullable: true
+        completed:
+          type: boolean
+          default: false
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        position:
+          type: integer
+          default: 0
+    PartialTask:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        date:
+          type: string
+          format: date
+          nullable: true
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        estimate:
+          type: integer
+          nullable: true
+        priority:
+          type: string
+          enum: [high, medium, low, none]
+        recurring:
+          type: string
+          enum: [every_day, every_week, every_weekday, every_month, every_year, custom]
+          nullable: true
+        list_id:
+          type: string
+        parent_task_id:
+          type: string
+        completed:
+          type: boolean
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        position:
+          type: integer
+    PatchTask:
+      type: object
+      required:
+        - id
+        - action
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          enum: [toggle, delete, update]
+        data:
+          $ref: '#/components/schemas/PartialTask'
+    TaskLabel:
+      type: object
+      properties:
+        taskId:
+          type: string
+        labelId:
+          type: string
+    TaskAttachment:
+      type: object
+      properties:
+        id:
+          type: string
+        taskId:
+          type: string
+        fileName:
+          type: string
+        filePath:
+          type: string
+        fileSize:
+          type: integer
+        mimeType:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    TaskReminder:
+      type: object
+      properties:
+        id:
+          type: string
+        taskId:
+          type: string
+        reminderTime:
+          type: string
+          format: date-time
+        sent:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    TaskDependency:
+      type: object
+      properties:
+        id:
+          type: string
+        blockingTaskId:
+          type: string
+        blockedTaskId:
+          type: string
+        type:
+          type: string
+          enum: [blocks, relates, duplicates]
+        createdAt:
+          type: string
+          format: date-time
+    TaskDependencies:
+      type: object
+      properties:
+        blocking:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        blocked:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+    NewTaskDependency:
+      type: object
+      required:
+        - blockingTaskId
+      properties:
+        blockingTaskId:
+          type: string
+        type:
+          type: string
+          enum: [blocks, relates, duplicates]
+          default: blocks
+    CanCompleteResponse:
+      type: object
+      properties:
+        canComplete:
+          type: boolean
+        blockingTasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+    TaskLog:
+      type: object
+      properties:
+        id:
+          type: string
+        taskId:
+          type: string
+        action:
+          type: string
+        details:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    ExportData:
+      type: object
+      properties:
+        version:
+          type: integer
+          example: 1
+        exportedAt:
+          type: string
+          format: date-time
+        lists:
+          type: array
+          items:
+            $ref: '#/components/schemas/List'
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Label'
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        taskLabels:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskLabel'
+        taskAttachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskAttachment'
+        taskReminders:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskReminder'
+        taskDependencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskDependency'
+        taskLogs:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskLog'
+    TaskTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: Weekly Review
+        description:
+          type: string
+          nullable: true
+        priority:
+          type: string
+          enum: [high, medium, low, none]
+          nullable: true
+        estimate:
+          type: integer
+          nullable: true
+        recurring:
+          type: string
+          enum: [every_day, every_week, every_weekday, every_month, every_year, custom]
+          nullable: true
+        listId:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
             type: string
-            nullable: true
-          createdAt:
-            type: string
-            format: date-time
-      TaskReminder:
-        type: object
-        properties:
-          id:
-            type: string
-          taskId:
-            type: string
-          reminderTime:
-            type: string
-            format: date-time
-          sent:
-            type: boolean
-          createdAt:
-            type: string
-            format: date-time
-      TaskDependency:
-        type: object
-        properties:
-          id:
-            type: string
-          blockingTaskId:
-            type: string
-          blockedTaskId:
-            type: string
-          type:
-            type: string
-            enum: [blocks, relates, duplicates]
-          createdAt:
-            type: string
-            format: date-time
-      TaskLog:
-        type: object
-        properties:
-          id:
-            type: string
-          taskId:
-            type: string
-          action:
-            type: string
-          details:
-            type: string
-            nullable: true
-          createdAt:
-            type: string
-            format: date-time
-      ExportData:
-        type: object
-        properties:
-          version:
-            type: integer
-            example: 1
-          exportedAt:
-            type: string
-            format: date-time
-          lists:
-            type: array
-            items:
-              $ref: '#/components/schemas/List'
-          labels:
-            type: array
-            items:
-              $ref: '#/components/schemas/Label'
-          tasks:
-            type: array
-            items:
-              $ref: '#/components/schemas/Task'
-          taskLabels:
-            type: array
-            items:
-              $ref: '#/components/schemas/TaskLabel'
-          taskAttachments:
-            type: array
-            items:
-              $ref: '#/components/schemas/TaskAttachment'
-          taskReminders:
-            type: array
-            items:
-              $ref: '#/components/schemas/TaskReminder'
-          taskDependencies:
-            type: array
-            items:
-              $ref: '#/components/schemas/TaskDependency'
-          taskLogs:
-            type: array
-            items:
-              $ref: '#/components/schemas/TaskLog'
-      TaskTemplate:
-        type: object
-        properties:
-          id:
-            type: string
-          name:
-            type: string
-            example: Weekly Review
-          description:
-            type: string
-            nullable: true
-          priority:
-            type: string
-            enum: [high, medium, low, none]
-            nullable: true
-          estimate:
-            type: integer
-            nullable: true
-          recurring:
-            type: string
-            enum: [every_day, every_week, every_weekday, every_month, every_year, custom]
-            nullable: true
-          listId:
-            type: string
-            nullable: true
-          tags:
-            type: array
-            items:
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    NewLabel:
+      type: object
+      required:
+        - name
+        - color
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          example: Work
+        color:
+          type: string
+          pattern: '^#[0-9a-fA-F]{6}$'
+          example: '#10b981'
+        icon:
+          type: string
+          maxLength: 4
+          example: 🏷️
+    LabelPatch:
+      type: object
+      required:
+        - id
+        - action
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          enum: [update, delete]
+        data:
+          type: object
+          properties:
+            name:
               type: string
-          createdAt:
+              maxLength: 50
+            color:
+              type: string
+              pattern: '^#[0-9a-fA-F]{6}$'
+            icon:
+              type: string
+              maxLength: 4
+              nullable: true
+    NewList:
+      type: object
+      required:
+        - name
+        - color
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: Projects
+        color:
+          type: string
+          pattern: '^#[0-9a-fA-F]{6}$'
+          example: '#6366f1'
+        emoji:
+          type: string
+          maxLength: 4
+          example: 📁
+    ListPatch:
+      type: object
+      required:
+        - id
+        - action
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          enum: [update, delete]
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+              maxLength: 100
+            color:
+              type: string
+              pattern: '^#[0-9a-fA-F]{6}$'
+            emoji:
+              type: string
+              maxLength: 4
+              nullable: true
+    Workflow:
+      type: object
+      required:
+        - name
+        - nodes
+        - edges
+      properties:
+        id:
+          type: string
+          example: wf-1791222690458
+        name:
+          type: string
+          example: Morning review
+        description:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowEdge'
+        enabled:
+          type: boolean
+        createdAt:
+          type: integer
+          format: int64
+        updatedAt:
+          type: integer
+          format: int64
+        lastRun:
+          type: integer
+          format: int64
+          nullable: true
+        runCount:
+          type: integer
+    WorkflowNode:
+      type: object
+      required:
+        - id
+        - type
+        - config
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [trigger, action, condition]
+        triggerType:
+          type: string
+          enum: [schedule, task_created, task_completed, task_updated, deadline_approaching, webhook]
+        actionType:
+          type: string
+          enum: [create_task, update_task, send_notification, call_webhook, send_email, create_list, add_label, set_priority, set_deadline, log_activity]
+        conditionType:
+          type: string
+          enum: [task_priority, task_list, task_labels, time_of_day, day_of_week, task_estimate, custom]
+        config:
+          type: object
+        position:
+          type: object
+          properties:
+            x:
+              type: number
+            y:
+              type: number
+    WorkflowEdge:
+      type: object
+      required:
+        - id
+        - source
+        - target
+      properties:
+        id:
+          type: string
+        source:
+          type: string
+        target:
+          type: string
+        sourceHandle:
+          type: string
+          nullable: true
+        targetHandle:
+          type: string
+          nullable: true
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+          example: wh_abc123
+        name:
+          type: string
+          example: CI deploy
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
             type: string
-            format: date-time
-          updatedAt:
+            enum: [task.created, task.updated, task.completed, task.deleted, list.created, list.updated, list.deleted]
+        secret:
+          type: string
+          description: Only present on creation or single-webhook GET
+        active:
+          type: boolean
+        retryCount:
+          type: integer
+        maxRetries:
+          type: integer
+        createdAt:
+          type: integer
+          format: int64
+        updatedAt:
+          type: integer
+          format: int64
+        lastTriggered:
+          type: integer
+          format: int64
+          nullable: true
+        lastError:
+          type: string
+          nullable: true
+    NewWebhook:
+      type: object
+      required:
+        - name
+        - url
+        - events
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          minItems: 1
+          items:
             type: string
-            format: date-time
-    securitySchemes:
-      bearerAuth:
-        type: http
-        scheme: bearer
-        bearerFormat: JWT
+            enum: [task.created, task.updated, task.completed, task.deleted, list.created, list.updated, list.deleted]
+        secret:
+          type: string
+          description: Optional; generated when omitted
+    WebhookPatch:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+            enum: [task.created, task.updated, task.completed, task.deleted, list.created, list.updated, list.deleted]
+        active:
+          type: boolean
+        maxRetries:
+          type: integer
+    CalendarListEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        summary:
+          type: string
+        description:
+          type: string
+        primary:
+          type: boolean
+        accessRole:
+          type: string
+          enum: [owner, writer, reader, freeBusyReader]
+        backgroundColor:
+          type: string
+        foregroundColor:
+          type: string
+        selected:
+          type: boolean
+    CalendarStatus:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        calendars:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarListEntry'
+        selectedCalendar:
+          type: string
+        lastSync:
+          type: string
+          nullable: true
+        error:
+          type: string
+    CalendarSyncResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        synced:
+          type: integer
+          description: Tasks pushed to the calendar
+        pulled:
+          type: integer
+          description: Events imported into TaskFlow (pull only)
+        errors:
+          type: array
+          items:
+            type: string
+        lastSync:
+          type: string
+        calendar:
+          type: string
+          description: Name of the synced calendar
+    PushSubscription:
+      type: object
+      required:
+        - endpoint
+        - keys
+      properties:
+        endpoint:
+          type: string
+        keys:
+          type: object
+          required:
+            - p256dh
+            - auth
+          properties:
+            p256dh:
+              type: string
+            auth:
+              type: string
+        userId:
+          type: string
+          description: Optional owner of the subscription
+    StoredPushSubscription:
+      type: object
+      properties:
+        id:
+          type: string
+        endpoint:
+          type: string
+        userId:
+          type: string
+          nullable: true
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+    PushEndpoint:
+      type: object
+      required:
+        - endpoint
+      properties:
+        endpoint:
+          type: string
+    NewShareLink:
+      type: object
+      required:
+        - listId
+        - permission
+      properties:
+        listId:
+          type: string
+        permission:
+          type: string
+          enum: [view, comment, edit]
+        expiresInDays:
+          type: integer
+        password:
+          type: string
+    ShareLinkResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        token:
+          type: string
+        url:
+          type: string
+          format: uri
+        permission:
+          type: string
+          enum: [view, comment, edit]
+        expiresAt:
+          type: integer
+          nullable: true
+        hasPassword:
+          type: boolean
+        createdAt:
+          type: integer
+    ShareLinkSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        token:
+          type: string
+        url:
+          type: string
+          format: uri
+        permission:
+          type: string
+          enum: [view, comment, edit]
+        expiresAt:
+          type: integer
+          nullable: true
+        hasPassword:
+          type: boolean
+        createdAt:
+          type: integer
+        accessCount:
+          type: integer
+        lastAccessed:
+          type: integer
+          nullable: true
+    SharedListData:
+      type: object
+      properties:
+        list:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            color:
+              type: string
+            emoji:
+              type: string
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/SharedTask'
+        shareInfo:
+          type: object
+          properties:
+            permission:
+              type: string
+              enum: [view, comment, edit]
+            expiresAt:
+              type: integer
+              nullable: true
+            ownerName:
+              type: string
+    SharedTask:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        date:
+          type: string
+          nullable: true
+        deadline:
+          type: string
+          nullable: true
+        estimate:
+          type: integer
+          nullable: true
+        priority:
+          type: string
+          nullable: true
+        completed:
+          type: boolean
+        position:
+          type: integer
+    NewWorkspace:
+      type: object
+      required:
+        - name
+        - ownerId
+        - ownerName
+        - ownerEmail
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        ownerId:
+          type: string
+        ownerName:
+          type: string
+        ownerEmail:
+          type: string
+    WorkspacePatch:
+      type: object
+      required:
+        - workspaceId
+      properties:
+        workspaceId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        settings:
+          $ref: '#/components/schemas/WorkspaceSettings'
+    Workspace:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        ownerId:
+          type: string
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+        settings:
+          $ref: '#/components/schemas/WorkspaceSettings'
+    WorkspaceSettings:
+      type: object
+      properties:
+        allowMemberInvites:
+          type: boolean
+        allowPublicSharing:
+          type: boolean
+        defaultListPermission:
+          type: string
+          enum: [view, edit]
+        requireApprovalForJoin:
+          type: boolean
+    WorkspaceMember:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        userId:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+        joinedAt:
+          type: integer
+        avatarUrl:
+          type: string
+          nullable: true
+    AddWorkspaceMember:
+      type: object
+      required:
+        - userId
+        - email
+        - name
+      properties:
+        userId:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+          default: member
+        requestedBy:
+          type: string
+    UpdateWorkspaceMemberRole:
+      type: object
+      required:
+        - userId
+        - role
+      properties:
+        userId:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+        requestedBy:
+          type: string
+    WorkspaceActivity:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        userId:
+          type: string
+        userName:
+          type: string
+        action:
+          type: string
+        details:
+          type: string
+        entityType:
+          type: string
+          enum: [task, list, member, invitation, comment, workspace]
+        entityId:
+          type: string
+        createdAt:
+          type: integer
+    TaskComment:
+      type: object
+      properties:
+        id:
+          type: string
+        taskId:
+          type: string
+        workspaceId:
+          type: string
+        userId:
+          type: string
+        userName:
+          type: string
+        userAvatar:
+          type: string
+          nullable: true
+        content:
+          type: string
+        mentions:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+          nullable: true
+    NewTaskComment:
+      type: object
+      required:
+        - taskId
+        - userId
+        - userName
+        - content
+      properties:
+        taskId:
+          type: string
+        userId:
+          type: string
+        userName:
+          type: string
+        content:
+          type: string
+        userAvatar:
+          type: string
+    TaskCommentPatch:
+      type: object
+      required:
+        - commentId
+        - content
+        - userId
+      properties:
+        commentId:
+          type: string
+        content:
+          type: string
+        userId:
+          type: string
+    NewWorkspaceInvitation:
+      type: object
+      required:
+        - email
+        - role
+        - invitedBy
+        - invitedByName
+      properties:
+        email:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+        invitedBy:
+          type: string
+        invitedByName:
+          type: string
+    WorkspaceInvitation:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+        invitedBy:
+          type: string
+        invitedByName:
+          type: string
+        status:
+          type: string
+          enum: [pending, accepted, declined, expired]
+        token:
+          type: string
+        expiresAt:
+          type: integer
+        createdAt:
+          type: integer
+        acceptedAt:
+          type: integer
+          nullable: true
+        url:
+          type: string
+          format: uri
+          description: Present only on invitations returned by the create endpoint
+    InvitationAcceptRequest:
+      type: object
+      required:
+        - token
+        - userId
+        - userName
+      properties:
+        token:
+          type: string
+        userId:
+          type: string
+        userName:
+          type: string
+    InvitationDeclineRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+  responses:
+    TooManyRequests:
+      description: >-
+        Rate limit exceeded. All API routes are throttled by the proxy:
+        a default of 120 requests/minute per client IP, with stricter
+        limits on push delivery, Google OAuth, share creation, and
+        webhook triggering.
+      headers:
+        Retry-After:
+          description: Seconds until the rate limit window resets
+          schema:
+            type: integer
+        X-RateLimit-Limit:
+          description: Request limit for the current window
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          description: Requests remaining in the current window
+          schema:
+            type: integer
+        X-RateLimit-Reset:
+          description: Epoch seconds when the current window resets
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Too many requests
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
