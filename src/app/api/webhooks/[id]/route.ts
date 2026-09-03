@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getWebhook, updateWebhook, deleteWebhook } from '@/lib/webhooks'
 import type { Webhook } from '@/lib/webhooks'
+import { getWebhook, updateWebhook, deleteWebhook } from '@/lib/webhook-store'
 
 export async function GET(
   request: NextRequest,
