@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createShareLink, getShareUrl, SharePermission } from '@/lib/share'
+import { getShareUrl, type SharePermission } from '@/lib/share'
+import { createShareLink, getListShareLinks } from '@/lib/share-store'
 import { getLists } from '@/lib/tasks'
 
 export async function POST(request: NextRequest) {
@@ -68,7 +69,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { getListShareLinks } = await import('@/lib/share')
     const links = getListShareLinks(listId)
 
     return NextResponse.json({
