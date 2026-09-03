@@ -1,10 +1,30 @@
 'use client'
 
-import type { Task, List, Label, TaskAttachment, TaskReminder, TaskLog } from '@/types'
+import type { Task, List, Label, TaskLog } from '@/types'
+import useSWR from 'swr'
 
-// Client-side task operations that call API routes
+// Client-side task operations that call API routes.
+// Mutations are primarily handled by server actions in @/lib/actions.ts;
+// the functions here serve the components that fetch via HTTP.
 
 const API_BASE = '/api/tasks'
+
+// SWR fetcher function
+async function fetcher<T>(url: string): Promise<T> {
+  const res = await fetch(url)
+  if (!res.ok) {
+    throw new Error('Failed to fetch')
+  }
+  return res.json()
+}
+
+// SWR cache keys
+const keys = {
+  tasks: (options?: { listId?: string; labelId?: string; view?: string; completed?: boolean; search?: string }) =>
+    ['/api/tasks', options],
+  lists: () => ['/api/lists'],
+  labels: () => ['/api/labels'],
+}
 
 export async function getTasks(options?: {
   listId?: string
@@ -23,15 +43,6 @@ export async function getTasks(options?: {
   const response = await fetch(`${API_BASE}?${params.toString()}`)
   if (!response.ok) {
     throw new Error('Failed to fetch tasks')
-  }
-  return response.json()
-}
-
-export async function getTask(id: string): Promise<Task | undefined> {
-  const response = await fetch(`${API_BASE}/${id}`)
-  if (!response.ok) {
-    if (response.status === 404) return undefined
-    throw new Error('Failed to fetch task')
   }
   return response.json()
 }
@@ -106,16 +117,6 @@ export async function createList(name: string, color: string, emoji: string): Pr
   return response.json()
 }
 
-export async function deleteList(id: string): Promise<void> {
-  const response = await fetch(`/api/lists?id=${id}`, {
-    method: 'DELETE',
-  })
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to delete list')
-  }
-}
-
 export async function getLabels(): Promise<Label[]> {
   const response = await fetch('/api/labels')
   if (!response.ok) {
@@ -135,16 +136,6 @@ export async function createLabel(name: string, color: string, icon: string): Pr
     throw new Error(error.error || 'Failed to create label')
   }
   return response.json()
-}
-
-export async function deleteLabel(id: string): Promise<void> {
-  const response = await fetch(`/api/labels?id=${id}`, {
-    method: 'DELETE',
-  })
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to delete label')
-  }
 }
 
 export async function searchTasks(query: string): Promise<Task[]> {
@@ -170,108 +161,9 @@ export async function getOverdueTasks(): Promise<Task[]> {
   )
 }
 
-// Task Labels
-export async function getTaskLabels(taskId: string): Promise<Label[]> {
-  const response = await fetch(`/api/tasks/${taskId}/labels`)
-  if (!response.ok) {
-    throw new Error('Failed to fetch task labels')
-  }
-  return response.json()
-}
-
-export async function addTaskLabel(taskId: string, labelId: string): Promise<void> {
-  const response = await fetch(`/api/tasks/${taskId}/labels`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ labelId }),
-  })
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to add label')
-  }
-}
-
-export async function removeTaskLabel(taskId: string, labelId: string): Promise<void> {
-  const response = await fetch(`/api/tasks/${taskId}/labels/${labelId}`, {
-    method: 'DELETE',
-  })
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to remove label')
-  }
-}
-
-// Task Attachments
-export async function getTaskAttachments(taskId: string): Promise<TaskAttachment[]> {
-  const response = await fetch(`/api/tasks/${taskId}/attachments`)
-  if (!response.ok) {
-    throw new Error('Failed to fetch attachments')
-  }
-  return response.json()
-}
-
-export async function addTaskAttachment(
-  taskId: string,
-  fileName: string,
-  filePath: string,
-  fileSize: number,
-  mimeType?: string
-): Promise<void> {
-  const response = await fetch(`/api/tasks/${taskId}/attachments`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fileName, filePath, fileSize, mimeType }),
-  })
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to add attachment')
-  }
-}
-
-export async function removeTaskAttachment(attachmentId: string): Promise<void> {
-  const response = await fetch(`/api/attachments/${attachmentId}`, {
-    method: 'DELETE',
-  })
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to remove attachment')
-  }
-}
-
-// Task Reminders
-export async function getTaskReminders(taskId: string): Promise<TaskReminder[]> {
-  const response = await fetch(`/api/tasks/${taskId}/reminders`)
-  if (!response.ok) {
-    throw new Error('Failed to fetch reminders')
-  }
-  return response.json()
-}
-
-export async function addTaskReminder(taskId: string, reminderTime: string): Promise<void> {
-  const response = await fetch(`/api/tasks/${taskId}/reminders`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reminderTime }),
-  })
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to add reminder')
-  }
-}
-
-export async function removeTaskReminder(reminderId: string): Promise<void> {
-  const response = await fetch(`/api/reminders/${reminderId}`, {
-    method: 'DELETE',
-  })
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to remove reminder')
-  }
-}
-
-// Task Logs
-export async function getTaskLogs(taskId: string): Promise<TaskLog[]> {
-  const response = await fetch(`/api/tasks/${taskId}/logs`)
+// Get all task logs for analytics (bulk endpoint)
+export async function getAllTaskLogs(): Promise<TaskLog[]> {
+  const response = await fetch('/api/task-logs')
   if (!response.ok) {
     throw new Error('Failed to fetch logs')
   }
@@ -279,6 +171,9 @@ export async function getTaskLogs(taskId: string): Promise<TaskLog[]> {
 }
 
 // Task Dependencies
+// These call the per-task sub-routes (/api/tasks/{id}/dependencies, ...)
+// implemented in src/app/api/tasks/[id]/. They are used by the
+// task-dependencies component, rendered on the task detail page.
 export async function getTaskDependencies(taskId: string): Promise<{ blocking: Task[]; blocked: Task[] }> {
   const response = await fetch(`/api/tasks/${taskId}/dependencies`)
   if (!response.ok) {
@@ -315,4 +210,21 @@ export async function canCompleteTask(taskId: string): Promise<{ canComplete: bo
     throw new Error('Failed to check if task can complete')
   }
   return response.json()
+}
+
+/**
+ * SWR hooks for data caching and revalidation
+ */
+
+export function useTasks(options?: Parameters<typeof getTasks>[0]) {
+  const key = keys.tasks(options)
+  return useSWR<Task[], Error>(key, () => getTasks(options))
+}
+
+export function useLists() {
+  return useSWR<List[], Error>(keys.lists(), fetcher)
+}
+
+export function useLabels() {
+  return useSWR<Label[], Error>(keys.labels(), fetcher)
 }
