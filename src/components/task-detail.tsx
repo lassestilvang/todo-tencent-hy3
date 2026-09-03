@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/dialog'
 import { EditTaskForm } from '@/components/edit-task-form'
 import { QuickAddSubtask } from '@/components/quick-add-subtask'
+import { TaskDependencies } from '@/components/task-dependencies'
 import type { Task } from '@/types'
 import { toast } from 'sonner'
 
@@ -250,6 +251,13 @@ export function TaskDetail({ task }: { task: Task }) {
               ))}
             <QuickAddSubtask parentId={task.id} />
           </div>
+        </div>
+
+        <div>
+          <span className="text-muted-foreground mb-2 block text-xs font-semibold tracking-wider uppercase">
+            Dependencies
+          </span>
+          <TaskDependencies taskId={task.id} />
         </div>
 
         {task.attachments && task.attachments.length > 0 && (
