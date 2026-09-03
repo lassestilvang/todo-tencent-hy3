@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { triggerWebhooks, WebhookEvent } from '@/lib/webhooks'
+import { type WebhookEvent } from '@/lib/webhooks'
+import { triggerWebhooks } from '@/lib/webhook-store'
 
 export async function POST(request: NextRequest) {
   try {
