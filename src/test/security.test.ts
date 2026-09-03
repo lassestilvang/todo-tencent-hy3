@@ -1,4 +1,5 @@
 import { hashPassword, verifyPassword } from '@/lib/share'
+import { verifyWebhookSignature } from '@/lib/webhooks'
 import { createHmac } from 'crypto'
 
 describe('Security Tests', () => {
@@ -43,9 +44,6 @@ describe('Security Tests', () => {
   })
 
   describe('Webhook Signature Verification', () => {
-    // Import dynamically to get the function
-    const { verifyWebhookSignature } = require('@/lib/webhooks')
-
     it('should verify correct HMAC signature', () => {
       const payload = 'test-payload'
       const secret = 'test-secret'
