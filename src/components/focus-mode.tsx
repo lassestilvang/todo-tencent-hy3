@@ -33,6 +33,13 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { useKeyPress } from '@/lib/hooks'
+import {
+  adaptPomodoroDuration,
+  MIN_SESSIONS_FOR_ADJUSTMENT,
+  POMODORO_DURATION_STEPS,
+} from '@/lib/focus/adaptive-pomodoro'
+import { recordFocusSession } from '@/lib/focus/session-log'
+import { toISODate } from '@/lib/focus/habit-metrics'
 import { toast } from 'sonner'
 
 type TimerMode = 'pomodoro' | 'shortBreak' | 'longBreak'
@@ -101,7 +108,7 @@ function loadStats() {
       }
     }
   }
-  return { sessionsCompleted: 0, totalFocusTime: 0 }
+  return { sessionsCompleted: 0, totalFocusTime: 0, sessionsAbandoned: 0 }
 }
 
 export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
@@ -111,16 +118,12 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
   const [settings, setSettings] = useState(loadSettings)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
-  // Load stats from localStorage with useEffect
-  const [sessionsCompleted, setSessionsCompletedState] = useState(0)
-  const [totalFocusTime, setTotalFocusTimeState] = useState(0)
-
-  // Load initial stats from localStorage
-  useEffect(() => {
-    const stats = loadStats()
-    setSessionsCompletedState(stats.sessionsCompleted || 0)
-    setTotalFocusTimeState(stats.totalFocusTime || 0)
-  }, [])
+  // Stats are read from localStorage exactly once. A lazy initializer avoids the
+// setState-in-effect cascade that an effect on mount would cause.
+  const [initialStats] = useState(loadStats)
+  const [sessionsCompleted, setSessionsCompletedState] = useState(initialStats.sessionsCompleted || 0)
+  const [totalFocusTime, setTotalFocusTimeState] = useState(initialStats.totalFocusTime || 0)
+  const [sessionsAbandoned, setSessionsAbandonedState] = useState(initialStats.sessionsAbandoned || 0)
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const audioRef = useRef<{ play: () => Promise<void>; gainNode?: GainNode } | null>(null)
@@ -206,6 +209,25 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
     setTimeRemaining(durationRef.current)
   }, [mode, settings, pauseTimer])
 
+  // Resetting a focus session that was in progress counts as
+  // abandoned, which feeds the adaptive duration and analytics.
+  const abandonTimer = useCallback(() => {
+    if (status !== 'idle' && mode === 'pomodoro') {
+      setSessionsAbandonedState((prev: number) => prev + 1)
+      // Minutes spent so far; a paused session has no start
+      // reference, so it logs as zero.
+      const elapsedMinutes = startTimeRef.current !== null
+        ? Math.floor((Date.now() - startTimeRef.current) / 60000)
+        : 0
+      recordFocusSession({
+        date: toISODate(new Date()),
+        durationMinutes: elapsedMinutes,
+        completed: false,
+      })
+    }
+    resetTimer()
+  }, [status, mode, resetTimer])
+
   const handleTimerComplete = useCallback(() => {
     pauseTimer()
 
@@ -231,11 +253,34 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
     toast.success(`${MODE_LABELS[mode]} complete!`)
 
     if (mode === 'pomodoro') {
-      setSessionsCompletedState((prev: number) => prev + 1)
+      const completed = sessionsCompleted + 1
+      setSessionsCompletedState(completed)
       setTotalFocusTimeState((prev: number) => prev + settingsRef.current.pomodoroDuration * 60)
 
+      // Log the session for the habit metrics and focus analytics.
+      recordFocusSession({
+        date: toISODate(new Date()),
+        durationMinutes: settingsRef.current.pomodoroDuration,
+        completed: true,
+      })
+
+      // Adapt the focus duration to how sustainable it has been.
+      const adaptation = adaptPomodoroDuration({
+        sessionsCompleted: completed,
+        sessionsAbandoned,
+        pomodoroDuration: settingsRef.current.pomodoroDuration,
+      })
+      if (adaptation.changed) {
+        setSettings((s: typeof settings) => ({ ...s, pomodoroDuration: adaptation.pomodoroDuration }))
+        toast.info(`Focus duration adapted to ${adaptation.pomodoroDuration} min`, {
+          description: adaptation.reason === 'improving'
+            ? 'Sessions keep finishing — trying a longer focus block'
+            : 'Sessions keep being abandoned — trying a shorter focus block',
+        })
+      }
+
       // Determine next break
-      const nextMode = (sessionsCompleted + 1) >= (settingsRef.current.sessionsUntilLongBreak || 4) ? 'longBreak' : 'shortBreak'
+      const nextMode = completed >= (settingsRef.current.sessionsUntilLongBreak || 4) ? 'longBreak' : 'shortBreak'
       setMode(nextMode)
 
       if (settingsRef.current.autoStartBreaks) {
@@ -248,7 +293,7 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
         setTimeout(() => startTimer(), 1000)
       }
     }
-  }, [mode, sessionsCompleted, pauseTimer, startTimer])
+  }, [mode, sessionsCompleted, sessionsAbandoned, pauseTimer, startTimer])
 
   // Keep handleTimerCompleteRef in sync
   useEffect(() => {
@@ -287,7 +332,6 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
       longBreak: settings.longBreakDuration * 60,
     }[mode]
     if (status === 'idle') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTimeRemaining(durationRef.current)
     }
   }, [settings, status, mode])
@@ -296,9 +340,13 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
   useEffect(() => {
     localStorage.setItem(
       'focus-mode-stats',
-      JSON.stringify({ sessionsCompleted: sessionsCompleted, totalFocusTime })
+      JSON.stringify({
+        sessionsCompleted: sessionsCompleted,
+        totalFocusTime,
+        sessionsAbandoned: sessionsAbandoned,
+      })
     )
-  }, [sessionsCompleted, totalFocusTime])
+  }, [sessionsCompleted, totalFocusTime, sessionsAbandoned])
 
   // Update audio volume when settings change
   useEffect(() => {
@@ -392,8 +440,9 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
           <Button
             variant="outline"
             size="icon"
-            onClick={resetTimer}
+            onClick={abandonTimer}
             disabled={status === 'idle'}
+            aria-label="Reset timer"
           >
             <RotateCcw className="h-5 w-5" />
           </Button>
@@ -421,7 +470,7 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-muted/50 rounded-lg">
+        <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-muted/50 rounded-lg">
           <div className="text-center">
             <p className="text-2xl font-bold">{sessionsCompleted}</p>
             <p className="text-xs text-muted-foreground">Sessions</p>
@@ -431,6 +480,17 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
               {Math.floor(totalFocusTime / 60)}m
             </p>
             <p className="text-xs text-muted-foreground">Focus Time</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold">
+              {sessionsCompleted + sessionsAbandoned > 0
+                ? Math.round(
+                    (sessionsCompleted / (sessionsCompleted + sessionsAbandoned)) * 100
+                  )
+                : 100}
+              %
+            </p>
+            <p className="text-xs text-muted-foreground">Completion</p>
           </div>
         </div>
 
@@ -472,11 +532,14 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {[15, 20, 25, 30, 40, 50, 60].map((d) => (
+                    {POMODORO_DURATION_STEPS.map((d) => (
                       <SelectItem key={d} value={String(d)}>{d} minutes</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  Adapts automatically after {MIN_SESSIONS_FOR_ADJUSTMENT} sessions
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Short Break (min)</Label>
