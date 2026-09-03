@@ -17,6 +17,7 @@ import { ClearCompletedButton } from '@/components/clear-completed-button'
 import { QuickAddTask } from '@/components/quick-add-task'
 import { ToggleCompletedButton } from '@/components/toggle-completed-button'
 import { SmartSuggestions } from '@/components/smart-suggestions'
+import { TemplateSuggestions } from '@/components/template-suggestions'
 import { Suspense } from 'react'
 import { formatTime } from '@/lib/utils'
 import type { Task, List } from '@/types'
@@ -105,6 +106,7 @@ export function TodayClient({ tasks, lists }: TodayClientProps) {
             </div>
           }>
             <SmartSuggestions tasks={tasks} lists={lists} />
+            <TemplateSuggestions tasks={tasks} />
           </Suspense>
           <QuickAddTask listId={undefined} />
           {tasks.length === 0 ? (
