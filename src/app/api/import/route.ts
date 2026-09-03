@@ -3,6 +3,11 @@ import { importAllData, type ExportData } from '@/lib/tasks'
 
 export async function POST(request: NextRequest) {
   try {
+    // Conflict mode: 'skip' (default) leaves existing records untouched;
+    // 'replace' updates existing records with the imported values.
+    const onConflictParam = request.nextUrl.searchParams.get('onConflict')
+    const onConflict: 'skip' | 'replace' = onConflictParam === 'replace' ? 'replace' : 'skip'
+
     const contentType = request.headers.get('content-type') || ''
 
     let data: ExportData
@@ -26,10 +31,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid export file format' }, { status: 400 })
     }
 
-    const options = {
-      merge: true,
-      onConflict: 'skip' as const,
-    }
+    const options = { onConflict }
 
     const result = await importAllData(data, options)
 
