@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import {
   getLabels,
   createLabel,
+  updateLabel,
   deleteLabel,
 } from '@/lib/tasks'
 import { z } from 'zod'
@@ -78,8 +79,11 @@ export async function PATCH(request: Request) {
     }
 
     if (action === 'update' && data) {
-      // Note: updateLabel function would need to be added to tasks.ts
-      return NextResponse.json({ error: 'Update not implemented yet' }, { status: 501 })
+      const updated = updateLabel(id, data)
+      if (!updated) {
+        return NextResponse.json({ error: 'Label not found' }, { status: 404 })
+      }
+      return NextResponse.json(updated)
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
