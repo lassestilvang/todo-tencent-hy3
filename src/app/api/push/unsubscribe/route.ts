@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { removeSubscription } from '@/lib/push-store'
 
 interface UnsubscribeRequest {
   endpoint: string
@@ -12,12 +13,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid endpoint' }, { status: 400 })
     }
 
-    console.log('Push unsubscription received:', endpoint)
+    const removed = removeSubscription(endpoint)
 
-    // TODO: Remove from database
-    // await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint))
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, removed })
   } catch (error) {
     console.error('Push unsubscribe error:', error)
     return NextResponse.json({ error: 'Failed to unsubscribe' }, { status: 500 })
