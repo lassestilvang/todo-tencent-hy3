@@ -43,6 +43,9 @@ export const tasks = sqliteTable('tasks', {
     enum: ['every_day', 'every_week', 'every_weekday', 'every_month', 'every_year', 'custom'],
   }),
   listId: text('list_id').references(() => lists.id, { onDelete: 'set null' }),
+  // External calendar event ID this task was imported from (e.g. Google).
+  // Lets sync update the source event instead of creating a duplicate.
+  sourceEventId: text('source_event_id'),
   // Self-referential FK - use AnySQLiteColumn to break circular reference
   parentTaskId: text('parent_task_id').references(((): AnySQLiteColumn => tasks.id), { onDelete: 'cascade' }),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
@@ -118,6 +121,159 @@ export const taskDependencies = sqliteTable('task_dependencies', {
   blockedIdx: index('task_dependencies_blocked_idx').on(table.blockedTaskId),
 }))
 
+// Task Templates
+// listId is a soft reference (no FK) so templates can target lists that are
+// later deleted; tags are stored as a JSON-encoded string[].
+export const taskTemplates = sqliteTable('task_templates', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  priority: text('priority', { enum: ['high', 'medium', 'low', 'none'] }),
+  estimate: integer('estimate'),
+  recurring: text('recurring', {
+    enum: ['every_day', 'every_week', 'every_weekday', 'every_month', 'every_year', 'custom'],
+  }),
+  listId: text('list_id'),
+  tags: text('tags'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+}, (table) => ({
+  nameIdx: index('task_templates_name_idx').on(table.name),
+  createdAtIdx: index('task_templates_created_at_idx').on(table.createdAt),
+}))
+
+// Webhooks
+// events is a JSON-encoded WebhookEvent[]; timestamps are epoch milliseconds.
+export const webhooks = sqliteTable('webhooks', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  url: text('url').notNull(),
+  events: text('events').notNull(),
+  secret: text('secret').notNull(),
+  active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  retryCount: integer('retry_count').notNull().default(0),
+  maxRetries: integer('max_retries').notNull().default(3),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  lastTriggered: integer('last_triggered'),
+  lastError: text('last_error'),
+}, (table) => ({
+  activeIdx: index('webhooks_active_idx').on(table.active),
+}))
+
+// Share Links
+// listId is a soft reference (no FK) so links survive list deletion.
+export const shareLinks = sqliteTable('share_links', {
+  id: text('id').primaryKey(),
+  token: text('token').notNull(),
+  listId: text('list_id').notNull(),
+  permission: text('permission', { enum: ['view', 'comment', 'edit'] }).notNull(),
+  expiresAt: integer('expires_at'),
+  passwordHash: text('password_hash'),
+  createdAt: integer('created_at').notNull(),
+  createdBy: text('created_by').notNull(),
+  accessCount: integer('access_count').notNull().default(0),
+  lastAccessed: integer('last_accessed'),
+}, (table) => ({
+  tokenIdx: uniqueIndex('share_links_token_idx').on(table.token),
+  listIdIdx: index('share_links_list_id_idx').on(table.listId),
+}))
+
+// Workspaces
+// settings is a JSON-encoded WorkspaceSettings object.
+export const workspaces = sqliteTable('workspaces', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  ownerId: text('owner_id').notNull(),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  settings: text('settings').notNull(),
+})
+
+// Workspace Members
+export const workspaceMembers = sqliteTable('workspace_members', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  userId: text('user_id').notNull(),
+  email: text('email').notNull(),
+  name: text('name').notNull(),
+  role: text('role', { enum: ['owner', 'admin', 'member', 'viewer'] }).notNull(),
+  joinedAt: integer('joined_at').notNull(),
+  avatarUrl: text('avatar_url'),
+}, (table) => ({
+  workspaceIdx: index('workspace_members_workspace_idx').on(table.workspaceId),
+  userIdx: index('workspace_members_user_idx').on(table.userId),
+}))
+
+// Workspace Invitations
+export const workspaceInvitations = sqliteTable('workspace_invitations', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  email: text('email').notNull(),
+  role: text('role', { enum: ['owner', 'admin', 'member', 'viewer'] }).notNull(),
+  invitedBy: text('invited_by').notNull(),
+  invitedByName: text('invited_by_name').notNull(),
+  status: text('status', { enum: ['pending', 'accepted', 'declined', 'expired'] }).notNull().default('pending'),
+  token: text('token').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+  createdAt: integer('created_at').notNull(),
+  acceptedAt: integer('accepted_at'),
+}, (table) => ({
+  workspaceIdx: index('workspace_invitations_workspace_idx').on(table.workspaceId),
+  tokenIdx: uniqueIndex('workspace_invitations_token_idx').on(table.token),
+}))
+
+// Workspace Activity
+export const workspaceActivity = sqliteTable('workspace_activity', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  userId: text('user_id').notNull(),
+  userName: text('user_name').notNull(),
+  action: text('action').notNull(),
+  details: text('details').notNull(),
+  entityType: text('entity_type', { enum: ['task', 'list', 'member', 'invitation', 'comment', 'workspace'] }).notNull(),
+  entityId: text('entity_id').notNull(),
+  createdAt: integer('created_at').notNull(),
+}, (table) => ({
+  workspaceIdx: index('workspace_activity_workspace_idx').on(table.workspaceId),
+  createdAtIdx: index('workspace_activity_created_at_idx').on(table.createdAt),
+}))
+
+// Task Comments
+// mentions is a JSON-encoded string[] of mentioned userIds.
+export const taskComments = sqliteTable('task_comments', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id').notNull(),
+  workspaceId: text('workspace_id').notNull(),
+  userId: text('user_id').notNull(),
+  userName: text('user_name').notNull(),
+  userAvatar: text('user_avatar'),
+  content: text('content').notNull(),
+  mentions: text('mentions').notNull(),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at'),
+}, (table) => ({
+  taskIdx: index('task_comments_task_idx').on(table.taskId),
+  workspaceIdx: index('task_comments_workspace_idx').on(table.workspaceId),
+}))
+
+// Push Subscriptions
+// Stores web-push subscriptions so the server can deliver notifications
+// without the client supplying the full subscription each time.
+export const pushSubscriptions = sqliteTable('push_subscriptions', {
+  id: text('id').primaryKey(),
+  endpoint: text('endpoint').notNull(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  userId: text('user_id'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+}, (table) => ({
+  endpointIdx: uniqueIndex('push_subscriptions_endpoint_idx').on(table.endpoint),
+  userIdx: index('push_subscriptions_user_idx').on(table.userId),
+}))
+
 // Type exports for TypeScript
 export type List = typeof lists.$inferSelect
 export type NewList = typeof lists.$inferInsert
@@ -135,3 +291,21 @@ export type TaskLog = typeof taskLogs.$inferSelect
 export type NewTaskLog = typeof taskLogs.$inferInsert
 export type TaskDependency = typeof taskDependencies.$inferSelect
 export type NewTaskDependency = typeof taskDependencies.$inferInsert
+export type TaskTemplateRow = typeof taskTemplates.$inferSelect
+export type NewTaskTemplate = typeof taskTemplates.$inferInsert
+export type WebhookRow = typeof webhooks.$inferSelect
+export type NewWebhook = typeof webhooks.$inferInsert
+export type ShareLinkRow = typeof shareLinks.$inferSelect
+export type NewShareLink = typeof shareLinks.$inferInsert
+export type WorkspaceRow = typeof workspaces.$inferSelect
+export type NewWorkspace = typeof workspaces.$inferInsert
+export type WorkspaceMemberRow = typeof workspaceMembers.$inferSelect
+export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert
+export type WorkspaceInvitationRow = typeof workspaceInvitations.$inferSelect
+export type NewWorkspaceInvitation = typeof workspaceInvitations.$inferInsert
+export type WorkspaceActivityRow = typeof workspaceActivity.$inferSelect
+export type NewWorkspaceActivity = typeof workspaceActivity.$inferInsert
+export type TaskCommentRow = typeof taskComments.$inferSelect
+export type NewTaskComment = typeof taskComments.$inferInsert
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect
+export type NewPushSubscription = typeof pushSubscriptions.$inferInsert
