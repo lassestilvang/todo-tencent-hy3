@@ -5,7 +5,7 @@ import {
   deleteList,
   updateList,
 } from '@/lib/tasks'
-import { triggerWebhooks } from '@/lib/webhooks'
+import { triggerWebhooks } from '@/lib/webhook-store'
 import { z } from 'zod'
 
 const createListSchema = z.object({
