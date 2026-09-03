@@ -5,7 +5,7 @@ import { X, ChevronRight, AlertTriangle, Zap, ListTodo, Calendar } from 'lucide-
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { Suggestion, generateSmartSuggestions, dismissSuggestion, isSuggestionDismissed } from '@/lib/smart-suggestions'
+import { Suggestion, generateSmartSuggestions, dismissSuggestion, isSuggestionDismissed, acceptSuggestion, isSuggestionAccepted } from '@/lib/smart-suggestions'
 import type { Task, List } from '@/types'
 
 interface SmartSuggestionsProps {
@@ -20,6 +20,9 @@ const ICONS: Record<Suggestion['type'], React.ReactNode> = {
   list: <ListTodo className="h-5 w-5 text-purple-500" />,
   breakdown: <AlertTriangle className="h-5 w-5 text-yellow-500" />,
   habit: <Zap className="h-5 w-5 text-green-500" />,
+  batch: <Zap className="h-5 w-5 text-green-500" />,
+  delegate: <Zap className="h-5 w-5 text-orange-500" />,
+  energy: <Zap className="h-5 w-5 text-amber-500" />,
 }
 
 function computeSuggestions(tasks: Task[], lists: List[]) {
@@ -28,17 +31,19 @@ function computeSuggestions(tasks: Task[], lists: List[]) {
     return []
   }
   const allSuggestions = generateSmartSuggestions(tasks, lists, incompleteTasks)
-  return allSuggestions.filter((s) => !isSuggestionDismissed(s.id))
+  return allSuggestions.filter(
+    (s) => !isSuggestionDismissed(s.id) && !isSuggestionAccepted(s.id)
+  )
 }
 
 export function SmartSuggestions({ tasks, lists }: SmartSuggestionsProps) {
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set())
+  const [handledSuggestions, setHandledSuggestions] = useState<Set<string>>(new Set())
 
   const suggestions = useMemo(() => computeSuggestions(tasks, lists), [tasks, lists])
 
-  const handleDismiss = (suggestionId: string) => {
-    dismissSuggestion(suggestionId)
-    setDismissedSuggestions((prev) => new Set([...prev, suggestionId]))
+  const handleDismiss = (suggestionId: string, type: Suggestion['type']) => {
+    dismissSuggestion(suggestionId, type)
+    setHandledSuggestions((prev) => new Set([...prev, suggestionId]))
   }
 
   const handleAction = (suggestion: Suggestion) => {
@@ -67,10 +72,14 @@ export function SmartSuggestions({ tasks, lists }: SmartSuggestionsProps) {
         )
         break
     }
-    handleDismiss(suggestion.id)
+    // Record the acceptance so the feedback loop learns which
+    // suggestion types are useful. Accepted suggestions are
+    // not shown again.
+    acceptSuggestion(suggestion)
+    setHandledSuggestions((prev) => new Set([...prev, suggestion.id]))
   }
 
-  const visibleSuggestions = suggestions.filter((s) => !dismissedSuggestions.has(s.id))
+  const visibleSuggestions = suggestions.filter((s) => !handledSuggestions.has(s.id))
 
   if (visibleSuggestions.length === 0) {
     return null
@@ -104,7 +113,7 @@ export function SmartSuggestions({ tasks, lists }: SmartSuggestionsProps) {
                       variant="ghost"
                       size="icon"
                       className="text-muted-foreground/50 hover:text-muted-foreground"
-                      onClick={() => handleDismiss(suggestion.id)}
+                      onClick={() => handleDismiss(suggestion.id, suggestion.type)}
                       aria-label="Dismiss suggestion"
                     >
                       <X className="h-4 w-4" />
@@ -136,16 +145,21 @@ export function SmartSuggestions({ tasks, lists }: SmartSuggestionsProps) {
 
 // Client-side hook for using suggestions in other components
 export function useSmartSuggestions(tasks: Task[], lists: List[]) {
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set())
+  const [handledSuggestions, setHandledSuggestions] = useState<Set<string>>(new Set())
 
   const suggestions = useMemo(() => computeSuggestions(tasks, lists), [tasks, lists])
 
-  const dismiss = (id: string) => {
-    dismissSuggestion(id)
-    setDismissedSuggestions((prev) => new Set([...prev, id]))
+  const dismiss = (id: string, type?: Suggestion['type']) => {
+    dismissSuggestion(id, type)
+    setHandledSuggestions((prev) => new Set([...prev, id]))
   }
 
-  const visibleSuggestions = suggestions.filter((s) => !dismissedSuggestions.has(s.id))
+  const accept = (suggestion: Suggestion) => {
+    acceptSuggestion(suggestion)
+    setHandledSuggestions((prev) => new Set([...prev, suggestion.id]))
+  }
 
-  return { suggestions: visibleSuggestions, dismiss }
+  const visibleSuggestions = suggestions.filter((s) => !handledSuggestions.has(s.id))
+
+  return { suggestions: visibleSuggestions, dismiss, accept }
 }
