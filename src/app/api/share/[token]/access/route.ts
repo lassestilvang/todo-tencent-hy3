@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { recordShareAccess } from '@/lib/share'
+import { recordShareAccess } from '@/lib/share-store'
 
 export async function POST(
   request: Request,
