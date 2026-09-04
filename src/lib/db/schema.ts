@@ -43,6 +43,8 @@ export const tasks = sqliteTable('tasks', {
     enum: ['every_day', 'every_week', 'every_weekday', 'every_month', 'every_year', 'custom'],
   }),
   listId: text('list_id').references(() => lists.id, { onDelete: 'set null' }),
+  // Workspace member this task is assigned to, if any.
+  assigneeId: text('assignee_id').references(() => workspaceMembers.id, { onDelete: 'set null' }),
   // External calendar event ID this task was imported from (e.g. Google).
   // Lets sync update the source event instead of creating a duplicate.
   sourceEventId: text('source_event_id'),
@@ -55,6 +57,7 @@ export const tasks = sqliteTable('tasks', {
   updatedAt: text('updated_at').notNull().default(sql`(CURRENT_TIMESTAMP)`),
 }, (table) => ({
   listIdIdx: index('tasks_list_id_idx').on(table.listId),
+  assigneeIdIdx: index('tasks_assignee_id_idx').on(table.assigneeId),
   parentTaskIdIdx: index('tasks_parent_task_id_idx').on(table.parentTaskId),
   completedIdx: index('tasks_completed_idx').on(table.completed),
   dateIdx: index('tasks_date_idx').on(table.date),
