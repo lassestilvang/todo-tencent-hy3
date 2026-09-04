@@ -15,6 +15,11 @@ A modern, feature-rich todo application built with Next.js 16, React 19, and Dri
 - **Data Export/Import** - Backup and restore your data
 - **Webhooks** - External integrations with HMAC signature verification
 - **Workspaces** - Team collaboration with roles and permissions
+- **Real-time Activity** - Live workspace activity stream over server-sent events
+- **Presence Indicators** - See which devices are active in a workspace
+- **Offline Mode** - Mutations made offline are queued and synced on reconnect
+- **Workflow Automation** - Visual builder with triggers, conditions, and actions
+- **Reminders** - Due reminders delivered as toasts
 
 ## Tech Stack
 
@@ -106,6 +111,17 @@ Authorization: Bearer <your-api-key>
 
 #### Push Notifications
 - `POST /api/push/send` - Send push notification (requires API key)
+
+#### Workspace Activity
+- `GET /api/workspaces/{workspaceId}/activity` - Recent workspace activity
+- `GET /api/workspaces/{workspaceId}/events` - Live activity stream (SSE)
+
+#### Presence
+- `GET /api/presence?workspaceId={id}` - Active devices in a workspace
+- `POST /api/presence` - Send a presence heartbeat
+
+#### Reminders
+- `GET /api/reminders` - Deliver reminders that are due
 
 See `openapi.yaml` for complete API documentation.
 
