@@ -1,6 +1,5 @@
 'use client'
 
-import { AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
 import { Plus, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CreateTaskForm } from '@/components/create-task-form'
@@ -12,12 +11,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { AnimatedTaskItem } from '@/components/animated-task-item'
+import { TaskRows } from '@/components/task-rows'
 import { ClearCompletedButton } from '@/components/clear-completed-button'
 import { QuickAddTask } from '@/components/quick-add-task'
 import { ToggleCompletedButton } from '@/components/toggle-completed-button'
 import { SmartSuggestions } from '@/components/smart-suggestions'
 import { TemplateSuggestions } from '@/components/template-suggestions'
+import { QuickActions } from '@/components/quick-actions'
 import { Suspense } from 'react'
 import { formatTime } from '@/lib/utils'
 import type { Task, List } from '@/types'
@@ -107,6 +107,7 @@ export function TodayClient({ tasks, lists }: TodayClientProps) {
           }>
             <SmartSuggestions tasks={tasks} lists={lists} />
             <TemplateSuggestions tasks={tasks} />
+            <QuickActions tasks={tasks} view="today" />
           </Suspense>
           <QuickAddTask listId={undefined} />
           {tasks.length === 0 ? (
@@ -121,15 +122,7 @@ export function TodayClient({ tasks, lists }: TodayClientProps) {
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              <LazyMotion features={domAnimation}>
-                <AnimatePresence mode="popLayout">
-                  {tasks.map((task) => (
-                    <AnimatedTaskItem key={task.id} task={task} />
-                  ))}
-                </AnimatePresence>
-              </LazyMotion>
-            </div>
+            <TaskRows tasks={tasks} />
           )}
         </div>
       </div>
