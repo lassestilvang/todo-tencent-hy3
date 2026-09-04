@@ -20,6 +20,7 @@ import { PriorityIcon } from '@/components/priority-icon'
 import { handleDeleteAndRedirect } from '@/lib/actions'
 import { TaskCheckbox } from '@/components/task-checkbox'
 import { TaskPresence } from '@/components/task-presence'
+import { WorkspaceActivityFeed } from '@/components/workspace-activity-feed'
 import {
   cn,
   formatDisplayDate,
@@ -153,11 +154,17 @@ export function TaskDetail({ task }: { task: Task }) {
           )}
         </div>
 
-        {/* Live presence for the assignee's workspace. */}
+        {/* Live presence and activity for the
+            assignee's workspace. */}
         {task.assignee && (
-          <TaskPresence
-            workspaceId={task.assignee.workspaceId}
-          />
+          <div className="space-y-4">
+            <TaskPresence
+              workspaceId={task.assignee.workspaceId}
+            />
+            <WorkspaceActivityFeed
+              workspaceId={task.assignee.workspaceId}
+            />
+          </div>
         )}
 
         {task.description && (
