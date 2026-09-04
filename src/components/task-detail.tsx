@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { PriorityIcon } from '@/components/priority-icon'
 import { handleDeleteAndRedirect } from '@/lib/actions'
 import { TaskCheckbox } from '@/components/task-checkbox'
+import { TaskPresence } from '@/components/task-presence'
 import {
   cn,
   formatDisplayDate,
@@ -151,6 +152,13 @@ export function TaskDetail({ task }: { task: Task }) {
             </>
           )}
         </div>
+
+        {/* Live presence for the assignee's workspace. */}
+        {task.assignee && (
+          <TaskPresence
+            workspaceId={task.assignee.workspaceId}
+          />
+        )}
 
         {task.description && (
           <div className="text-muted-foreground bg-accent/25 border-border/10 flex gap-3 rounded-xl border p-4">
