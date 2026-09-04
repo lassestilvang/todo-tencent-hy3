@@ -10,6 +10,7 @@ import {
   taskComments,
 } from '@/lib/db/schema'
 import { getStoreDb } from '@/lib/db/instance'
+import { publishActivity } from './collaboration/activity-stream'
 import {
   generateWorkspaceId,
   generateInvitationToken,
@@ -555,6 +556,11 @@ export function logActivity(activity: Omit<WorkspaceActivity, 'id' | 'createdAt'
       .where(inArray(workspaceActivity.id, stale.map(s => s.id)))
       .run()
   }
+
+  // Real-time: broadcast to this workspace's SSE
+  // subscribers (see
+  // /api/workspaces/[workspaceId]/events).
+  publishActivity(newActivity)
 
   return newActivity
 }
