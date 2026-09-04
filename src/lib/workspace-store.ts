@@ -266,6 +266,16 @@ export function getMember(workspaceId: string, userId: string): WorkspaceMember 
   return row ? mapMemberRow(row) : null
 }
 
+/** Every member of every workspace — the task-assignment roster. */
+export function getAllMembers(): WorkspaceMember[] {
+  const db = getStoreDb()
+  return db
+    .select()
+    .from(workspaceMembers)
+    .all()
+    .map(mapMemberRow)
+}
+
 export function addMember(
   workspaceId: string,
   userId: string,
