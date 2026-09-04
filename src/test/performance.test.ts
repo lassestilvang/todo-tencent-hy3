@@ -18,6 +18,12 @@ import {
 import { semanticFilterTasks } from '@/lib/ai/semantic-filter'
 import { parseFilterQuery } from '@/lib/nl-filter'
 import { searchCommands } from '@/lib/command-palette'
+import {
+  executeWorkflow,
+  type Workflow,
+  type WorkflowNode,
+  type WorkflowEdge,
+} from '@/lib/workflows/engine'
 import { tasks as tasksTable } from '@/lib/db/schema'
 import type { Task } from '@/types'
 
@@ -36,6 +42,55 @@ const CONTEXT: UserContext = {
   energyLevel: 'high',
   availableTimeMinutes: 120,
   focusMode: true,
+}
+
+// A trigger feeding a linear chain of action
+// nodes — the shape a real automation takes.
+const WORKFLOW_NODES = 10
+
+function workflowChain(): Workflow {
+  const nodes: WorkflowNode[] = [
+    {
+      id: 'trigger-1',
+      type: 'trigger',
+      triggerType: 'task_completed',
+      config: {},
+      position: { x: 0, y: 0 },
+    },
+  ]
+  const edges: WorkflowEdge[] = []
+  for (let i = 0; i < WORKFLOW_NODES; i++) {
+    nodes.push({
+      id: `action-${i}`,
+      type: 'action',
+      actionType: 'log_activity',
+      config: { message: `step ${i}` },
+      position: { x: i + 1, y: 0 },
+    })
+  }
+  edges.push({
+    id: 'edge-0',
+    source: 'trigger-1',
+    target: 'action-0',
+  })
+  for (let i = 0; i < WORKFLOW_NODES - 1; i++) {
+    edges.push({
+      id: `edge-${i + 1}`,
+      source: `action-${i}`,
+      target: `action-${i + 1}`,
+    })
+  }
+  return {
+    id: 'perf-workflow',
+    name: 'Benchmark workflow',
+    description: '',
+    nodes,
+    edges,
+    enabled: true,
+    createdAt: 0,
+    updatedAt: 0,
+    runCount: 0,
+  }
 }
 
 // Populated in beforeAll; the AI benchmarks run over mapped Task objects.
@@ -193,5 +248,41 @@ describe('Performance benchmarks', () => {
     })
 
     expect(ms).toBeLessThan(200)
+  })
+
+  it('executes a workflow', async () => {
+    const workflow = workflowChain()
+
+    // log_activity writes to the console —
+    // silence the benchmark run.
+    const log = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined)
+
+    const ITERATIONS = 100
+    const start = performance.now()
+    for (let i = 0; i < ITERATIONS; i++) {
+      const { success } = await executeWorkflow(
+        workflow,
+        { taskId: 'perf-task-0' }
+      )
+      if (!success) {
+        throw new Error('workflow execution failed')
+      }
+    }
+    const ms = performance.now() - start
+    log.mockRestore()
+
+    // Per-run overhead: the plan's target is
+    // < 100ms for a workflow execution.
+    const perRun = ms / ITERATIONS
+    results.push({
+      operation: 'executeWorkflow',
+      dataset: `${WORKFLOW_NODES + 1} nodes × ${ITERATIONS} runs`,
+      ms: perRun,
+      ceilingMs: 100,
+    })
+
+    expect(perRun).toBeLessThan(100)
   })
 })
