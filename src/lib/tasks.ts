@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db'
-import { and, eq, isNull, or, desc, asc, sql, inArray } from 'drizzle-orm'
+import { and, eq, isNull, or, desc, asc, sql, inArray, lte } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   lists,
@@ -11,6 +11,7 @@ import {
   taskLogs,
   taskDependencies,
   taskTemplates,
+  workspaceMembers,
 } from '@/lib/db/schema'
 import type {
   Task,
@@ -20,9 +21,13 @@ import type {
   TaskReminder,
   TaskLog,
   TaskLabel,
+  Priority,
 } from '@/types'
+import type { WorkspaceMember } from '@/lib/workspaces'
 import { generateId } from './utils'
 import { parseNaturalLanguage, validateParsedTask } from './nlp'
+import { assignmentChanged } from './collaboration/assignment'
+import { notifyTaskAssignment } from './collaboration/notifier'
 
 // Task Templates
 export interface TaskTemplate {
@@ -225,6 +230,24 @@ function createMockDatabase() {
   }
 }
 
+// Convert a workspace member row to the collaboration
+// type used on tasks (avatarUrl is null in the DB).
+function mapMemberToTask(
+  member: typeof workspaceMembers.$inferSelect | undefined
+): WorkspaceMember | undefined {
+  if (!member) return undefined
+  return {
+    id: member.id,
+    workspaceId: member.workspaceId,
+    userId: member.userId,
+    email: member.email,
+    name: member.name,
+    role: member.role,
+    joinedAt: member.joinedAt,
+    avatarUrl: member.avatarUrl ?? undefined,
+  }
+}
+
 // Helper to convert Drizzle Task to App Task type
 function mapTaskRow(row: typeof tasks.$inferSelect): Task {
   return {
@@ -238,6 +261,7 @@ function mapTaskRow(row: typeof tasks.$inferSelect): Task {
     priority: row.priority,
     recurring: row.recurring,
     list_id: row.listId,
+    assignee_id: row.assigneeId,
     source_event_id: row.sourceEventId,
     parent_task_id: row.parentTaskId,
     completed: row.completed,
@@ -287,6 +311,7 @@ async function buildTaskRelations(
     reminders,
     logs,
     allSubTasks,
+    allMembers,
   ] = await Promise.all([
     db.select().from(lists).all(),
     db.select().from(labels).all(),
@@ -295,6 +320,7 @@ async function buildTaskRelations(
     db.select().from(taskReminders).where(inArray(taskReminders.taskId, taskIds)).all(),
     db.select().from(taskLogs).where(inArray(taskLogs.taskId, taskIds)).all(),
     db.select().from(tasks).where(inArray(tasks.parentTaskId, taskIds)).all(),
+    db.select().from(workspaceMembers).all(),
   ])
 
   // Build lookup maps
@@ -345,6 +371,7 @@ async function buildTaskRelations(
     if (!subTasksMap.has(sub.parentTaskId!)) subTasksMap.set(sub.parentTaskId!, [])
     subTasksMap.get(sub.parentTaskId!)!.push(sub)
   }
+  const memberMap = new Map(allMembers.map((m) => [m.id, m]))
 
   // Recursively build task with relations
   function buildTask(taskRow: typeof tasks.$inferSelect): Task {
@@ -357,6 +384,9 @@ async function buildTaskRelations(
     return {
       ...baseTask,
       list: taskRow.listId ? listMap.get(taskRow.listId) : undefined,
+      assignee: taskRow.assigneeId
+        ? mapMemberToTask(memberMap.get(taskRow.assigneeId))
+        : undefined,
       labels: (taskLabelsMap.get(taskRow.id) || [])
         .map(labelId => labelMap.get(labelId))
         .filter((l): l is Label => l !== undefined),
@@ -491,6 +521,7 @@ export async function getTasks(options?: {
   view?: 'today' | 'next7' | 'upcoming' | 'all'
   completed?: boolean
   search?: string
+  priority?: Priority
 }): Promise<Task[]> {
     const db = getDatabase()
 
@@ -511,6 +542,10 @@ export async function getTasks(options?: {
     } else {
       return [] // No tasks with this label
     }
+  }
+
+  if (options?.priority) {
+    whereConditions.push(eq(tasks.priority, options.priority))
   }
 
   if (options?.view) {
@@ -598,6 +633,7 @@ export function createTask(data: Partial<Task>): Task {
     priority: data.priority || 'none',
     recurring: data.recurring || null,
     listId: data.list_id || null,
+    assigneeId: data.assignee_id || null,
     sourceEventId: data.source_event_id || null,
     parentTaskId: data.parent_task_id || null,
     completed: data.completed || false,
@@ -663,6 +699,10 @@ export function updateTask(id: string, data: Partial<Task>): void {
   const oldTask = getDatabase().select().from(tasks).where(eq(tasks.id, id)).get()
   if (!oldTask) return
 
+  // Snake_case view of the previous state, for
+  // accurate change detection below.
+  const previous = mapTaskRow(oldTask)
+
   const updateData: Partial<typeof tasks.$inferInsert> = {
     updatedAt: new Date().toISOString(),
   }
@@ -676,6 +716,9 @@ export function updateTask(id: string, data: Partial<Task>): void {
   if (data.priority !== undefined) updateData.priority = data.priority
   if (data.recurring !== undefined) updateData.recurring = data.recurring
   if (data.list_id !== undefined) updateData.listId = data.list_id
+  if (data.assignee_id !== undefined) {
+    updateData.assigneeId = data.assignee_id
+  }
   if (data.parent_task_id !== undefined) updateData.parentTaskId = data.parent_task_id
   if (data.completed !== undefined) {
     updateData.completed = data.completed
@@ -688,13 +731,27 @@ export function updateTask(id: string, data: Partial<Task>): void {
     .where(eq(tasks.id, id))
     .run()
 
-  if (oldTask) {
-    const changes = Object.keys(data).filter(
-      (k: string) => data[k as keyof Task] !== (oldTask as typeof tasks.$inferSelect)[k as keyof typeof tasks.$inferSelect]
-    )
-    if (changes.length > 0) {
-      logTaskAction(id, 'updated', `Updated: ${changes.join(', ')}`)
-    }
+  const changes = Object.keys(data).filter(
+    (k: string) => data[k as keyof Task] !== previous[k as keyof Task]
+  )
+  if (changes.length > 0) {
+    logTaskAction(id, 'updated', `Updated: ${changes.join(', ')}`)
+  }
+
+  // Assignment changes notify the new assignee's
+  // devices. Fire-and-forget: the update itself
+  // must not wait on push delivery.
+  if (
+    data.assignee_id !== undefined &&
+    assignmentChanged(previous.assignee_id, data.assignee_id)
+  ) {
+    void notifyTaskAssignment({
+      taskId: id,
+      taskName: data.name ?? previous.name,
+      assigneeId: data.assignee_id,
+    }).catch((error: unknown) => {
+      console.error('Assignment notification failed:', error)
+    })
   }
 }
 
@@ -981,6 +1038,70 @@ export function addTaskReminder(taskId: string, reminderTime: string): void {
 export function removeTaskReminder(reminderId: string): void {
     const db = getDatabase()
   db.delete(taskReminders).where(eq(taskReminders.id, reminderId)).run()
+}
+
+// Background task management: due-reminder delivery.
+// The client sweeps `/api/reminders` every minute;
+// each sweep delivers reminders whose time has come
+// and marks them sent so they are not repeated.
+export interface DueReminder {
+  id: string
+  taskId: string
+  taskName: string
+  reminderTime: string
+}
+
+/** Reminders whose time has come and have not been sent yet. */
+export function getDueReminders(
+  now: Date = new Date(),
+): DueReminder[] {
+  const db = getDatabase()
+  const iso = now.toISOString()
+  return db
+    .select({
+      id: taskReminders.id,
+      taskId: taskReminders.taskId,
+      taskName: tasks.name,
+      reminderTime: taskReminders.reminderTime,
+    })
+    .from(taskReminders)
+    .innerJoin(tasks, eq(tasks.id, taskReminders.taskId))
+    .where(
+      and(
+        eq(taskReminders.sent, false),
+        // Completed tasks are not worth a reminder.
+        eq(tasks.completed, false),
+        lte(taskReminders.reminderTime, iso),
+      ),
+    )
+    .all()
+}
+
+/**
+ * Deliver every due reminder: returns them and marks
+ * them sent, so the next sweep will not repeat them.
+ */
+export function processDueReminders(
+  now: Date = new Date(),
+): DueReminder[] {
+  const due = getDueReminders(now)
+  if (due.length === 0) {
+    return []
+  }
+
+  const db = getDatabase()
+  for (const reminder of due) {
+    db.update(taskReminders)
+      .set({ sent: true })
+      .where(eq(taskReminders.id, reminder.id))
+      .run()
+    logTaskAction(
+      reminder.taskId,
+      'reminder_sent',
+      `Reminder delivered for ${reminder.reminderTime}`,
+    )
+  }
+  return due
 }
 
 export function getTaskLogs(taskId: string): TaskLog[] {
