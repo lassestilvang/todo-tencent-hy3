@@ -1,7 +1,13 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  loadShortcuts,
+  matchesCombo,
+  type KeyCombo,
+  type ShortcutId,
+} from '@/lib/shortcuts'
 
 export function KeyboardShortcuts({
   onSearchOpen,
@@ -15,6 +21,9 @@ export function KeyboardShortcuts({
   onCommandPaletteOpen?: () => void
 }) {
   const { push } = useRouter()
+  // Shortcuts are customizable; read them once on mount.
+  const [shortcuts] = useState<Record<ShortcutId, KeyCombo>>(loadShortcuts)
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if in input/textarea
@@ -22,21 +31,29 @@ export function KeyboardShortcuts({
         return
       }
 
-      // Ctrl+K or Cmd+K to open command palette
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault()
-        onCommandPaletteOpen?.()
-      }
-      // Ctrl+Shift+K or Cmd+Shift+K for search
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'K') {
+      // Most specific bindings first: Cmd/Ctrl+Shift+K
+      // (search) also satisfies the plain Cmd/Ctrl+K combo.
+      if (matchesCombo(e, shortcuts.search)) {
         e.preventDefault()
         onSearchOpen()
+        return
       }
-      // 'n' to open new task dialog
-      if (e.key === 'n') {
+      if (matchesCombo(e, shortcuts.commandPalette)) {
+        e.preventDefault()
+        onCommandPaletteOpen?.()
+        return
+      }
+      if (matchesCombo(e, shortcuts.newTask)) {
         e.preventDefault()
         onNewTask?.()
+        return
       }
+      if (matchesCombo(e, shortcuts.shortcutsHelp)) {
+        e.preventDefault()
+        onShortcutsOpen?.()
+        return
+      }
+
       // View navigation: 1=Today, 2=Next7, 3=Upcoming, 4=All
       if (e.key === '1') {
         e.preventDefault()
@@ -54,15 +71,18 @@ export function KeyboardShortcuts({
         e.preventDefault()
         push('/all')
       }
-      if (e.key === '?') {
-        e.preventDefault()
-        onShortcutsOpen?.()
-      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onSearchOpen, onNewTask, onShortcutsOpen, onCommandPaletteOpen, push])
+  }, [
+    onSearchOpen,
+    onNewTask,
+    onShortcutsOpen,
+    onCommandPaletteOpen,
+    push,
+    shortcuts,
+  ])
 
   return null
 }
