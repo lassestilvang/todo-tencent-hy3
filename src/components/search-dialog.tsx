@@ -2,14 +2,20 @@
 
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import type { Task } from '@/types'
 import Link from 'next/link'
 import { cn, formatDisplayDate } from '@/lib/utils'
-import { Loader2, X } from 'lucide-react'
+import { Filter, Loader2, X } from 'lucide-react'
 import { TaskCheckbox } from '@/components/task-checkbox'
+import {
+  describeFilter,
+  hasFilterCriteria,
+  parseFilterQuery,
+} from '@/lib/nl-filter'
+import { filterToParams } from '@/lib/filter-presets'
 
 function HighlightText({ text, query }: { text: string; query: string }) {
   if (!query) return <>{text}</>
@@ -73,6 +79,26 @@ export function SearchDialog({
     fetcher,
     { revalidateOnFocus: false }
   )
+
+  // A sentence like "show high priority tasks due
+  // today" parses into a structured filter; offer
+  // to apply it to the task list.
+  const parsedFilter = useMemo(
+    () => parseFilterQuery(debouncedQuery),
+    [debouncedQuery]
+  )
+  const canApplyFilter =
+    debouncedQuery.length >= 2 &&
+    hasFilterCriteria(parsedFilter)
+
+  const handleApplyFilter = useCallback(() => {
+    const filterParams = new URLSearchParams(
+      filterToParams(parsedFilter)
+    )
+    const query = filterParams.toString()
+    onOpenChange(false)
+    push(`/all${query ? `?${query}` : ''}`)
+  }, [parsedFilter, onOpenChange, push])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -185,6 +211,26 @@ export function SearchDialog({
               </p>
             </div>
           )}
+        {canApplyFilter && (
+          <div className="border-border/50 bg-accent/30 mt-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <Filter className="text-primary h-4 w-4 shrink-0" />
+              <p className="text-muted-foreground truncate text-sm">
+                Filter:{' '}
+                <span className="text-foreground/90 font-medium">
+                  {describeFilter(parsedFilter)}
+                </span>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleApplyFilter}
+              className="bg-primary text-primary-foreground shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:opacity-90"
+            >
+              Apply filter
+            </button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )
