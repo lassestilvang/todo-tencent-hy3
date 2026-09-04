@@ -22,6 +22,7 @@ import {
 import { KeyboardShortcuts } from '@/components/keyboard-shortcuts'
 import { Button } from '@/components/ui/button'
 import type { DueReminder } from '@/lib/tasks'
+import { drainQueue } from '@/lib/offline-queue'
 
 // The search dialog, shortcuts dialog, and command
 // palette open on demand (⌘K, ?), so their code is
@@ -152,6 +153,38 @@ export function SearchWrapper({ children }: { children?: React.ReactNode }) {
     sweep()
     const interval = setInterval(sweep, 60_000)
     return () => clearInterval(interval)
+  }, [])
+
+  // Offline queue: replay queued mutations
+  // when connectivity returns — and every
+  // 30s in case the online event was
+  // missed (e.g. the tab was asleep).
+  useEffect(() => {
+    const drain = async () => {
+      try {
+        const delivered = await drainQueue()
+        if (delivered.length > 0) {
+          toast.success(
+            `${delivered.length} queued change${
+              delivered.length === 1 ? '' : 's'
+            } synced`
+          )
+        }
+      } catch {
+        // The next drain retries.
+      }
+    }
+
+    window.addEventListener('online', drain)
+    const interval = setInterval(drain, 30_000)
+    // Drain on mount too: a previous
+    // session may have queued mutations.
+    drain()
+
+    return () => {
+      window.removeEventListener('online', drain)
+      clearInterval(interval)
+    }
   }, [])
 
   return (
