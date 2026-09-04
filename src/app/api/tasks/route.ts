@@ -7,6 +7,11 @@ import {
   updateTask,
 } from '@/lib/tasks'
 import { triggerWebhooks } from '@/lib/webhook-store'
+import {
+  parseJsonBody,
+  RequestValidationError,
+  validationErrorResponse,
+} from '@/lib/validation'
 import { z } from 'zod'
 
 const createTaskSchema = z.object({
@@ -26,6 +31,7 @@ const updateTaskSchema = z.object({
   deadline: z.string().nullable().optional(),
   priority: z.enum(['high', 'medium', 'low', 'none']).optional(),
   list_id: z.string().nullable().optional(),
+  assignee_id: z.string().nullable().optional(),
   estimate: z.coerce.number().int().positive().nullable().optional(),
   completed: z.boolean().optional(),
 })
@@ -64,19 +70,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const result = createTaskSchema.safeParse(body)
-    if (!result.success) {
-      return NextResponse.json(
-        { error: 'Invalid request data', details: result.error.format() },
-        { status: 400 }
-      )
-    }
-    const task = createTask(result.data)
+    const body = await parseJsonBody(
+      request,
+      createTaskSchema
+    )
+    const task = createTask(body)
     // Trigger webhook for task creation
     triggerWebhooks('task.created', task)
     return NextResponse.json(task, { status: 201 })
   } catch (error) {
+    if (error instanceof RequestValidationError) {
+      return validationErrorResponse(error)
+    }
     console.error('Task creation error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -87,17 +92,10 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const body = await request.json()
-    const result = patchTaskSchema.safeParse(body)
-
-    if (!result.success) {
-      return NextResponse.json(
-        { error: 'Invalid request data', details: result.error.format() },
-        { status: 400 }
-      )
-    }
-
-    const { id, action, data } = result.data
+    const { id, action, data } = await parseJsonBody(
+      request,
+      patchTaskSchema
+    )
 
     if (action === 'toggle') {
       // Get task before toggling to know the old state
@@ -143,6 +141,9 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error) {
+    if (error instanceof RequestValidationError) {
+      return validationErrorResponse(error)
+    }
     console.error('Task patch error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
