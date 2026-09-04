@@ -83,8 +83,8 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 - [x] Workflow templates — `WORKFLOW_TEMPLATES` (Daily Review Reminder, Overdue Task Escalation, Task Completion Follow-up) selectable from the builder's template dropdown
 
 ### 3.3 Enhanced Collaboration
-- [ ] Real-time collaborative editing — requires socket.io; not implemented
-- [ ] Presence indicators
+- [x] Real-time collaborative editing — dependency-free SSE channel instead of socket.io: `logActivity` (the funnel for all workspace events — member changes, invitations, comments, workspace creation) publishes to `lib/collaboration/activity-stream.ts`, which broadcasts to subscribers; `GET /api/workspaces/[workspaceId]/events` streams them as `data: <json>` frames with a 25s heartbeat comment, and `lib/use-workspace-events.ts` opens the EventSource (reconnects natively, closes on workspace switch). Shared-cursor/typing sync (true collaborative *editing*) is not implemented — event-level real time is
+- [x] Presence indicators — per-device presence (no login in this app): `lib/collaboration/presence.ts` registry with 60s TTL, `POST /api/presence` heartbeat (15s) + `GET /api/presence` list (10s poll, reaped before answering) via `lib/use-workspace-presence.ts`, rendered by `components/task-presence.tsx` on `TaskDetail` under the assignee badge (green pulse, count, initial avatars)
 - [x] Inline threaded comments — task comments via `/api/workspaces/[workspaceId]/comments?taskId=` (create/read/update/delete, author-only edits, @mention extraction)
 - [x] Task assignment with notifications — `assignee_id` on tasks (FK to `workspace_members`, migrations 0005/0006); assignee resolved onto every task read (`buildTaskRelations`); assignment picker in `EditTaskForm` and assignee badge on `TaskDetail`; assigning through `updateTask` pushes a notification to the assignee's devices (`lib/collaboration/assignment.ts` pure helpers + `lib/collaboration/notifier.ts` server-side web-push delivery, fail-safe when VAPID is unconfigured); `getAllMembers` store + `getMembersAction` expose the roster; viewers may not assign (`canAssignTask`)
 - [x] Activity feed improvements — workspace activity log (27 event types, trimmed to 1000 per workspace, `/api/workspaces/[workspaceId]/activity`)
@@ -105,9 +105,9 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 - [x] Completion time prediction — `predictCompletionTime` (category average → calibrated estimate → raw estimate → default), used by the smart scheduler to plan against learned durations
 
 ### 4.2 Offline Capabilities
-- [ ] IndexedDB fallback — deferred; needs the `idb` dependency and a client-side data store mirroring the server schema (the `/offline` page already covers the "you are offline" UX)
-- [ ] Offline queue for mutations — deferred; same prerequisite as IndexedDB fallback
-- [ ] Conflict resolution on sync — deferred; requires the offline queue to exist first (calendar sync already resolves task/event conflicts server-side)
+- [ ] IndexedDB fallback — deferred; needs the `idb` dependency and a client-side data store mirroring the server schema (the mutation queue below covers the write slice; reads still need the network, and the `/offline` page covers the "you are offline" UX)
+- [x] Offline queue for mutations — `lib/offline-queue.ts` (localStorage-backed, 100-entry cap, oldest dropped when storage is full): every mutation in `lib/tasks-client.ts` (create/update/toggle/delete task, create list, create label) goes through `sendOrQueue`, which queues when `navigator.onLine` is false or the fetch rejects with a network `TypeError`, answering with a synthetic `202 Accepted`; `SearchWrapper` drains on the `online` event, on mount, and every 30s (tab-asleep safety), replaying in order and toasting "N queued changes synced" — delivered mutations are dropped, server-rejected ones stay queued, and a network drop mid-drain keeps the rest
+- [ ] Conflict resolution on sync — deferred; the queue replays in order and server-rejected mutations stay queued (fail-safe, last-write-wins via server validation), but true conflict merge (OT/CRDT) is not implemented (calendar sync already resolves task/event conflicts server-side)
 - [ ] Progressive enhancement — deferred; follows from the IndexedDB fallback
 
 ### 4.3 Security Hardening
@@ -117,10 +117,10 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 - [x] Audit logging — workspace activity feed + task logs API (`/api/task-logs`)
 
 ### 4.4 Testing & Documentation
-- [x] Comprehensive test coverage — 555 tests across 36 suites (tasks, templates, export/import, security, share, webhooks, workspaces, push, rate-limit, completion-time, calendar-sync, calendar-conflicts, adaptive-pomodoro, focus-analytics, suggestion-feedback, template-suggestions, error-boundary, filter-presets, command-palette, shortcuts, quick-actions, nl-filter, semantic-filter, connectors, assignment, task-assignment, csrf, validation, performance, reminders)
-- [x] API documentation updates — `openapi.yaml`: 52 schemas, 35 paths, validated against the filesystem; task schemas carry `assignee_id`/`assignee`, shared `ValidationError` response (uniform 400 shape), `/reminders` sweep route, proxy security note in `info.description`
+- [x] Comprehensive test coverage — 589 tests across 41 suites (tasks, templates, export/import, security, share, webhooks, workspaces, push, rate-limit, completion-time, calendar-sync, calendar-conflicts, adaptive-pomodoro, focus-analytics, suggestion-feedback, template-suggestions, error-boundary, filter-presets, command-palette, shortcuts, quick-actions, nl-filter, semantic-filter, connectors, assignment, task-assignment, csrf, validation, performance, reminders, activity-stream, presence, presence route, workspace events stream, offline queue)
+- [x] API documentation updates — `openapi.yaml`: 52 schemas, 37 paths, validated against the filesystem; task schemas carry `assignee_id`/`assignee`, shared `ValidationError` response (uniform 400 shape), `/reminders` sweep route, `/presence` heartbeat + list, `/workspaces/{workspaceId}/events` SSE stream, proxy security note in `info.description`
 - [x] User guide updates — README added
-- [x] Performance benchmarks — `src/test/performance.test.ts`: 7 benchmarks over a 10k-task dataset (full read with relations, `today` view filter, search, `batchPrioritize`, `semanticFilterTasks`, NL-filter parsing, command search) with timing ceilings as regression guards; results printed via `console.table`
+- [x] Performance benchmarks — `src/test/performance.test.ts`: 8 benchmarks over a 10k-task dataset (full read with relations, `today` view filter, search, `batchPrioritize`, `semanticFilterTasks`, NL-filter parsing, command search, workflow execution through a 10-node chain × 100 runs) with timing ceilings as regression guards; results printed via `console.table`
 
 ## File Structure Changes
 
@@ -137,6 +137,11 @@ src/
 │   │   └── trends.ts             # Stats, trends, predictions, insights
 │   ├── calendar/
 │   │   └── tokens.ts             # Google OAuth token storage/refresh
+│   ├── collaboration/
+│   │   ├── activity-stream.ts    # In-memory pub/sub for workspace events
+│   │   ├── presence.ts           # Per-device presence registry (60s TTL)
+│   │   ├── assignment.ts         # Assignment pure helpers
+│   │   └── notifier.ts           # Server-side web-push delivery
 │   ├── focus/
 │   │   ├── adaptive-pomodoro.ts  # Duration adaptation from completion rate
 │   │   ├── session-log.ts        # localStorage focus-session history
@@ -162,6 +167,9 @@ src/
 │   ├── smart-suggestions.ts      # Pattern-based suggestions + NLP date parsing
 │   ├── share.ts / webhooks.ts / workspaces.ts  # Pure helpers + generators
 │   ├── validation.ts             # Centralized JSON-body validation + 400 response
+│   ├── offline-queue.ts          # localStorage mutation queue (sendOrQueue/drainQueue)
+│   ├── use-workspace-events.ts   # EventSource hook for the SSE activity stream
+│   ├── use-workspace-presence.ts # Presence heartbeat + poll hook
 │   └── push-notifications.ts     # Client push helper (VAPID, localStorage cache)
 ├── components/
 │   ├── ai/
@@ -172,20 +180,22 @@ src/
 │   │   └── focus-analytics.tsx
 │   └── workflows/
 │       └── workflow-builder.tsx
+│   ├── task-presence.tsx         # Active-device indicators (assignee's workspace)
 ├── app/
 │   ├── analytics/page.tsx
 │   ├── workflows/page.tsx
 │   ├── workspace/invite/[token]/page.tsx
-│   └── api/                      # 35 routes: tasks, lists, labels, search,
+│   └── api/                      # 37 routes: tasks, lists, labels, search,
 │                                 # templates, task-logs, export/import, share,
 │                                 # webhooks, workspaces (+members/activity/
-│                                 # comments/invitations), invitations, push,
-│                                 # reminders (background sweep),
+│                                 # comments/invitations/events SSE),
+│                                 # invitations, presence (heartbeat + list),
+│                                 # push, reminders (background sweep),
 │                                 # calendar (status/sync/disconnect,
 │                                 # events/import), auth/google
 │                                 # (+callback), workflows
 │                                 # (+connectors delivery)
-└── test/                         # 36 suites, db-test in-memory harness
+└── test/                         # 41 suites, db-test in-memory harness
 ```
 
 ## Dependencies
@@ -210,15 +220,17 @@ Added for the implemented features:
 
 Deliberately not added (heuristic/hand-rolled equivalents in the tree):
 `@xenova/transformers`, `onnxruntime-web`, `googleapis`, `caldav`, `socket.io`,
-`socket.io-client`, `idb`, `date-fns-tz`, `zod-to-json-schema`.
+`socket.io-client` (the real-time activity stream uses native SSE instead),
+`idb` (the offline mutation queue uses localStorage), `date-fns-tz`,
+`zod-to-json-schema`.
 
 ## Success Criteria
 
-- [x] All tests pass — 555/555 (100% coverage for new code not yet measured)
-- [x] Performance benchmarks meet targets — all 7 benchmarks within their ceilings (10k-task read < 3s, AI/semantic batches < 3s/0.5s, NL parse < 200ms/500 iters, command search < 200ms/1000 iters)
+- [x] All tests pass — 589/589 (100% coverage for new code not yet measured)
+- [x] Performance benchmarks meet targets — all 8 benchmarks within their ceilings (10k-task read < 3s, AI/semantic batches < 3s/0.5s, NL parse < 200ms/500 iters, command search < 200ms/1000 iters, workflow execution < 100ms)
 - [ ] AI predictions > 80% accuracy — not measurable without labeled ground truth; the heuristic engines expose per-factor reasoning for manual review
 - [ ] Calendar sync bidirectional with < 5s latency — bidirectional sync implemented; latency is dominated by Google's API, not TaskFlow
-- [ ] Workflow execution < 100ms overhead — not yet measured; the engine runs client-side with no server round-trip except webhooks/connectors
-- [ ] Offline mode fully functional — deferred (see 4.2; needs IndexedDB)
-- [ ] Real-time collaboration < 100ms latency — deferred (see 3.3; needs socket.io)
+- [x] Workflow execution < 100ms overhead — measured: a 10-node workflow × 100 runs stays under the ceiling (benchmark in `src/test/performance.test.ts`); the engine runs client-side with no server round-trip except webhooks/connectors
+- [ ] Offline mode fully functional — partial (see 4.2): mutations queue offline and replay on reconnect; reads and the IndexedDB data mirror are still deferred
+- [ ] Real-time collaboration < 100ms latency — partial (see 3.3): activity events stream over SSE with a 25s heartbeat; delivery latency is the SSE round-trip, but collaborative *editing* sync is not implemented
 - [x] Bundle size increase < 100KB gzipped — initial JS reduced: keyboard-opened dialogs (search, shortcuts, command palette incl. NLP + server actions) code-split out of every page's initial bundle
