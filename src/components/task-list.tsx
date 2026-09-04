@@ -1,4 +1,3 @@
-import { AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
 import { Plus, Clock } from 'lucide-react'
 import { getTasks } from '@/lib/tasks'
 import { Button } from '@/components/ui/button'
@@ -11,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { AnimatedTaskItem } from '@/components/animated-task-item'
+import { TaskRows } from '@/components/task-rows'
 import { ClearCompletedButton } from '@/components/clear-completed-button'
 import { QuickAddTask } from '@/components/quick-add-task'
 import { ToggleCompletedButton } from '@/components/toggle-completed-button'
@@ -22,6 +21,7 @@ interface TaskListProps {
   view?: 'today' | 'next7' | 'upcoming' | 'all'
   listId?: string
   labelId?: string
+  priority?: 'high' | 'medium' | 'low' | 'none'
   title: string
   searchQuery?: string
   showCompleted?: boolean
@@ -31,6 +31,7 @@ export async function TaskList({
   view,
   listId,
   labelId,
+  priority,
   title,
   searchQuery,
   showCompleted = true,
@@ -39,6 +40,7 @@ export async function TaskList({
     view,
     listId,
     labelId,
+    priority,
     completed: showCompleted ? undefined : false,
     search: searchQuery,
   })
@@ -129,15 +131,7 @@ export async function TaskList({
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              <LazyMotion features={domAnimation}>
-                <AnimatePresence mode="popLayout">
-                  {tasks.map((task) => (
-                    <AnimatedTaskItem key={task.id} task={task} />
-                  ))}
-                </AnimatePresence>
-              </LazyMotion>
-            </div>
+            <TaskRows tasks={tasks} />
           )}
         </div>
       </div>
