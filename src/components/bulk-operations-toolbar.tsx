@@ -28,7 +28,7 @@ interface BulkOperationsToolbarProps {
   onBulkAction: (action: BulkAction, value?: string) => void
 }
 
-type BulkAction =
+export type BulkAction =
   | 'delete'
   | 'move'
   | 'priority'
