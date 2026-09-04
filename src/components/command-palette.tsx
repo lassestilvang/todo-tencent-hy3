@@ -1,22 +1,77 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useKeyPress } from '@/lib/hooks'
-import { Search, X, Zap, Calendar, Clock, Flag, List, RotateCcw } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import {
+  Search,
+  X,
+  Zap,
+  Calendar,
+  Clock,
+  Flag,
+  List,
+  RotateCcw,
+  Compass,
+  Eye,
+  Keyboard,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { parseNaturalLanguage, generatePreview } from '@/lib/nlp'
 import { createTask, getLists } from '@/lib/tasks-client'
+import { handleClearCompleted } from '@/lib/actions'
+import { toast } from 'sonner'
+import {
+  COMMANDS,
+  findCommand,
+  getRecentCommands,
+  loadCommandHistory,
+  parseCommandInput,
+  recordCommandUsage,
+  searchCommands,
+  suggestCommands,
+  toCommandContext,
+  type CommandCategory,
+  type CommandUsage,
+  type PaletteCommand,
+} from '@/lib/command-palette'
 
 interface CommandPaletteProps {
   isOpen: boolean
   onClose: () => void
   onTaskCreated?: () => void
+  onNewTask: () => void
+  onSearch: () => void
+  onShortcuts: () => void
 }
 
-export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPaletteProps) {
+const COMMAND_ICONS: Record<CommandCategory, LucideIcon> = {
+  Navigation: Compass,
+  Task: Zap,
+  View: Eye,
+  Help: Keyboard,
+}
+
+/** Recent commands beyond the suggestions are worth listing. */
+const RECENT_LIMIT = 4
+
+/** Suggested commands shown when the palette opens. */
+const SUGGESTION_LIMIT = 4
+
+export function CommandPalette({
+  isOpen,
+  onClose,
+  onTaskCreated,
+  onNewTask,
+  onSearch,
+  onShortcuts,
+}: CommandPaletteProps) {
+  const router = useRouter()
   const [input, setInput] = useState('')
   const [parsed, setParsed] = useState<ReturnType<typeof parseNaturalLanguage> | null>(null)
   const [lists, setLists] = useState<{ id: string; name: string }[]>([])
   const [showPreview, setShowPreview] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [history, setHistory] = useState<CommandUsage[]>(loadCommandHistory)
   const inputRef = useRef<HTMLInputElement>(null)
   const mountedRef = useRef(true)
 
@@ -43,21 +98,66 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
     }
   }, [isOpen])
 
-  // Parse input as user types
+  // "> command", "go to analytics", "show completed"…
+  const parsedInput = useMemo(() => parseCommandInput(input), [input])
+
+  // Parse natural-language task input as the user types
   useEffect(() => {
-    if (input.trim()) {
+    if (parsedInput.mode === 'task' && input.trim()) {
       const parsedResult = parseNaturalLanguage(input, { lists })
       if (mountedRef.current) {
         setParsed(parsedResult)
         setShowPreview(true)
       }
-    } else {
-      if (mountedRef.current) {
-        setParsed(null)
-        setShowPreview(false)
-      }
+    } else if (mountedRef.current) {
+      setParsed(null)
+      setShowPreview(false)
     }
-  }, [input, lists])
+  }, [input, lists, parsedInput.mode])
+
+  // Context-aware suggestions, re-ranked by usage history
+  const suggestions = useMemo(
+    () =>
+      suggestCommands(toCommandContext(new Date()), {
+        history,
+        limit: SUGGESTION_LIMIT,
+      }),
+    [history],
+  )
+
+  const commandResults = useMemo(() => {
+    if (parsedInput.mode !== 'command') {
+      return []
+    }
+    return parsedInput.query ? searchCommands(parsedInput.query) : suggestions
+  }, [parsedInput, suggestions])
+
+  // Recent commands not already covered by the suggestions
+  const recentEntries = useMemo(() => {
+    const suggested = new Set(suggestions.map((command) => command.id))
+    return getRecentCommands(history, RECENT_LIMIT)
+      .map((usage) => ({ usage, command: findCommand(usage.commandId, COMMANDS) }))
+      .filter(
+        (entry): entry is { usage: CommandUsage; command: PaletteCommand } =>
+          entry.command !== undefined && !suggested.has(entry.command.id),
+      )
+  }, [history, suggestions])
+
+  // The list the arrow keys move through: command results
+  // while in command mode, otherwise the suggestions and
+  // recent commands shown when the input is empty.
+  const navigableItems = useMemo(() => {
+    if (parsedInput.mode === 'command') {
+      return commandResults
+    }
+    if (input) {
+      return []
+    }
+    return [...suggestions, ...recentEntries.map((entry) => entry.command)]
+  }, [parsedInput.mode, commandResults, input, suggestions, recentEntries])
+
+  // Clamp rather than reset so no effect is needed.
+  const safeIndex = Math.min(selectedIndex, Math.max(0, navigableItems.length - 1))
 
   const handleCreateTask = useCallback(async () => {
     if (!parsed || !parsed.name) return
@@ -76,6 +176,7 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
       setInput('')
       setParsed(null)
       setShowPreview(false)
+      setSelectedIndex(0)
       onTaskCreated?.()
 
       // Close after short delay to show success
@@ -85,43 +186,164 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
     }
   }, [parsed, onTaskCreated, onClose])
 
+  const runCommand = useCallback(
+    async (command: PaletteCommand) => {
+      setHistory(recordCommandUsage(command.id))
+
+      switch (command.id) {
+        case 'goto.today':
+          router.push('/today')
+          break
+        case 'goto.next7':
+          router.push('/next7')
+          break
+        case 'goto.upcoming':
+          router.push('/upcoming')
+          break
+        case 'goto.all':
+          router.push('/all')
+          break
+        case 'view.showCompleted':
+          router.push('/all?completed=true')
+          break
+        case 'view.hideCompleted':
+          router.push('/all?completed=false')
+          break
+        case 'goto.analytics':
+          router.push('/analytics')
+          break
+        case 'goto.workflows':
+          router.push('/workflows')
+          break
+        case 'goto.settings':
+          router.push('/settings')
+          break
+        case 'task.create':
+          onNewTask()
+          break
+        case 'task.search':
+          onSearch()
+          break
+        case 'help.shortcuts':
+          onShortcuts()
+          break
+        case 'task.clearCompleted':
+          if (
+            window.confirm('Are you sure you want to delete all completed tasks?')
+          ) {
+            await handleClearCompleted()
+            toast.success('Completed tasks cleared')
+          }
+          break
+        default:
+          break
+      }
+
+      onClose()
+    },
+    [router, onNewTask, onSearch, onShortcuts, onClose],
+  )
+
   // Handle keyboard navigation
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!isOpen) return
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!isOpen) return
 
-    switch (e.key) {
-      case 'Escape':
-        onClose()
-        break
-      case 'Enter':
-        if (parsed && parsed.name) {
-          handleCreateTask()
+      switch (e.key) {
+        case 'Escape':
+          onClose()
+          break
+        case 'Enter': {
+          const selected = navigableItems[safeIndex]
+          if (parsedInput.mode === 'command' && selected) {
+            runCommand(selected)
+          } else if (parsed && parsed.name) {
+            handleCreateTask()
+          }
+          break
         }
-        break
-      case 'ArrowUp':
-        e.preventDefault()
-        // Could add history navigation here
-        break
-      case 'ArrowDown':
-        e.preventDefault()
-        // Could add history navigation here
-        break
-      case 'Tab':
-        if (parsed) {
-          e.preventDefault()
-          // Auto-complete the suggestion
-          setInput(generatePreview(parsed))
+        case 'ArrowUp':
+          if (navigableItems.length > 0) {
+            e.preventDefault()
+            setSelectedIndex((prev) =>
+              prev <= 0 ? navigableItems.length - 1 : prev - 1,
+            )
+          }
+          break
+        case 'ArrowDown':
+          if (navigableItems.length > 0) {
+            e.preventDefault()
+            setSelectedIndex((prev) =>
+              prev >= navigableItems.length - 1 ? 0 : prev + 1,
+            )
+          }
+          break
+        case 'Tab': {
+          if (parsedInput.mode === 'command') {
+            const top = commandResults[0]
+            if (top) {
+              e.preventDefault()
+              setInput(top.title)
+              setSelectedIndex(0)
+            }
+          } else if (parsed) {
+            e.preventDefault()
+            // Auto-complete the suggestion
+            setInput(generatePreview(parsed))
+            setSelectedIndex(0)
+          }
+          break
         }
-        break
-    }
-  }, [isOpen, parsed, onClose, handleCreateTask])
+      }
+    },
+    [
+      isOpen,
+      onClose,
+      navigableItems,
+      safeIndex,
+      parsedInput.mode,
+      parsed,
+      commandResults,
+      runCommand,
+      handleCreateTask,
+    ],
+  )
 
-  // Global key press for opening palette (Cmd/Ctrl + K)
-  useKeyPress(['Meta', 'k'], () => {
-    if (!isOpen) {
-      // This would be handled by parent to open the palette
-    }
-  })
+  const renderCommand = (
+    command: PaletteCommand,
+    index: number,
+    usage?: CommandUsage,
+  ) => {
+    const Icon = COMMAND_ICONS[command.category]
+    const isSelected = safeIndex === index
+    return (
+      <button
+        key={command.id}
+        type="button"
+        onClick={() => runCommand(command)}
+        onMouseEnter={() => setSelectedIndex(index)}
+        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
+          isSelected ? 'bg-accent' : ''
+        }`}
+      >
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="flex-1 truncate">{command.title}</span>
+        {usage && usage.count > 1 && (
+          <span className="text-xs text-muted-foreground/70">
+            {usage.count}×
+          </span>
+        )}
+        <span className="text-xs text-muted-foreground/50">
+          {command.category}
+        </span>
+      </button>
+    )
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value)
+    setSelectedIndex(0)
+  }
 
   if (!isOpen) return null
 
@@ -139,7 +361,7 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
                 ref={inputRef}
                 type="text"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 onBlur={() => {
                   // Don't close if clicking on preview
@@ -147,13 +369,16 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
                     if (!showPreview) onClose()
                   }, 100)
                 }}
-                placeholder='Type naturally: "Buy groceries tomorrow 5pm #personal !high ~30m"'
+                placeholder='Type a task naturally, or a command: "go to analytics", "> show completed"'
                 className="w-full pl-10 pr-12 py-3 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-lg placeholder:text-muted-foreground/50"
                 autoFocus
               />
               {input && (
                 <button
-                  onClick={() => setInput('')}
+                  onClick={() => {
+                    setInput('')
+                    setSelectedIndex(0)
+                  }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Clear input"
                 >
@@ -164,6 +389,8 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
 
             {/* Quick help */}
             <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground/70">
+              <kbd className="px-2 py-1 bg-accent rounded">&gt;command</kbd> run a
+              command
               <kbd className="px-2 py-1 bg-accent rounded">#tag</kbd> list
               <kbd className="px-2 py-1 bg-accent rounded">@list</kbd> list
               <kbd className="px-2 py-1 bg-accent rounded">!high</kbd> priority
@@ -173,8 +400,26 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
             </div>
           </div>
 
+          {/* Command results */}
+          {parsedInput.mode === 'command' && (
+            <div className="border-t p-4">
+              {commandResults.length > 0 ? (
+                <div className="max-h-[50vh] space-y-1 overflow-auto">
+                  {commandResults.map((command, index) =>
+                    renderCommand(command, index),
+                  )}
+                </div>
+              ) : (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No commands match &ldquo;{parsedInput.query}&rdquo; — try
+                  &ldquo;go to analytics&rdquo; or &ldquo;&gt; search&rdquo;
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Parsed Preview */}
-          {showPreview && parsed && (
+          {showPreview && parsed && parsedInput.mode === 'task' && (
             <div className="border-t p-4 bg-accent/20 animate-slide-down">
               <div className="flex items-center gap-2 mb-3">
                 <Zap className="h-4 w-4 text-yellow-500" />
@@ -253,10 +498,38 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
             </div>
           )}
 
-          {/* Examples when empty */}
+          {/* Suggestions and recent commands when empty */}
           {!input && (
-            <div className="border-t p-4">
-              <p className="text-sm text-muted-foreground mb-3">Try typing:</p>
+            <div className="border-t p-4 max-h-[50vh] overflow-auto">
+              <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
+                Suggested for you
+              </p>
+              <div className="mb-4 space-y-1">
+                {suggestions.map((command, index) =>
+                  renderCommand(command, index),
+                )}
+              </div>
+
+              {recentEntries.length > 0 && (
+                <>
+                  <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
+                    Recent
+                  </p>
+                  <div className="mb-4 space-y-1">
+                    {recentEntries.map((entry, index) =>
+                      renderCommand(
+                        entry.command,
+                        suggestions.length + index,
+                        entry.usage,
+                      ),
+                    )}
+                  </div>
+                </>
+              )}
+
+              <p className="text-muted-foreground mb-3 text-xs font-medium uppercase tracking-wide">
+                Try typing
+              </p>
               <div className="space-y-2 text-sm">
                 {[
                   'Buy groceries tomorrow 5pm #personal !high ~30m',
@@ -267,7 +540,10 @@ export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPalett
                 ].map((example, i) => (
                   <button
                     key={i}
-                    onClick={() => setInput(example)}
+                    onClick={() => {
+                      setInput(example)
+                      setSelectedIndex(0)
+                    }}
                     className="w-full text-left p-3 rounded-lg bg-accent/50 hover:bg-accent transition-colors text-muted-foreground/80"
                   >
                     {example}
