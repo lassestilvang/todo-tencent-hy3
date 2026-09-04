@@ -36,6 +36,7 @@ const createTaskSchema = z.object({
   priority: z.enum(['high', 'medium', 'low', 'none']).optional(),
   listId: z.string().optional(),
   parentId: z.string().optional(),
+  assigneeId: z.string().optional(),
   estimate: z.coerce
     .number()
     .min(1, 'Estimate must be at least 1 minute')
@@ -68,6 +69,7 @@ export async function createTaskAction(formData: FormData) {
     priority,
     listId,
     parentId,
+    assigneeId,
     estimate,
   } = result.data
 
@@ -79,6 +81,7 @@ export async function createTaskAction(formData: FormData) {
     priority: priority ?? 'none',
     list_id: listId || undefined,
     parent_task_id: parentId || undefined,
+    assignee_id: assigneeId || null,
     estimate: estimate || undefined,
   })
 
@@ -94,6 +97,7 @@ export async function updateTaskAction(taskId: string, formData: FormData) {
     deadline: formData.get('deadline') as string,
     priority: formData.get('priority') as string,
     listId: formData.get('listId') as string,
+    assigneeId: formData.get('assigneeId') as string,
     estimate: formData.get('estimate') as string,
   }
 
@@ -102,7 +106,7 @@ export async function updateTaskAction(taskId: string, formData: FormData) {
     return { success: false, errors: result.error.flatten().fieldErrors }
   }
 
-  const { name, description, date, deadline, priority, listId, estimate } =
+  const { name, description, date, deadline, priority, listId, assigneeId, estimate } =
     result.data
 
   updateTaskInDb(taskId, {
@@ -112,11 +116,19 @@ export async function updateTaskAction(taskId: string, formData: FormData) {
     deadline: deadline || undefined,
     priority: priority ?? 'none',
     list_id: listId || undefined,
+    // '' means "no assignee" — clear rather than keep.
+    assignee_id: assigneeId === '' ? null : assigneeId || undefined,
     estimate: estimate || undefined,
   })
 
   revalidatePath('/', 'layout')
   return { success: true }
+}
+
+/** The task-assignment roster: every member of every workspace. */
+export async function getMembersAction() {
+  const { getAllMembers } = await import('@/lib/workspace-store')
+  return getAllMembers()
 }
 
 const createListSchema = z.object({
