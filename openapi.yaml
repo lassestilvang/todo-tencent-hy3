@@ -1,7 +1,11 @@
 openapi: 3.0.0
 info:
   title: TaskFlow API
-  description: REST API for TaskFlow todo application
+  description: >-
+    REST API for TaskFlow todo application. All routes are
+    fronted by a proxy (`src/proxy.ts`) that enforces
+    rate limits and rejects cross-site state-changing
+    requests (CSRF) with 403.
   version: 1.0.0
   contact:
     name: TaskFlow Team
@@ -237,6 +241,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/ValidationError'
     patch:
       summary: Toggle, update, or delete a task
       description: The task is addressed by id in the request body; there is no per-id route
@@ -260,7 +266,7 @@ paths:
                     type: boolean
                     example: true
         '400':
-          description: Invalid request
+          $ref: '#/components/responses/ValidationError'
   /tasks/{id}/dependencies:
     parameters:
       - name: id
@@ -402,6 +408,42 @@ paths:
           description: Unauthorized - Invalid API key
         '400':
           description: Invalid request
+  /reminders:
+    get:
+      summary: Deliver due task reminders
+      description: >-
+        Background reminder sweep. Returns the
+        reminders whose time has come (for
+        incomplete tasks) and marks them sent, so
+        the next sweep will not repeat them. The
+        client polls this every minute and surfaces
+        the results as toasts.
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The reminders that were just delivered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reminders:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        taskId:
+                          type: string
+                        taskName:
+                          type: string
+                        reminderTime:
+                          type: string
+                          format: date-time
+        '500':
+          description: Failed to process reminders
   /labels:
     get:
       summary: Get all labels
@@ -1797,6 +1839,12 @@ components:
             $ref: '#/components/schemas/TaskLog'
         list:
           $ref: '#/components/schemas/List'
+        assignee_id:
+          type: string
+          nullable: true
+          description: Workspace member the task is assigned to
+        assignee:
+          $ref: '#/components/schemas/WorkspaceMember'
     NewTask:
       type: object
       required:
@@ -1843,6 +1891,9 @@ components:
         position:
           type: integer
           default: 0
+        assignee_id:
+          type: string
+          nullable: true
     PartialTask:
       type: object
       properties:
@@ -1881,6 +1932,9 @@ components:
           nullable: true
         position:
           type: integer
+        assignee_id:
+          type: string
+          nullable: true
     PatchTask:
       type: object
       required:
@@ -2802,6 +2856,14 @@ components:
         a default of 120 requests/minute per client IP, with stricter
         limits on push delivery, Google OAuth, share creation, and
         webhook triggering.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Too many requests
       headers:
         Retry-After:
           description: Seconds until the rate limit window resets
@@ -2819,6 +2881,12 @@ components:
           description: Epoch seconds when the current window resets
           schema:
             type: integer
+    ValidationError:
+      description: >-
+        Invalid request data. Routes that accept JSON bodies
+        validate them centrally (`src/lib/validation.ts`);
+        `details` carries the zod-formatted field errors, or
+        null when the body was not valid JSON.
       content:
         application/json:
           schema:
@@ -2826,7 +2894,10 @@ components:
             properties:
               error:
                 type: string
-                example: Too many requests
+                example: Invalid request data
+              details:
+                type: object
+                nullable: true
   securitySchemes:
     bearerAuth:
       type: http
