@@ -12,6 +12,7 @@ import {
   Pencil,
   Copy,
   Check,
+  User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -137,6 +138,15 @@ export function TaskDetail({ task }: { task: Task }) {
               <ListTodo className="text-muted-foreground/80 h-3.5 w-3.5" />
               <span className="text-foreground/85">
                 {task.list.emoji} {task.list.name}
+              </span>
+            </>
+          )}
+          {task.assignee && (
+            <>
+              <span className="text-border/60">•</span>
+              <User className="text-muted-foreground/80 h-3.5 w-3.5" />
+              <span className="text-foreground/85">
+                {task.assignee.name}
               </span>
             </>
           )}
