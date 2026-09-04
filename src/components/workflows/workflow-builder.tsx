@@ -45,6 +45,7 @@ const ACTION_TYPES: { value: ActionType; label: string }[] = [
   { value: 'update_task', label: 'Update Task' },
   { value: 'send_notification', label: 'Send Notification' },
   { value: 'call_webhook', label: 'Call Webhook' },
+  { value: 'send_connector_message', label: 'Send via Connector' },
   { value: 'add_label', label: 'Add Label' },
   { value: 'set_priority', label: 'Set Priority' },
   { value: 'set_deadline', label: 'Set Deadline' },
