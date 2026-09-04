@@ -14,13 +14,20 @@ import {
   taskToCalendarEvent,
   calendarEventToTask,
 } from '@/lib/calendar'
-import { getTasks, getLists, createTask } from '@/lib/tasks'
+import { getTasks, getLists, createTask, updateTask } from '@/lib/tasks'
+import {
+  findConflicts,
+  resolveConflicts,
+  type ConflictStrategy,
+} from './conflicts'
 
 export interface SyncOptions {
   /** Import Google events that are not yet in TaskFlow */
   pull?: boolean
   /** List to import pulled events into (defaults to the first list) */
   listId?: string | null
+  /** How diverged task/event pairs are resolved */
+  conflictStrategy?: ConflictStrategy
 }
 
 export interface SyncResult {
@@ -29,6 +36,8 @@ export interface SyncResult {
   synced: number
   /** Events imported into TaskFlow */
   pulled: number
+  /** Linked pairs whose content had diverged */
+  conflicts: number
   errors: string[]
   lastSync: string
   calendar: string
@@ -79,6 +88,45 @@ export async function syncCalendar(
   let synced = 0
   let pulled = 0
   const errors: string[] = []
+
+  // Detect conflicts on the fetched state, before
+  // the push below rewrites events from tasks: a
+  // linked pair whose name or date diverged.
+  const conflicts = findConflicts(tasks, existingEvents)
+
+  if (options.conflictStrategy && conflicts.length > 0) {
+    for (const resolution of resolveConflicts(
+      conflicts,
+      options.conflictStrategy
+    )) {
+      // A task win is applied by the push loop
+      // below; a calendar win must update the
+      // task first so the push does not clobber
+      // the event with stale task values.
+      if (resolution.winner === 'calendar') {
+        try {
+          updateTask(
+            resolution.conflict.taskId,
+            resolution.taskPatch
+          )
+          // Keep the in-memory task in step with
+          // the resolution for the push below.
+          Object.assign(
+            resolution.conflict.task,
+            resolution.taskPatch
+          )
+        } catch (error) {
+          errors.push(
+            `Conflict ${resolution.conflict.taskId}: ${
+              error instanceof Error
+                ? error.message
+                : 'Unknown error'
+            }`
+          )
+        }
+      }
+    }
+  }
 
   // Push: TaskFlow tasks -> Google Calendar
   for (const task of tasks) {
@@ -134,6 +182,7 @@ export async function syncCalendar(
     success: true,
     synced,
     pulled,
+    conflicts: conflicts.length,
     errors,
     lastSync: new Date().toISOString(),
     calendar: primaryCalendar.summary,
