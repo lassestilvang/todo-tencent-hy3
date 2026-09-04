@@ -2,10 +2,13 @@
 
 import type { Task, List, Label, TaskLog } from '@/types'
 import useSWR from 'swr'
+import { sendOrQueue } from '@/lib/offline-queue'
 
 // Client-side task operations that call API routes.
 // Mutations are primarily handled by server actions in @/lib/actions.ts;
 // the functions here serve the components that fetch via HTTP.
+// Mutations go through sendOrQueue: when the network
+// is down they are queued and replayed on reconnect.
 
 const API_BASE = '/api/tasks'
 
@@ -48,11 +51,12 @@ export async function getTasks(options?: {
 }
 
 export async function createTask(data: Partial<Task>): Promise<Task> {
-  const response = await fetch(API_BASE, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
+  const response = await sendOrQueue('POST', API_BASE, data)
+  if (response.status === 202) {
+    // Queued for delivery once the network
+    // returns; no task object exists yet.
+    return { ...data, id: 'queued' } as Task
+  }
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Failed to create task')
@@ -61,11 +65,10 @@ export async function createTask(data: Partial<Task>): Promise<Task> {
 }
 
 export async function updateTask(id: string, data: Partial<Task>): Promise<void> {
-  const response = await fetch(API_BASE, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, action: 'update', data }),
-  })
+  const response = await sendOrQueue('PATCH', API_BASE, { id, action: 'update', data })
+  if (response.status === 202) {
+    return // Queued for delivery.
+  }
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Failed to update task')
@@ -73,11 +76,10 @@ export async function updateTask(id: string, data: Partial<Task>): Promise<void>
 }
 
 export async function toggleTaskComplete(id: string): Promise<void> {
-  const response = await fetch(API_BASE, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, action: 'toggle' }),
-  })
+  const response = await sendOrQueue('PATCH', API_BASE, { id, action: 'toggle' })
+  if (response.status === 202) {
+    return // Queued for delivery.
+  }
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Failed to toggle task')
@@ -85,11 +87,10 @@ export async function toggleTaskComplete(id: string): Promise<void> {
 }
 
 export async function deleteTask(id: string): Promise<void> {
-  const response = await fetch(API_BASE, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, action: 'delete' }),
-  })
+  const response = await sendOrQueue('PATCH', API_BASE, { id, action: 'delete' })
+  if (response.status === 202) {
+    return // Queued for delivery.
+  }
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Failed to delete task')
@@ -105,11 +106,12 @@ export async function getLists(): Promise<List[]> {
 }
 
 export async function createList(name: string, color: string, emoji: string): Promise<List> {
-  const response = await fetch('/api/lists', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, color, emoji }),
-  })
+  const response = await sendOrQueue('POST', '/api/lists', { name, color, emoji })
+  if (response.status === 202) {
+    // Queued for delivery once the network
+    // returns.
+    return { id: 'queued', name, color, emoji } as List
+  }
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Failed to create list')
@@ -126,11 +128,12 @@ export async function getLabels(): Promise<Label[]> {
 }
 
 export async function createLabel(name: string, color: string, icon: string): Promise<Label> {
-  const response = await fetch('/api/labels', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, color, icon }),
-  })
+  const response = await sendOrQueue('POST', '/api/labels', { name, color, icon })
+  if (response.status === 202) {
+    // Queued for delivery once the network
+    // returns.
+    return { id: 'queued', name, color, icon } as Label
+  }
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Failed to create label')
