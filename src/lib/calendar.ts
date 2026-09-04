@@ -1,4 +1,5 @@
-import type { Priority } from '@/types'
+import type { Priority, Task } from '@/types'
+import { createTask } from '@/lib/tasks'
 
 export interface CalendarEvent {
   id: string
@@ -187,6 +188,67 @@ export async function getEvents(
   }
 }
 
+/** Fetch a single event by id. */
+export async function getEvent(
+  accessToken: string,
+  calendarId: string,
+  eventId: string
+): Promise<CalendarEvent> {
+  const response = await fetch(
+    `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch event')
+  }
+
+  return response.json()
+}
+
+/**
+ * Free-text search over a calendar's events
+ * (Google Calendar `q` parameter), optionally
+ * restricted to a time window.
+ */
+export async function searchEvents(
+  accessToken: string,
+  calendarId: string,
+  query: string,
+  timeMin?: string,
+  timeMax?: string
+): Promise<CalendarEvent[]> {
+  const params = new URLSearchParams({
+    q: query,
+    singleEvents: 'true',
+    orderBy: 'startTime',
+    maxResults: '50',
+  })
+
+  if (timeMin) {
+    params.set('timeMin', timeMin)
+  }
+  if (timeMax) {
+    params.set('timeMax', timeMax)
+  }
+
+  const response = await fetch(
+    `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error('Failed to search events')
+  }
+
+  const data = await response.json()
+  return data.items || []
+}
+
 export async function createEvent(
   accessToken: string,
   calendarId: string,
@@ -325,4 +387,22 @@ export function calendarEventToTask(event: CalendarEvent, listId: string): {
     priority: 'medium',
     list_id: listId,
   }
+}
+
+/**
+ * Create a TaskFlow task from a calendar event,
+ * linked back to it via `source_event_id` so the
+ * next sync updates the event instead of
+ * duplicating it. Server-only: it writes to the
+ * task store.
+ */
+export async function createTaskFromEvent(
+  event: CalendarEvent,
+  listId: string
+): Promise<Task> {
+  const candidate = calendarEventToTask(event, listId)
+  return createTask({
+    ...candidate,
+    source_event_id: event.id,
+  })
 }
