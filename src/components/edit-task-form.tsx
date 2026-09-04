@@ -14,10 +14,12 @@ import {
   updateTaskAction,
   getListsAction,
   getLabelsAction,
+  getMembersAction,
   toggleTaskLabelAction,
 } from '@/lib/actions'
 import { useFormStatus } from 'react-dom'
 import type { Priority, Task, List, Label } from '@/types'
+import type { WorkspaceMember } from '@/lib/workspaces'
 import { useState, useEffect, useOptimistic, startTransition } from 'react'
 import { cn, formatDate } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -52,9 +54,13 @@ export function EditTaskForm({
 }) {
   const [priority, setPriority] = useState<string>(task.priority || 'none')
   const [listId, setListId] = useState<string>(task.list_id || 'none')
+  const [assigneeId, setAssigneeId] = useState<string>(
+    task.assignee_id || ''
+  )
   const [errors, setErrors] = useState<Record<string, string[]> | null>(null)
   const [lists, setLists] = useState<List[]>([])
   const [labels, setLabels] = useState<Label[]>([])
+  const [members, setMembers] = useState<WorkspaceMember[]>([])
   const [optimisticLabels, setOptimisticLabels] = useOptimistic(
     task.labels || [],
     (state: Label[], action: { type: 'toggle'; label: Label }) => {
@@ -70,6 +76,7 @@ export function EditTaskForm({
   useEffect(() => {
     getListsAction().then(setLists)
     getLabelsAction().then(setLabels)
+    getMembersAction().then(setMembers)
   }, [])
 
   async function handleSubmit(formData: FormData) {
@@ -78,6 +85,8 @@ export function EditTaskForm({
     } else {
       formData.delete('listId') // Send empty listId if 'none' is selected
     }
+    // '' means unassigned — the action clears the assignee.
+    formData.set('assigneeId', assigneeId)
     const result = await updateTaskAction(task.id, formData)
     if (!result.success) {
       setErrors(result.errors || null)
@@ -212,6 +221,39 @@ export function EditTaskForm({
                   className="hover:bg-accent/40 rounded-lg"
                 >
                   {list.emoji} {list.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <label
+            htmlFor="assignee"
+            className="text-muted-foreground/80 block text-xs font-semibold tracking-wider uppercase"
+          >
+            Assignee
+          </label>
+          <Select value={assigneeId} onValueChange={setAssigneeId}>
+            <SelectTrigger
+              id="assignee"
+              className="bg-background/40 border-border/40 focus:border-primary/50 focus:ring-primary/20 h-10 rounded-xl transition-all"
+            >
+              <SelectValue placeholder="Select an assignee" />
+            </SelectTrigger>
+            <SelectContent className="glass-effect bg-card/90 rounded-xl border">
+              <SelectItem
+                value=""
+                className="hover:bg-accent/40 rounded-lg"
+              >
+                No Assignee
+              </SelectItem>
+              {members.map((member) => (
+                <SelectItem
+                  key={member.id}
+                  value={member.id}
+                  className="hover:bg-accent/40 rounded-lg"
+                >
+                  {member.name}
                 </SelectItem>
               ))}
             </SelectContent>
