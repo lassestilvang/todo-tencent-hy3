@@ -14,11 +14,19 @@ export async function GET(request: NextRequest) {
   // Off by default so a plain sync stays push-only (backward compatible).
   const shouldPull = searchParams.get('pull') === 'true'
   const listId = searchParams.get('listId')
+  const conflictStrategyParam = searchParams.get('conflictStrategy')
+  const conflictStrategy =
+    conflictStrategyParam === 'task' ||
+    conflictStrategyParam === 'calendar' ||
+    conflictStrategyParam === 'newest'
+      ? conflictStrategyParam
+      : undefined
 
   try {
     const result = await syncCalendar(accessToken, {
       pull: shouldPull,
       listId,
+      conflictStrategy,
     })
 
     const response = NextResponse.json(result)
