@@ -444,6 +444,93 @@ paths:
                           format: date-time
         '500':
           description: Failed to process reminders
+  /presence:
+    get:
+      summary: List who is present
+      description: >-
+        Active clients in a workspace, most
+        recent first. Heartbeats older than
+        60s are reaped before the list is
+        returned. The client polls this every
+        10s to render presence indicators.
+      parameters:
+        - name: workspaceId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '400':
+          description: Missing workspaceId parameter
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '200':
+          description: Active clients in the workspace
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  presence:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        clientId:
+                          type: string
+                        name:
+                          type: string
+                        lastSeen:
+                          type: integer
+                          format: int64
+    post:
+      summary: Send a presence heartbeat
+      description: >-
+        Register (or refresh) this client's
+        presence in a workspace. Browsers send
+        one every 15s while a workspace is
+        open; the entry expires 60s after the
+        last heartbeat.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - workspaceId
+                - clientId
+                - name
+              properties:
+                workspaceId:
+                  type: string
+                clientId:
+                  type: string
+                name:
+                  type: string
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '200':
+          description: Heartbeat recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '500':
+          description: Failed to record presence
   /labels:
     get:
       summary: Get all labels
@@ -1408,6 +1495,39 @@ paths:
                       $ref: '#/components/schemas/WorkspaceActivity'
         '500':
           description: Failed to get activity
+  /workspaces/{workspaceId}/events:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Stream workspace activity (SSE)
+      description: >-
+        Real-time channel for collaboration
+        events in a workspace: member changes,
+        invitations, comments, and workspace
+        creation are pushed as JSON `data:`
+        frames the moment they are logged. Any
+        SSE client can subscribe; a heartbeat
+        comment frame keeps proxies from
+        closing idle streams. The stream ends
+        when the client disconnects.
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Server-sent event stream of workspace activity
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: >-
+                  One `data: <json>` frame per
+                  WorkspaceActivity event, with
+                  `: heartbeat` comment frames
+                  every 25s.
   /workspaces/{workspaceId}/comments:
     parameters:
       - name: workspaceId
