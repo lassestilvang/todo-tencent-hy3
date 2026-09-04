@@ -36,6 +36,20 @@
       "when": 1791248429233,
       "tag": "0004_add_task_source_event_id",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791248429333,
+      "tag": "0005_add_task_assignee",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791248429334,
+      "tag": "0006_add_task_assignee_index",
+      "breakpoints": true
     }
   ]
 }
