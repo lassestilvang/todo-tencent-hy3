@@ -83,7 +83,7 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 - [x] Workflow templates — `WORKFLOW_TEMPLATES` (Daily Review Reminder, Overdue Task Escalation, Task Completion Follow-up) selectable from the builder's template dropdown
 
 ### 3.3 Enhanced Collaboration
-- [x] Real-time collaborative editing — dependency-free SSE channel instead of socket.io: `logActivity` (the funnel for all workspace events — member changes, invitations, comments, workspace creation) publishes to `lib/collaboration/activity-stream.ts`, which broadcasts to subscribers; `GET /api/workspaces/[workspaceId]/events` streams them as `data: <json>` frames with a 25s heartbeat comment, and `lib/use-workspace-events.ts` opens the EventSource (reconnects natively, closes on workspace switch). Shared-cursor/typing sync (true collaborative *editing*) is not implemented — event-level real time is
+- [x] Real-time collaborative editing — dependency-free SSE channel instead of socket.io: `logActivity` (the funnel for all workspace events — member changes, invitations, comments, workspace creation) publishes to `lib/collaboration/activity-stream.ts`, which broadcasts to subscribers; `GET /api/workspaces/[workspaceId]/events` streams them as `data: <json>` frames with a 25s heartbeat comment, `lib/use-workspace-events.ts` opens the EventSource (reconnects natively, closes on workspace switch), and `components/workspace-activity-feed.tsx` consumes it on `TaskDetail` (loads recent events via the activity API, prepends stream events live, dedupes by id, closes on unmount). Shared-cursor/typing sync (true collaborative *editing*) is not implemented — event-level real time is
 - [x] Presence indicators — per-device presence (no login in this app): `lib/collaboration/presence.ts` registry with 60s TTL, `POST /api/presence` heartbeat (15s) + `GET /api/presence` list (10s poll, reaped before answering) via `lib/use-workspace-presence.ts`, rendered by `components/task-presence.tsx` on `TaskDetail` under the assignee badge (green pulse, count, initial avatars)
 - [x] Inline threaded comments — task comments via `/api/workspaces/[workspaceId]/comments?taskId=` (create/read/update/delete, author-only edits, @mention extraction)
 - [x] Task assignment with notifications — `assignee_id` on tasks (FK to `workspace_members`, migrations 0005/0006); assignee resolved onto every task read (`buildTaskRelations`); assignment picker in `EditTaskForm` and assignee badge on `TaskDetail`; assigning through `updateTask` pushes a notification to the assignee's devices (`lib/collaboration/assignment.ts` pure helpers + `lib/collaboration/notifier.ts` server-side web-push delivery, fail-safe when VAPID is unconfigured); `getAllMembers` store + `getMembersAction` expose the roster; viewers may not assign (`canAssignTask`)
@@ -117,7 +117,7 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 - [x] Audit logging — workspace activity feed + task logs API (`/api/task-logs`)
 
 ### 4.4 Testing & Documentation
-- [x] Comprehensive test coverage — 589 tests across 41 suites (tasks, templates, export/import, security, share, webhooks, workspaces, push, rate-limit, completion-time, calendar-sync, calendar-conflicts, adaptive-pomodoro, focus-analytics, suggestion-feedback, template-suggestions, error-boundary, filter-presets, command-palette, shortcuts, quick-actions, nl-filter, semantic-filter, connectors, assignment, task-assignment, csrf, validation, performance, reminders, activity-stream, presence, presence route, workspace events stream, offline queue)
+- [x] Comprehensive test coverage — 595 tests across 42 suites (tasks, templates, export/import, security, share, webhooks, workspaces, push, rate-limit, completion-time, calendar-sync, calendar-conflicts, adaptive-pomodoro, focus-analytics, suggestion-feedback, template-suggestions, error-boundary, filter-presets, command-palette, shortcuts, quick-actions, nl-filter, semantic-filter, connectors, assignment, task-assignment, csrf, validation, performance, reminders, activity-stream, presence, presence route, workspace events stream, offline queue, workspace activity feed)
 - [x] API documentation updates — `openapi.yaml`: 52 schemas, 37 paths, validated against the filesystem; task schemas carry `assignee_id`/`assignee`, shared `ValidationError` response (uniform 400 shape), `/reminders` sweep route, `/presence` heartbeat + list, `/workspaces/{workspaceId}/events` SSE stream, proxy security note in `info.description`
 - [x] User guide updates — README added
 - [x] Performance benchmarks — `src/test/performance.test.ts`: 8 benchmarks over a 10k-task dataset (full read with relations, `today` view filter, search, `batchPrioritize`, `semanticFilterTasks`, NL-filter parsing, command search, workflow execution through a 10-node chain × 100 runs) with timing ceilings as regression guards; results printed via `console.table`
@@ -181,6 +181,7 @@ src/
 │   └── workflows/
 │       └── workflow-builder.tsx
 │   ├── task-presence.tsx         # Active-device indicators (assignee's workspace)
+│   ├── workspace-activity-feed.tsx # Live workspace activity (SSE + activity API)
 ├── app/
 │   ├── analytics/page.tsx
 │   ├── workflows/page.tsx
@@ -226,7 +227,7 @@ Deliberately not added (heuristic/hand-rolled equivalents in the tree):
 
 ## Success Criteria
 
-- [x] All tests pass — 589/589 (100% coverage for new code not yet measured)
+- [x] All tests pass — 595/595 (100% coverage for new code not yet measured)
 - [x] Performance benchmarks meet targets — all 8 benchmarks within their ceilings (10k-task read < 3s, AI/semantic batches < 3s/0.5s, NL parse < 200ms/500 iters, command search < 200ms/1000 iters, workflow execution < 100ms)
 - [ ] AI predictions > 80% accuracy — not measurable without labeled ground truth; the heuristic engines expose per-factor reasoning for manual review
 - [ ] Calendar sync bidirectional with < 5s latency — bidirectional sync implemented; latency is dominated by Google's API, not TaskFlow
