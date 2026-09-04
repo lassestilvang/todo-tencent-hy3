@@ -31,6 +31,7 @@ export type ActionType =
   | 'set_priority'       // Set task priority
   | 'set_deadline'       // Set task deadline
   | 'log_activity'       // Log activity
+  | 'send_connector_message' // Deliver via an integration connector
 
 /**
  * Condition types for branching
@@ -342,6 +343,54 @@ async function executeAction(
           success: response.ok,
           data: { status: response.status },
           error: response.ok ? undefined : `HTTP ${response.status}`,
+        }
+      }
+
+      case 'send_connector_message': {
+        const connector = resolveVariable(config.connector as string, context) as string
+        const title = resolveVariable(config.title as string, context) as string
+        const body = resolveVariable(config.body as string, context) as string
+        const taskName = config.taskName
+          ? (resolveVariable(config.taskName as string, context) as string)
+          : undefined
+        const taskUrl = config.taskUrl
+          ? (resolveVariable(config.taskUrl as string, context) as string)
+          : undefined
+
+        // The engine runs client-side, so connector
+        // credentials must never reach it: delivery
+        // goes through the server-side connectors
+        // route, which reads secrets from the env.
+        const response = await fetch('/api/workflows/connectors', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            connector,
+            title,
+            body,
+            taskName,
+            taskUrl,
+          }),
+        })
+
+        const result = (await response
+          .json()
+          .catch(() => null)) as
+          | { success?: boolean; error?: string }
+          | null
+
+        const delivered =
+          response.ok && result?.success !== false
+
+        return {
+          nodeId: node.id,
+          success: delivered,
+          data: { connector, status: response.status },
+          error: delivered
+            ? undefined
+            : result?.error ?? `HTTP ${response.status}`,
         }
       }
 
