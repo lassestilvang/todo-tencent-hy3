@@ -6,11 +6,12 @@ import {
   useState,
   useCallback,
   useMemo,
+  useEffect,
 } from 'react'
+import dynamic from 'next/dynamic'
 import { Search } from 'lucide-react'
-import { SearchDialog } from '@/components/search-dialog'
+import { toast } from 'sonner'
 import { CreateTaskForm } from '@/components/create-task-form'
-import { CommandPalette } from '@/components/command-palette'
 import {
   Dialog,
   DialogContent,
@@ -19,8 +20,35 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { KeyboardShortcuts } from '@/components/keyboard-shortcuts'
-import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 import { Button } from '@/components/ui/button'
+import type { DueReminder } from '@/lib/tasks'
+
+// The search dialog, shortcuts dialog, and command
+// palette open on demand (⌘K, ?), so their code is
+// split out of the initial bundle and fetched the
+// first time they open. They render nothing until
+// then, so there is nothing to server-render.
+const SearchDialog = dynamic(
+  () =>
+    import('@/components/search-dialog').then(
+      (module) => module.SearchDialog,
+    ),
+  { ssr: false },
+)
+const KeyboardShortcutsDialog = dynamic(
+  () =>
+    import('@/components/keyboard-shortcuts-dialog').then(
+      (module) => module.KeyboardShortcutsDialog,
+    ),
+  { ssr: false },
+)
+const CommandPalette = dynamic(
+  () =>
+    import('@/components/command-palette').then(
+      (module) => module.CommandPalette,
+    ),
+  { ssr: false },
+)
 
 interface AppActions {
   openSearch: () => void
@@ -98,6 +126,34 @@ export function SearchWrapper({ children }: { children?: React.ReactNode }) {
     [openSearch, openNewTask, openShortcuts, openCommandPalette]
   )
 
+  // Background task management: sweep for due task
+  // reminders every minute and surface them as toasts.
+  // A failed sweep (offline) is retried by the next one.
+  useEffect(() => {
+    const sweep = async () => {
+      try {
+        const response = await fetch('/api/reminders')
+        if (!response.ok) {
+          return
+        }
+        const { reminders } = (await response.json()) as {
+          reminders: DueReminder[]
+        }
+        for (const reminder of reminders) {
+          toast(`⏰ ${reminder.taskName}`, {
+            description: 'Reminder is due',
+          })
+        }
+      } catch {
+        // Offline or failed — the next sweep retries.
+      }
+    }
+
+    sweep()
+    const interval = setInterval(sweep, 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <AppActionsContext.Provider value={actions}>
       {children}
@@ -107,7 +163,12 @@ export function SearchWrapper({ children }: { children?: React.ReactNode }) {
         onShortcutsOpen={openShortcuts}
         onCommandPaletteOpen={openCommandPalette}
       />
-      <SearchDialog open={isSearchOpen} onOpenChange={setIsSearchOpen} />
+      {isSearchOpen && (
+        <SearchDialog
+          open={isSearchOpen}
+          onOpenChange={setIsSearchOpen}
+        />
+      )}
       <Dialog open={isNewTaskOpen} onOpenChange={setIsNewTaskOpen}>
         <DialogContent>
           <DialogHeader>
@@ -119,14 +180,21 @@ export function SearchWrapper({ children }: { children?: React.ReactNode }) {
           <CreateTaskForm />
         </DialogContent>
       </Dialog>
-      <KeyboardShortcutsDialog
-        open={isShortcutsOpen}
-        onOpenChange={setIsShortcutsOpen}
-      />
-      <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
-      />
+      {isShortcutsOpen && (
+        <KeyboardShortcutsDialog
+          open={isShortcutsOpen}
+          onOpenChange={setIsShortcutsOpen}
+        />
+      )}
+      {isCommandPaletteOpen && (
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          onNewTask={openNewTask}
+          onSearch={openSearch}
+          onShortcuts={openShortcuts}
+        />
+      )}
     </AppActionsContext.Provider>
   )
 }
