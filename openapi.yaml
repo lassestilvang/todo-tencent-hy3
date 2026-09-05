@@ -757,6 +757,84 @@ paths:
           description: Missing workflow ID
         '404':
           description: Workflow not found
+  /workflows/connectors:
+    post:
+      summary: Deliver a workflow connector message
+      description: >-
+        Server-side delivery for workflow connectors (github,
+        slack, email). The workflow engine runs in the browser
+        and has no access to secrets, so it posts the message
+        here; this route reads credentials from the environment
+        and performs the delivery. It fails closed: an unknown
+        connector, or one that is not configured, is rejected
+        before any network call is made.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - connector
+                - title
+                - body
+              properties:
+                connector:
+                  type: string
+                  minLength: 1
+                  description: Connector identifier (github, slack or email)
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                body:
+                  type: string
+                  maxLength: 10000
+                taskName:
+                  type: string
+                  maxLength: 500
+                taskUrl:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Message delivered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  status:
+                    type: string
+        '400':
+          description: >-
+            Invalid request data, unknown connector, or the
+            connector is not configured
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+        '502':
+          description: Delivery failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
   /webhooks:
     get:
       summary: Get all webhooks
@@ -1031,6 +1109,55 @@ paths:
                   success:
                     type: boolean
                     example: true
+  /calendar/events/import:
+    post:
+      summary: Import a single Google Calendar event
+      description: >-
+        Imports one Google Calendar event into TaskFlow as a task
+        linked to it via `source_event_id`, so a later sync updates
+        the event instead of duplicating it. Requires Google auth
+        (a valid tokens cookie). When `listId` is omitted the event
+        is imported into the first list.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - eventId
+                - calendarId
+              properties:
+                eventId:
+                  type: string
+                  minLength: 1
+                calendarId:
+                  type: string
+                  minLength: 1
+                listId:
+                  type: string
+                  minLength: 1
+                  description: List to import into (defaults to the first list)
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Event imported as a task
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '400':
+          description: eventId and calendarId are required
+        '401':
+          description: Not authenticated (no valid tokens cookie)
+        '404':
+          description: No list to import into
+        '500':
+          description: Import failed
   /push/subscribe:
     post:
       summary: Register a push subscription
