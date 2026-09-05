@@ -13,10 +13,63 @@ import { CalendarSettings } from '@/components/calendar-settings'
 import { ShareDialog } from '@/components/share-dialog'
 import { WebhookSettings } from '@/components/webhook-settings'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { useSunPositionTheme, getSunTimesForToday } from '@/lib/use-sun-position-theme'
 import { Bell, Palette, Database, User, Shield, Calendar, Share2, ListChecks, Webhook } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { List } from '@/types'
+
+/**
+ * Settings section for sun-position-based theme scheduling.
+ * Automatically switches between light/dark themes based on
+ * sunrise/sunset times for the user's location.
+ */
+function SunThemeSettings() {
+  const { enabled, hasLocation, toggle, requestLocation } = useSunPositionTheme()
+  const [sunTimes, setSunTimes] = useState<{ sunrise: string; sunset: string; isDay: boolean } | null>(null)
+
+  useEffect(() => {
+    setSunTimes(getSunTimesForToday())
+    const interval = setInterval(() => setSunTimes(getSunTimesForToday()), 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <Label>Sun-Position Theme</Label>
+          <p className="text-sm text-muted-foreground">
+            Automatically switch themes based on sunrise and sunset times
+          </p>
+        </div>
+        <Switch
+          checked={enabled}
+          onCheckedChange={toggle}
+        />
+      </div>
+
+      {enabled && sunTimes && (
+        <div className="text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span>Status: {sunTimes.isDay ? 'Day mode' : 'Night mode'}</span>
+          </div>
+          <div className="mt-1">
+            Sunrise: {sunTimes.sunrise} · Sunset: {sunTimes.sunset}
+          </div>
+          {!hasLocation && (
+            <button
+              onClick={requestLocation}
+              className="text-xs text-primary hover:underline mt-1"
+            >
+              Enable location for accurate times →
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function SettingsClient() {
   const [activeTab, setActiveTab] = useState('general')
@@ -305,6 +358,10 @@ export function SettingsClient() {
                 </div>
                 <ThemeToggle />
               </div>
+
+              <Separator />
+
+              <SunThemeSettings />
 
               <Separator />
 
