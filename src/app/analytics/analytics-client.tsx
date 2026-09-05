@@ -5,6 +5,8 @@ import { ProductivityTrends } from '@/components/analytics/productivity-trends'
 import { FocusAnalytics } from '@/components/analytics/focus-analytics'
 import { AIRecommendations } from '@/components/ai/ai-recommendations'
 import { SmartScheduler } from '@/components/ai/smart-scheduler'
+import { CalendarHeatmap } from '@/components/calendar-heatmap'
+import { ContextSwitchTracker } from '@/components/context-switching-tracker'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { getTasks, getAllTaskLogs } from '@/lib/tasks-client'
 import { getLists } from '@/lib/tasks-client'
@@ -70,10 +72,24 @@ export function AnalyticsDashboardContent({ tasks: tasksProp, lists: listsProp, 
 
       {/* Each widget is isolated so one failing
           section cannot take down the dashboard. */}
+      {/* Calendar Heatmap */}
+      <ErrorBoundary name="Calendar Heatmap">
+        <Suspense fallback={<LoadingSpinner label="Loading heatmap..." />}>
+          <CalendarHeatmap tasks={tasks} />
+        </Suspense>
+      </ErrorBoundary>
+
       {/* Productivity Trends */}
       <ErrorBoundary name="Productivity Trends">
         <Suspense fallback={<LoadingSpinner label="Loading trends..." />}>
           <ProductivityTrends tasks={tasks} logs={logs} timeRange="month" />
+        </Suspense>
+      </ErrorBoundary>
+
+      {/* Context Switching Costs */}
+      <ErrorBoundary name="Context Switching">
+        <Suspense fallback={<LoadingSpinner label="Loading context switching..." />}>
+          <ContextSwitchTracker tasks={tasks} logs={logs} />
         </Suspense>
       </ErrorBoundary>
 
