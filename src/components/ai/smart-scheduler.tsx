@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { batchPrioritize, suggestOptimalTime, type UserContext } from '@/lib/ai/task-prioritizer'
-import { predictCompletionTime } from '@/lib/ai/patterns'
+import { getUserPatterns, predictCompletionTime } from '@/lib/ai/patterns'
 import type { Task } from '@/types'
 import { toast } from 'sonner'
 
@@ -63,6 +63,35 @@ export function SmartScheduler({ tasks, onSchedule }: SmartSchedulerProps) {
     return slots
   }, [workingHours])
 
+  // Derive a real UserContext from the user's learned energy/pattern data
+  // instead of a hardcoded stub. Falls back to sensible defaults when
+  // no history is available.
+  const buildUserContext = (): UserContext => {
+    const patterns = getUserPatterns()
+
+    // Infer energy level from the current hour and learned peak hours.
+    const hour = new Date().getHours()
+    const peakHours = patterns.workPatterns.peakEnergyHours
+    const isPeak = peakHours.includes(hour)
+    const energyLevel: UserContext['energyLevel'] = isPeak
+      ? 'high'
+      : peakHours.includes(hour - 2) || peakHours.includes(hour + 2)
+        ? 'medium'
+        : 'low'
+
+    return {
+      energyLevel,
+      availableTimeMinutes: (workingHours.end - workingHours.start) * 60,
+      focusMode: false,
+      workHoursStart: workingHours.start,
+      workHoursEnd: workingHours.end,
+      productivityHistory: patterns.completedTasks?.map(t => ({
+        date: t.date,
+        taskCount: 1,
+      })),
+    }
+  }
+
   // Auto-schedule incomplete tasks
   const autoSchedule = async () => {
     const incomplete = tasks.filter(t => !t.completed && !t.deadline)
@@ -71,10 +100,7 @@ export function SmartScheduler({ tasks, onSchedule }: SmartSchedulerProps) {
       return
     }
 
-    const context: UserContext = {
-      energyLevel: 'high',
-      availableTimeMinutes: (workingHours.end - workingHours.start) * 60,
-    }
+    const context = buildUserContext()
 
     const prioritized = await batchPrioritize(incomplete, context)
     const scheduled: ScheduledTask[] = []
@@ -130,13 +156,18 @@ export function SmartScheduler({ tasks, onSchedule }: SmartSchedulerProps) {
   }
 
   const addManualTask = (task: Task) => {
-    const context: UserContext = { energyLevel: 'medium', availableTimeMinutes: 480 }
+    const context = buildUserContext()
     const optimalTime = suggestOptimalTime(task, context) || '10:00'
-    const predictedMinutes = predictCompletionTime(task).predictedMinutes
+    const prediction = predictCompletionTime(task)
 
     setScheduledTasks(prev => [
       ...prev,
-      { task, scheduledTime: optimalTime, priority: 50, predictedMinutes },
+      {
+        task,
+        scheduledTime: optimalTime,
+        priority: 50,
+        predictedMinutes: prediction.predictedMinutes,
+      },
     ])
   }
 
@@ -277,18 +308,28 @@ export function SmartScheduler({ tasks, onSchedule }: SmartSchedulerProps) {
                     <div className="text-xs text-muted-foreground mt-1">
                       {slotTasks.length} tasks
                     </div>
-                    {slotTasks.map((st, index) => (
-                      <div
-                        key={index}
-                        className="text-xs bg-white rounded px-1 py-0.5 mt-1 truncate"
-                        title={`${st.task.name} · predicted ${st.predictedMinutes} min`}
-                      >
-                        {st.task.name}
-                        <span className="text-muted-foreground ml-1">
-                          ·{st.predictedMinutes}m
-                        </span>
-                      </div>
-                    ))}
+                    {slotTasks.map((st, index) => {
+                      const prediction = predictCompletionTime(st.task)
+                      const confidenceColor =
+                        prediction.confidence === 'high' ? 'text-green-500'
+                          : prediction.confidence === 'medium' ? 'text-amber-500'
+                          : 'text-red-400'
+                      return (
+                        <div
+                          key={index}
+                          className="text-xs bg-white rounded px-1 py-0.5 mt-1 truncate"
+                          title={`${st.task.name} · predicted ${st.predictedMinutes} min (${prediction.confidence})`}
+                        >
+                          {st.task.name}
+                          <span className="text-muted-foreground ml-1">
+                            ·{st.predictedMinutes}m
+                          </span>
+                          <span className={`ml-1 font-medium ${confidenceColor}`}>
+                            ●
+                          </span>
+                        </div>
+                      )
+                    })}
                   </div>
                 )
               })}
