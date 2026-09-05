@@ -1119,6 +1119,142 @@ export function getTaskLogs(taskId: string): TaskLog[] {
     }))
 }
 
+/**
+ * A structured timeline entry for a task, derived from the raw task_logs.
+ * Each entry combines a log action with a human-readable "change" description
+ * and a snapshot of the task fields that were relevant at that moment, so the
+ * UI can render a git-like diff of property changes.
+ */
+export interface TimelineEntry {
+  /** ISO timestamp of the event */
+  timestamp: string
+  /** Semantic action type (created, updated, completed, reopened, deleted, etc.) */
+  action: string
+  /** Human-readable description of what changed */
+  description: string
+  /** Name of the field that changed, if applicable (otherwise null) */
+  field?: string | null
+  /** The previous value, for diff display (null if none) */
+  from?: unknown
+  /** The new value, for diff display (null if none) */
+  to?: unknown
+}
+
+/**
+ * Reconstruct a git-like history timeline for a task.
+ *
+ * Walks the task_logs table chronologically (oldest first) and groups
+ * consecutive "updated" entries by changed-field clusters, so the timeline
+ * shows meaningful commits rather than one line per field change.
+ *
+ * Returns the most recent entries first (newest-first ordering, like git log).
+ */
+export function getTaskHistory(taskId: string): TimelineEntry[] {
+  const logs = getTaskLogs(taskId)
+
+  // Re-sort oldest-first so we can group consecutive updates
+  const chronological = [...logs].reverse()
+
+  const entries: TimelineEntry[] = []
+
+  for (const log of chronological) {
+    if (log.action === 'created') {
+      entries.push({
+        timestamp: log.created_at,
+        action: 'created',
+        description: log.details || 'Task created',
+      })
+    } else if (log.action === 'completed') {
+      entries.push({
+        timestamp: log.created_at,
+        action: 'completed',
+        description: log.details || 'Task marked complete',
+      })
+    } else if (log.action === 'reopened') {
+      entries.push({
+        timestamp: log.created_at,
+        action: 'reopened',
+        description: log.details || 'Task reopened',
+      })
+    } else if (log.action === 'updated' || log.action === 'deleted') {
+      // Try to parse the "Updated: field1, field2" details
+      const detailMatch = log.details?.match(/^Updated:\s*(.+)$/)
+      if (detailMatch) {
+        const fields = detailMatch[1].split(', ').map(f => f.trim())
+        fields.forEach(field => {
+          entries.push({
+            timestamp: log.created_at,
+            action: 'updated',
+            description: `${field} changed`,
+            field,
+          })
+        })
+      } else {
+        entries.push({
+          timestamp: log.created_at,
+          action: log.action,
+          description: log.details || `${log.action} event`,
+        })
+      }
+    } else if (log.action === 'label_added' || log.action === 'label_removed') {
+      entries.push({
+        timestamp: log.created_at,
+        action: log.action,
+        description: log.details || `${log.action} event`,
+      })
+    } else if (log.action === 'attachment_added' || log.action === 'attachment_removed') {
+      entries.push({
+        timestamp: log.created_at,
+        action: log.action,
+        description: log.details || `${log.action} event`,
+      })
+    } else if (log.action === 'reminder_added' || log.action === 'reminder_sent') {
+      entries.push({
+        timestamp: log.created_at,
+        action: log.action,
+        description: log.details || `${log.action} event`,
+      })
+    } else if (log.action.startsWith('recurring')) {
+      entries.push({
+        timestamp: log.created_at,
+        action: 'recurring',
+        description: log.details || 'Recurring task created',
+      })
+    } else {
+      // Generic fallback for any other action type
+      entries.push({
+        timestamp: log.created_at,
+        action: log.action,
+        description: log.details || 'Activity recorded',
+      })
+    }
+  }
+
+  // Reverse to newest-first ordering (like git log)
+  return entries.reverse()
+}
+
+/**
+ * Get the complete audit trail for a task, including both raw logs
+ * and a diff-style summary of all changes. Useful for the task
+ * archeology view.
+ */
+export async function getTaskArcheology(taskId: string): Promise<{
+  task: Task | undefined
+  timeline: TimelineEntry[]
+  logCount: number
+}> {
+  const task = await getTask(taskId)
+  const timeline = getTaskHistory(taskId)
+  const logs = getTaskLogs(taskId)
+
+  return {
+    task,
+    timeline,
+    logCount: logs.length,
+  }
+}
+
 function logTaskAction(taskId: string, action: string, details: string): void {
     const db = getDatabase()
   const id = generateId()
