@@ -14,6 +14,8 @@ import {
   Compass,
   Eye,
   Keyboard,
+  Mic,
+  MicOff,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { parseNaturalLanguage, generatePreview } from '@/lib/nlp'
@@ -75,6 +77,65 @@ export function CommandPalette({
   const inputRef = useRef<HTMLInputElement>(null)
   const mountedRef = useRef(true)
 
+  // --- Voice input ---
+  const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+
+  const startListening = useCallback(() => {
+    if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
+      toast.error('Voice input is not supported in this browser')
+      return
+    }
+
+    const SpeechRecognitionClass = (window as unknown as {
+      SpeechRecognition?: typeof SpeechRecognition
+      webkitSpeechRecognition?: typeof SpeechRecognition
+    }).SpeechRecognition ?? (window as unknown as {
+      SpeechRecognition?: typeof SpeechRecognition
+      webkitSpeechRecognition?: typeof SpeechRecognition
+    }).webkitSpeechRecognition
+
+    if (!SpeechRecognitionClass) {
+      toast.error('Voice input is not supported in this browser')
+      return
+    }
+
+    const recognition = new SpeechRecognitionClass()
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'en-US'
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0][0].transcript.trim()
+      if (transcript) {
+        setInput(transcript)
+        setSelectedIndex(0)
+      }
+    }
+
+    recognition.onerror = () => {
+      toast.error('Voice recognition error')
+      setIsListening(false)
+    }
+
+    recognition.onend = () => {
+      if (mountedRef.current) {
+        setIsListening(false)
+      }
+    }
+
+    recognitionRef.current = recognition
+    setIsListening(true)
+    recognition.start()
+  }, [])
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+    }
+    setIsListening(false)
+  }, [])
+
   // Fetch lists on mount
   useEffect(() => {
     mountedRef.current = true
@@ -95,6 +156,12 @@ export function CommandPalette({
 
     return () => {
       mountedRef.current = false
+      // Stop speech recognition if the palette closes while listening
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+        recognitionRef.current = null
+      }
+      setIsListening(false)
     }
   }, [isOpen])
 
@@ -215,8 +282,32 @@ export function CommandPalette({
         case 'goto.workflows':
           router.push('/workflows')
           break
+        case 'goto.timeblock':
+          router.push('/timeblock')
+          break
+        case 'goto.habits':
+          router.push('/habits')
+          break
+        case 'goto.focus':
+          router.push('/focus')
+          break
+        case 'goto.meeting':
+          router.push('/meeting')
+          break
         case 'goto.settings':
           router.push('/settings')
+          break
+        case 'goto.archealogy':
+          router.push('/all')
+          break
+        case 'goto.digest':
+          router.push('/digest')
+          break
+        case 'goto.standup':
+          router.push('/standup')
+          break
+        case 'goto.velocity':
+          router.push('/team-velocity')
           break
         case 'task.create':
           onNewTask()
@@ -383,6 +474,19 @@ export function CommandPalette({
                   aria-label="Clear input"
                 >
                   <X className="h-5 w-5" />
+                </button>
+              )}
+              {!input && (
+                <button
+                  onClick={isListening ? stopListening : startListening}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded transition-colors ${
+                    isListening
+                      ? 'text-red-500 hover:text-red-600'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }}`}
+                  aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+                >
+                  {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                 </button>
               )}
             </div>
