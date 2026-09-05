@@ -59,10 +59,58 @@ export const COMMANDS: PaletteCommand[] = [
     keywords: ['automations', 'rules'],
   },
   {
+    id: 'goto.timeblock',
+    title: 'Open Time Blocking',
+    category: 'Navigation',
+    keywords: ['schedule', 'timeblock', 'calendar', 'plan'],
+  },
+  {
     id: 'goto.settings',
     title: 'Open Settings',
     category: 'Navigation',
     keywords: ['preferences', 'config'],
+  },
+  {
+    id: 'goto.archealogy',
+    title: 'Open Task History',
+    category: 'Navigation',
+    keywords: ['history', 'audit', 'archealogy', 'timeline', 'logs'],
+  },
+  {
+    id: 'goto.digest',
+    title: 'Open Email Digest',
+    category: 'Navigation',
+    keywords: ['digest', 'email', 'summary', 'daily', 'weekly', 'report'],
+  },
+  {
+    id: 'goto.habits',
+    title: 'Open Habit Builder',
+    category: 'Navigation',
+    keywords: ['habits', 'habit', 'routine', 'loop', 'streak'],
+  },
+  {
+    id: 'goto.focus',
+    title: 'Open FocusBuddy',
+    category: 'Navigation',
+    keywords: ['focus', 'pomodoro', 'timer', 'buddy', 'deep work'],
+  },
+  {
+    id: 'goto.meeting',
+    title: 'Open Meeting Action Extractor',
+    category: 'Navigation',
+    keywords: ['meeting', 'transcript', 'actions', 'extract'],
+  },
+  {
+    id: 'goto.standup',
+    title: 'Open Async Standup',
+    category: 'Navigation',
+    keywords: ['standup', 'scrum', 'daily', 'team'],
+  },
+  {
+    id: 'goto.velocity',
+    title: 'Open Team Velocity',
+    category: 'Navigation',
+    keywords: ['velocity', 'team', 'burndown', 'metrics', 'dashboard'],
   },
   {
     id: 'task.create',
