@@ -105,7 +105,9 @@ export async function syncCalendar(
       // the event with stale task values.
       if (resolution.winner === 'calendar') {
         try {
-          updateTask(
+          // Awaited so a failed write is caught
+          // below and reported in errors[].
+          await updateTask(
             resolution.conflict.taskId,
             resolution.taskPatch
           )
@@ -169,7 +171,12 @@ export async function syncCalendar(
 
       try {
         const candidate = calendarEventToTask(event, targetListId ?? '')
-        createTask({ ...candidate, source_event_id: event.id })
+        // Awaited so a failed import is caught
+        // here and reported in errors[].
+        await createTask({
+          ...candidate,
+          source_event_id: event.id,
+        })
         importedEventIds.add(event.id)
         pulled++
       } catch (error) {
