@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow Extension Options</title>
+  <link rel="stylesheet" href="extension/popup.css" />
+</head>
+<body>
+  <div class="header">
+    <h1>TaskFlow Extension</h1>
+    <p>Configure your preferences</p>
+  </div>
+  <div class="content">
+    <div class="setting-group">
+      <label for="taskflow-url">TaskFlow URL</label>
+      <input
+        id="taskflow-url"
+        type="url"
+        value="http://localhost:3000"
+      />
+    </div>
+    <div class="setting-group">
+      <label>
+        <input type="checkbox" id="show-floating-btn" checked />
+        Show floating button on pages
+      </label>
+    </div>
+    <div class="setting-group">
+      <label>
+        <input type="checkbox" id="context-menu" checked />
+        Enable context menu integration
+      </label>
+    </div>
+    <button id="save-btn" class="add-btn">Save Settings</button>
+    <div id="status"></div>
+  </div>
+  <script src="extension/options.js"></script>
+</body>
+</html>
