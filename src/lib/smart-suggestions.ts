@@ -1,10 +1,11 @@
 import type { Task, List } from '@/types'
 import { suggestOptimalTime } from '@/lib/ai/task-prioritizer'
 import type { UserContext } from '@/lib/ai/task-prioritizer'
+import { semanticSimilarity } from '@/lib/ai/embeddings'
 
 export interface Suggestion {
   id: string
-  type: 'schedule' | 'reschedule' | 'priority' | 'list' | 'breakdown' | 'habit' | 'batch' | 'delegate' | 'energy'
+  type: 'schedule' | 'reschedule' | 'priority' | 'list' | 'breakdown' | 'habit' | 'batch' | 'delegate' | 'energy' | 'decompose'
   title: string
   description: string
   action: {
@@ -159,7 +160,11 @@ export function generateSmartSuggestions(
   const delegationSuggestions = generateDelegationSuggestions(incompleteTasks)
   suggestions.push(...delegationSuggestions)
 
-  // 5. Original suggestions (cont preserved)
+  // 5. AI-powered task decomposition suggestions
+  const decomposeSuggestions = generateDecompositionSuggestions(tasks, incompleteTasks)
+  suggestions.push(...decomposeSuggestions)
+
+  // 6. Original suggestions (cont preserved)
   const originalSuggestions = generateOriginalSmartSuggestions(tasks, lists, incompleteTasks)
   suggestions.push(...originalSuggestions)
 
@@ -420,6 +425,106 @@ function generateOriginalSmartSuggestions(
       confidence: 0.8,
       aiReason: 'Habit formation recommendation',
     })
+  }
+
+  return suggestions
+}
+
+/**
+ * Find past completed tasks that are semantically similar to the given task name.
+ * Uses hash-based embeddings for lightweight semantic similarity matching.
+ */
+function findSimilarPastTasks(
+  taskName: string,
+  allTasks: Task[],
+  topK = 5
+): { task: Task; similarity: number }[] {
+  const candidates = allTasks.filter(
+    (t) => t.completed && t.name
+  )
+
+  if (candidates.length === 0) return []
+
+  const scored = candidates.map((task) => ({
+    task,
+    similarity: semanticSimilarity(taskName, task.name),
+  }))
+
+  return scored
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, topK)
+}
+
+/**
+ * Generate AI-powered task decomposition suggestions.
+ *
+ * For large tasks (estimate > 60 min or no estimate but complex name),
+ * finds semantically similar past tasks and proposes subtask breakdowns
+ * based on how the user historically broke down similar work.
+ */
+function generateDecompositionSuggestions(
+  allTasks: Task[],
+  incompleteTasks: Task[]
+): Suggestion[] {
+  const suggestions: Suggestion[] = []
+
+  // Find tasks that should be broken down:
+  // 1. Estimate > 60 min, or
+  // 2. Has subtasks already (skip — likely already being managed), or
+  // 3. Name suggests complexity (contains "project", "implement", "research", "build")
+  const complexTasks = incompleteTasks.filter(task => {
+    if (task.sub_tasks && task.sub_tasks.length > 0) return false // Already decomposed
+    if (task.parent_task_id) return false // Already a subtask
+
+    if (task.estimate && task.estimate > 60) return true
+
+    const complexWords = ['project', 'implement', 'research', 'build', 'develop', 'refactor', 'analyze', 'design']
+    return complexWords.some(word =>
+      task.name.toLowerCase().includes(word)
+    )
+  })
+
+  for (const task of complexTasks) {
+    // Find similar past tasks to suggest subtask names
+    const similar = findSimilarPastTasks(task.name, allTasks, 3)
+
+    // Collect subtask names from similar completed tasks
+    const suggestedSubtasks: string[] = []
+    for (const { task: similarTask } of similar) {
+      if (similarTask.sub_tasks && similarTask.sub_tasks.length > 0) {
+        for (const sub of similarTask.sub_tasks) {
+          // Only suggest subtasks that aren't already present
+          if (!suggestedSubtasks.includes(sub.name)) {
+            suggestedSubtasks.push(sub.name)
+          }
+        }
+      }
+    }
+
+    if (suggestedSubtasks.length > 0) {
+      const topSimilar = similar[0]
+      const confidence = topSimilar ? topSimilar.similarity : 0
+
+      suggestions.push({
+        id: `decompose-${task.id}`,
+        type: 'decompose',
+        title: `Break down "${task.name}"`,
+        description: `Found ${suggestedSubtasks.length} subtasks from similar past tasks. AI suggests splitting this into smaller steps.`,
+        action: {
+          label: 'View Suggestions',
+          type: 'navigate',
+          payload: {
+            taskId: task.id,
+            suggestedSubtasks: suggestedSubtasks.slice(0, 5),
+            templateTaskId: topSimilar?.task.id,
+          },
+        },
+        priority: 'medium',
+        dismissible: true,
+        confidence: Math.min(0.5 + confidence * 0.4, 0.9),
+        aiReason: `Similar to past task "${topSimilar?.task.name}" (${Math.round(confidence * 100)}% match)`,
+      })
+    }
   }
 
   return suggestions
