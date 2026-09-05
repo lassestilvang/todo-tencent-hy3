@@ -4,7 +4,7 @@
  */
 
 import { calculateTaskPriority, TaskPriority, UserContext } from './task-prioritizer'
-import { getUserPatterns, UserPattern } from './patterns'
+import { getUserPatterns, UserPattern, predictCompletionTime } from './patterns'
 
 // Re-export for convenience
 export * from './task-prioritizer'
@@ -159,28 +159,12 @@ function findBatchableTaskIds(tasks: import('@/types').Task[]): string[] {
 }
 
 /**
- * Get predicted completion time for a task
- * Uses historical data to estimate how long a task will take
- */
-export async function predictCompletionTime(task: import('@/types').Task, patterns: UserPattern): Promise<number | null> {
-  if (!task.estimate) {
-    // Use patterns to estimate
-    const similarTasks = patterns.completedTasks?.filter(t =>
-      t.name.toLowerCase().includes(task.name.toLowerCase().split(' ')[0])
-    ) || []
-
-    if (similarTasks.length >= 3) {
-      const avgTime = similarTasks.reduce((sum, t) => sum + (t.actualTime || 0), 0) / similarTasks.length
-      return Math.round(avgTime)
-    }
-  }
-
-  return task.estimate
-}
-
-/**
- * Get the main AI service instance
- * This would be where we initialize ML models
+ * Get the main AI service instance.
+ *
+ * `predictCompletionTime` is re-exported from `./patterns` (the
+ * `export *` above shadows any local definition), so this object
+ * exposes the richer `CompletionTimePrediction` version that uses
+ * category averages, calibrated estimates, and confidence metadata.
  */
 export const aiService = {
   prioritizeTasks,
