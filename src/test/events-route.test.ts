@@ -100,6 +100,37 @@ describe('GET /api/workspaces/[workspaceId]/events', () => {
     controller.abort()
   })
 
+  it('delivers a published event within the latency budget', async () => {
+    const controller = new AbortController()
+    const request = new NextRequest(
+      'https://taskflow.test/api/workspaces/ws-1/events',
+      { signal: controller.signal }
+    )
+
+    const response = await streamWorkspaceEvents(
+      request,
+      { params: Promise.resolve({ workspaceId: 'ws-1' }) }
+    )
+    const reader = (
+      response.body as ReadableStream<Uint8Array>
+    ).getReader()
+
+    // Server-side delivery time: from the event
+    // being published to its frame being on the
+    // wire. The real-time target is < 100ms.
+    const start = performance.now()
+    publishActivity(activity('ws-1', 'comment.added'))
+    const { value } = await reader.read()
+    const ms = performance.now() - start
+
+    expect(new TextDecoder().decode(value)).toContain(
+      'comment.added'
+    )
+    expect(ms).toBeLessThan(100)
+
+    controller.abort()
+  })
+
   it('subscribes the stream and releases it on disconnect', async () => {
     const controller = new AbortController()
     const request = new NextRequest(
