@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Download, Monitor, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useOfflineSync } from '@/lib/use-offline-sync'
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,9 @@ export function PWAManifest() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [isIOS] = useState(() => checkIOS())
   const [isStandalone] = useState(() => checkStandalone())
+
+  // Set up offline caching and sync
+  useOfflineSync()
 
   useEffect(() => {
     // Listen for beforeinstallprompt event
