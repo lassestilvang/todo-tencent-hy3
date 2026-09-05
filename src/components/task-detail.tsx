@@ -13,6 +13,7 @@ import {
   Copy,
   Check,
   User,
+  History,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +22,7 @@ import { handleDeleteAndRedirect } from '@/lib/actions'
 import { TaskCheckbox } from '@/components/task-checkbox'
 import { TaskPresence } from '@/components/task-presence'
 import { WorkspaceActivityFeed } from '@/components/workspace-activity-feed'
+import { SimilarTasks } from '@/components/similar-tasks'
 import {
   cn,
   formatDisplayDate,
@@ -167,6 +169,11 @@ export function TaskDetail({ task }: { task: Task }) {
           </div>
         )}
 
+        {/* Similar Past Tasks — using semantic embeddings */}
+        <div>
+          <SimilarTasks currentTask={task} />
+        </div>
+
         {task.description && (
           <div className="text-muted-foreground bg-accent/25 border-border/10 flex gap-3 rounded-xl border p-4">
             <FileText className="text-muted-foreground/75 mt-0.5 h-4 w-4" />
@@ -308,9 +315,17 @@ export function TaskDetail({ task }: { task: Task }) {
 
         {task.logs && task.logs.length > 0 && (
           <div>
-            <span className="text-muted-foreground mb-2 block text-xs font-semibold tracking-wider uppercase">
-              Activity Log
-            </span>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-muted-foreground block text-xs font-semibold tracking-wider uppercase">
+                Activity Log
+              </span>
+              <Link href={`/task/${task.id}/archeology`}>
+                <Button variant="link" size="sm" className="text-xs">
+                  <History className="h-3 w-3 mr-1" />
+                  View Full History
+                </Button>
+              </Link>
+            </div>
             <div className="bg-accent/5 border-border/5 max-h-36 space-y-1.5 overflow-auto rounded-xl border p-3">
               {task.logs.map((log) => (
                 <div
