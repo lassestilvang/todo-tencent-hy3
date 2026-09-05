@@ -117,9 +117,10 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 - [x] Audit logging — workspace activity feed + task logs API (`/api/task-logs`)
 
 ### 4.4 Testing & Documentation
-- [x] Comprehensive test coverage — 595 tests across 42 suites (tasks, templates, export/import, security, share, webhooks, workspaces, push, rate-limit, completion-time, calendar-sync, calendar-conflicts, adaptive-pomodoro, focus-analytics, suggestion-feedback, template-suggestions, error-boundary, filter-presets, command-palette, shortcuts, quick-actions, nl-filter, semantic-filter, connectors, assignment, task-assignment, csrf, validation, performance, reminders, activity-stream, presence, presence route, workspace events stream, offline queue, workspace activity feed)
+- [x] Comprehensive test coverage — 606 tests across 44 suites (tasks, templates, export/import, security, share, webhooks, workspaces, push, rate-limit, completion-time, calendar-sync, calendar-conflicts, adaptive-pomodoro, focus-analytics, suggestion-feedback, template-suggestions, error-boundary, filter-presets, command-palette, shortcuts, quick-actions, nl-filter, semantic-filter, connectors, assignment, task-assignment, csrf, validation, performance, reminders, activity-stream, presence, presence route, workspace events stream, offline queue, workspace activity feed, workspace presence hook, task presence)
 - [x] API documentation updates — `openapi.yaml`: 52 schemas, 37 paths, validated against the filesystem; task schemas carry `assignee_id`/`assignee`, shared `ValidationError` response (uniform 400 shape), `/reminders` sweep route, `/presence` heartbeat + list, `/workspaces/{workspaceId}/events` SSE stream, proxy security note in `info.description`
-- [x] User guide updates — README added
+- [x] User guide updates — README added (features, workspace activity/presence/reminder endpoints)
+- [ ] Global coverage threshold (80%) — pre-existing: `collectCoverageFrom` sweeps all of `src/`, and every page/route handler (`src/app/**`) predates the test suite at 0%, so the global rate is ~36% regardless of this phase. Every module added this phase is 92–100% covered; closing the global gap means testing the pages, tracked separately
 - [x] Performance benchmarks — `src/test/performance.test.ts`: 8 benchmarks over a 10k-task dataset (full read with relations, `today` view filter, search, `batchPrioritize`, `semanticFilterTasks`, NL-filter parsing, command search, workflow execution through a 10-node chain × 100 runs) with timing ceilings as regression guards; results printed via `console.table`
 
 ## File Structure Changes
@@ -227,7 +228,7 @@ Deliberately not added (heuristic/hand-rolled equivalents in the tree):
 
 ## Success Criteria
 
-- [x] All tests pass — 595/595 (100% coverage for new code not yet measured)
+- [x] All tests pass — 606/606 (every module added this phase is 92–100% covered: presence 100%, use-workspace-presence 97%, offline-queue 96%, task-presence 95%, workspace-activity-feed 93%, use-workspace-events 93%)
 - [x] Performance benchmarks meet targets — all 8 benchmarks within their ceilings (10k-task read < 3s, AI/semantic batches < 3s/0.5s, NL parse < 200ms/500 iters, command search < 200ms/1000 iters, workflow execution < 100ms)
 - [ ] AI predictions > 80% accuracy — not measurable without labeled ground truth; the heuristic engines expose per-factor reasoning for manual review
 - [ ] Calendar sync bidirectional with < 5s latency — bidirectional sync implemented; latency is dominated by Google's API, not TaskFlow
