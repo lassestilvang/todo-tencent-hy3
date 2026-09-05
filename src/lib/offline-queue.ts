@@ -38,7 +38,7 @@ export function loadQueue(): QueuedMutation[] {
   }
 }
 
-function saveQueue(queue: QueuedMutation[]): void {
+export function saveQueue(queue: QueuedMutation[]): void {
   try {
     localStorage.setItem(
       QUEUE_KEY,
