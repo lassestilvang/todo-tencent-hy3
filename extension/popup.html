@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow Quick Add</title>
+  <link rel="stylesheet" href="extension/popup.css" />
+</head>
+<body>
+  <div id="app">
+    <div class="header">
+      <h1>TaskFlow</h1>
+      <p>Add a quick task</p>
+    </div>
+    <div class="content">
+      <textarea
+        id="task-input"
+        placeholder="What needs to be done?"
+        rows="3"
+      ></textarea>
+      <input
+        id="task-deadline"
+        type="date"
+        placeholder="Deadline (optional)"
+      />
+      <input
+        id="task-estimate"
+        type="number"
+        placeholder="Estimate (min)"
+      />
+      <div class="actions">
+        <button id="add-btn" class="add-btn">Add Task</button>
+        <button id="open-btn" class="open-btn">Open TaskFlow</button>
+      </div>
+      <div id="status"></div>
+    </div>
+  </div>
+  <script src="extension/popup.js"></script>
+</body>
+</html>
