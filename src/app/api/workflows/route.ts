@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { Workflow } from '@/lib/workflows/engine'
-
-// In-memory storage for workflows (would be database in production)
-const workflows: Workflow[] = []
+import { workflows } from '@/lib/workflow-store'
+import {
+  parseJsonBody,
+  validationErrorResponse,
+  RequestValidationError,
+} from '@/lib/validation'
+import { z } from 'zod'
 
 // Workflow management endpoints
 export async function GET() {
@@ -17,20 +21,56 @@ export async function GET() {
   }
 }
 
+const workflowNodeSchema = z.object({
+  id: z.string(),
+  type: z.enum(['trigger', 'action', 'condition']),
+  triggerType: z.any().optional(),
+  actionType: z.any().optional(),
+  conditionType: z.any().optional(),
+  config: z.record(z.string(), z.any()).default({}),
+  position: z.object({ x: z.number(), y: z.number() }),
+})
+
+const workflowEdgeSchema = z.object({
+  id: z.string(),
+  source: z.string(),
+  target: z.string(),
+  sourceHandle: z.string().optional(),
+  targetHandle: z.string().optional(),
+})
+
+const workflowSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  description: z.string().default(''),
+  nodes: z.array(workflowNodeSchema),
+  edges: z.array(workflowEdgeSchema),
+  enabled: z.boolean(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  lastRun: z.number().optional(),
+  runCount: z.number(),
+})
+
 export async function POST(request: Request) {
   try {
-    const workflow = await request.json()
-    const newWorkflow: Workflow = {
-      ...workflow,
-      id: workflow.id || `wf-${Date.now()}`,
-      createdAt: workflow.createdAt || Date.now(),
+    const body = await parseJsonBody(request, workflowSchema)
+
+    const workflow: Workflow = {
+      ...body,
+      description: body.description ?? '',
+      id: body.id || `wf-${Date.now()}`,
+      createdAt: body.createdAt || Date.now(),
       updatedAt: Date.now(),
     }
 
-    workflows.push(newWorkflow)
+    workflows.push(workflow)
 
-    return NextResponse.json(newWorkflow, { status: 201 })
+    return NextResponse.json(workflow, { status: 201 })
   } catch (error) {
+    if (error instanceof RequestValidationError) {
+      return validationErrorResponse(error)
+    }
     console.error('Failed to create workflow:', error)
     return NextResponse.json(
       { error: 'Failed to create workflow' },
@@ -41,8 +81,9 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const workflow = await request.json()
-    const index = workflows.findIndex(w => w.id === workflow.id)
+    const body = await parseJsonBody(request, workflowSchema)
+
+    const index = workflows.findIndex(w => w.id === body.id)
 
     if (index === -1) {
       return NextResponse.json(
@@ -52,7 +93,8 @@ export async function PUT(request: Request) {
     }
 
     const updatedWorkflow: Workflow = {
-      ...workflow,
+      ...body,
+      description: body.description ?? '',
       updatedAt: Date.now(),
     }
 
@@ -60,6 +102,9 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(updatedWorkflow)
   } catch (error) {
+    if (error instanceof RequestValidationError) {
+      return validationErrorResponse(error)
+    }
     console.error('Failed to update workflow:', error)
     return NextResponse.json(
       { error: 'Failed to update workflow' },
