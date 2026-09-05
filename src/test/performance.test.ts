@@ -24,8 +24,45 @@ import {
   type WorkflowNode,
   type WorkflowEdge,
 } from '@/lib/workflows/engine'
+import { syncCalendar } from '@/lib/calendar/sync'
+import type { CalendarEvent } from '@/lib/calendar'
 import { tasks as tasksTable } from '@/lib/db/schema'
 import type { Task } from '@/types'
+
+// The Google API is replaced with instant
+// responses: this benchmark measures
+// TaskFlow's orchestration overhead (task
+// loading, conflict detection, resolution,
+// and the push/pull loops), not Google's
+// network time, which TaskFlow cannot bound.
+// Populated in beforeAll from the seeded
+// tasks; read lazily by the mock.
+const mockCalendarEvents: CalendarEvent[] = []
+
+jest.mock('@/lib/calendar', () => {
+  const actual =
+    jest.requireActual<
+      typeof import('@/lib/calendar')
+    >('@/lib/calendar')
+  return {
+    ...actual,
+    getCalendarList: async () => [
+      {
+        id: 'primary',
+        summary: 'Primary',
+        primary: true,
+        accessRole: 'owner' as const,
+      },
+    ],
+    getEvents: async () => ({
+      items: mockCalendarEvents,
+    }),
+    createEvent: async () => ({
+      id: 'created-event',
+    }),
+    updateEvent: async () => ({}),
+  }
+})
 
 setDbInstanceForTesting(testDb)
 
@@ -131,6 +168,40 @@ beforeAll(async () => {
   }
 
   allTasks = await getTasks()
+
+  // Calendar fixtures for the sync benchmark:
+  // linked events that diverged from their
+  // tasks (exercises conflict detection and
+  // resolution) plus foreign events (exercises
+  // the pull/import path). The sync only sees
+  // the `upcoming` view, so link fixtures to
+  // tasks that view contains.
+  const upcomingTasks = allTasks.filter(
+    (task) => task.date !== null && task.date >= today
+  )
+  for (let i = 0; i < 50; i++) {
+    const task = upcomingTasks[i]
+    mockCalendarEvents.push({
+      id: `task-${task.id}`,
+      summary: `Diverged event ${i}`,
+      start: { dateTime: task.date ?? undefined },
+      end: { dateTime: task.date ?? undefined },
+    })
+    const start = new Date(
+      Date.now() + (i + 1) * 86_400_000
+    )
+    mockCalendarEvents.push({
+      id: `google-event-${i}`,
+      summary: `Imported event ${i}`,
+      description: 'Imported from Google',
+      start: { dateTime: start.toISOString() },
+      end: {
+        dateTime: new Date(
+          start.getTime() + 3_600_000
+        ).toISOString(),
+      },
+    })
+  }
 })
 
 afterAll(() => {
@@ -284,5 +355,32 @@ describe('Performance benchmarks', () => {
     })
 
     expect(perRun).toBeLessThan(100)
+  })
+
+  it('synchronizes the calendar', async () => {
+    const start = performance.now()
+    const result = await syncCalendar(
+      'benchmark-token',
+      { pull: true, conflictStrategy: 'calendar' }
+    )
+    const ms = performance.now() - start
+
+    results.push({
+      operation: 'syncCalendar',
+      dataset: `${TASK_COUNT} tasks, ${mockCalendarEvents.length} events (Google API mocked)`,
+      ms,
+      ceilingMs: 5_000,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.errors).toEqual([])
+    // Half the fixtures are diverged linked
+    // events; the other half are new imports.
+    expect(result.conflicts).toBe(50)
+    expect(result.pulled).toBe(50)
+    expect(result.synced).toBeGreaterThan(0)
+    // The plan's target: < 5s for a sync
+    // cycle, excluding Google's network time.
+    expect(ms).toBeLessThan(5_000)
   })
 })
