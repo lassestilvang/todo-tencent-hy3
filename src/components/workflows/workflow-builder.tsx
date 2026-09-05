@@ -16,7 +16,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
-  executeWorkflow,
   WORKFLOW_TEMPLATES,
   type Workflow,
   type WorkflowNode,
@@ -27,7 +26,7 @@ import {
 } from '@/lib/workflows/engine'
 
 interface WorkflowBuilderProps {
-  workflowId?: string
+  workflow?: Workflow
   onWorkflowSaved?: (workflow: Workflow) => void
 }
 
@@ -71,10 +70,13 @@ function toEdgeMap(template: typeof WORKFLOW_TEMPLATES[0]): Map<string, Workflow
   return new Map(template.edges.map(edge => [edge.id, { ...edge }]))
 }
 
-export function WorkflowBuilder({ workflowId: _workflowId, onWorkflowSaved }: WorkflowBuilderProps) {
-  // Seeded from the template directly so no effect-driven setState cascade.
-  const [nodes, setNodes] = useState<Map<string, WorkflowNode>>(() => toNodeMap(INITIAL_TEMPLATE))
-  const [edges, setEdges] = useState<Map<string, WorkflowEdge>>(() => toEdgeMap(INITIAL_TEMPLATE))
+export function WorkflowBuilder({ workflow, onWorkflowSaved }: WorkflowBuilderProps) {
+  const sourceWorkflow = workflow ?? INITIAL_TEMPLATE
+
+  // Seeded from the (edited) workflow or template directly so no
+  // effect-driven setState cascade on mount.
+  const [nodes, setNodes] = useState<Map<string, WorkflowNode>>(() => toNodeMap(sourceWorkflow))
+  const [edges, setEdges] = useState<Map<string, WorkflowEdge>>(() => toEdgeMap(sourceWorkflow))
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
@@ -128,6 +130,33 @@ export function WorkflowBuilder({ workflowId: _workflowId, onWorkflowSaved }: Wo
     setNodes(prev => new Map(prev).set(id, node))
   }, [nodes])
 
+  // Update a node's core fields (type-specific: triggerType, actionType, etc.)
+  const updateNode = useCallback((nodeId: string, updates: Partial<WorkflowNode>) => {
+    setNodes(prev => {
+      const next = new Map(prev)
+      const node = next.get(nodeId)
+      if (node) {
+        next.set(nodeId, { ...node, ...updates })
+      }
+      return next
+    })
+  }, [])
+
+  // Update a single config key on a node
+  const updateNodeConfig = useCallback((nodeId: string, key: string, value: unknown) => {
+    setNodes(prev => {
+      const next = new Map(prev)
+      const node = next.get(nodeId)
+      if (node) {
+        next.set(nodeId, {
+          ...node,
+          config: { ...(node.config || {}), [key]: value },
+        })
+      }
+      return next
+    })
+  }, [])
+
   // Remove node
   const removeNode = useCallback((nodeId: string) => {
     setNodes(prev => {
@@ -165,48 +194,48 @@ export function WorkflowBuilder({ workflowId: _workflowId, onWorkflowSaved }: Wo
     setConnectingFrom(null)
   }, [])
 
-  // Execute workflow
-  const executeWorkflowFn = useCallback(async () => {
-    const workflow: Workflow = {
-      id: `wf-${Date.now()}`,
-      name: 'New Workflow',
-      description: '',
-      nodes: Array.from(nodes.values()),
-      edges: Array.from(edges.values()),
-      enabled: true,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      lastRun: undefined,
-      runCount: 0,
-    }
+  // Build a Workflow object from current node/editor state, preserving
+  // metadata (id, name, description, timestamps) when editing.
+  const buildWorkflow = useCallback((): Workflow => ({
+    id: workflow?.id ?? `wf-${Date.now()}`,
+    name: workflow?.name ?? 'New Workflow',
+    description: workflow?.description ?? '',
+    nodes: Array.from(nodes.values()),
+    edges: Array.from(edges.values()),
+    enabled: workflow?.enabled ?? true,
+    createdAt: workflow?.createdAt ?? Date.now(),
+    updatedAt: Date.now(),
+    lastRun: workflow?.lastRun,
+    runCount: workflow?.runCount ?? 0,
+  }), [nodes, edges, workflow])
 
-    const result = await executeWorkflow(workflow)
-    if (result.success) {
-      toast.success('Workflow executed successfully')
-      onWorkflowSaved?.(workflow)
-    } else {
-      toast.error(result.error || 'Workflow execution failed')
+  // Execute workflow via the API so runCount/lastRun are persisted
+  const executeWorkflowFn = useCallback(async () => {
+    const wf = buildWorkflow()
+
+    try {
+      const res = await fetch(`/api/workflows/${wf.id}/execute`, {
+        method: 'POST',
+      })
+      const result = await res.json()
+
+      if (result.success) {
+        toast.success(`Workflow executed — ${result.results?.length || 0} steps completed`)
+        onWorkflowSaved?.(wf)
+      } else {
+        toast.error(result.error || 'Workflow execution failed')
+      }
+    } catch (error) {
+      toast.error('Failed to execute workflow')
     }
-  }, [nodes, edges, onWorkflowSaved])
+  }, [buildWorkflow, onWorkflowSaved])
 
   // Save workflow
   const saveWorkflow = useCallback(() => {
-    const workflow: Workflow = {
-      id: `wf-${Date.now()}`,
-      name: 'New Workflow',
-      description: '',
-      nodes: Array.from(nodes.values()),
-      edges: Array.from(edges.values()),
-      enabled: true,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      lastRun: undefined,
-      runCount: 0,
-    }
-
-    onWorkflowSaved?.(workflow)
+    const wf = buildWorkflow()
+    onWorkflowSaved?.(wf)
     toast.success('Workflow saved')
-  }, [nodes, edges, onWorkflowSaved])
+  }, [buildWorkflow, onWorkflowSaved])
 
   const selectedNodeData = selectedNode ? nodes.get(selectedNode) : null
 
@@ -410,22 +439,25 @@ export function WorkflowBuilder({ workflowId: _workflowId, onWorkflowSaved }: Wo
               {selectedNodeData ? (
                 <div className="space-y-4">
                   <div>
-                    <h4 className="font-medium mb-2">Type</h4>
-                    <select
-                      defaultValue={selectedNodeData.type}
-                      className="w-full px-3 py-2 border rounded bg-background"
-                    >
-                      <option value="trigger">Trigger</option>
-                      <option value="action">Action</option>
-                      <option value="condition">Condition</option>
-                    </select>
+                    <h4 className="font-medium mb-2">Name</h4>
+                    <input
+                      type="text"
+                      value={(selectedNodeData.config.name as string) || ''}
+                      onChange={(e) => updateNodeConfig(selectedNodeData.id, 'name', e.target.value)}
+                      placeholder={selectedNodeData.id}
+                      className="w-full px-3 py-2 border rounded bg-background text-sm"
+                    />
                   </div>
 
                   {selectedNodeData.type === 'trigger' && (
                     <>
                       <div>
                         <h4 className="font-medium mb-2">Trigger Type</h4>
-                        <select className="w-full px-3 py-2 border rounded bg-background">
+                        <select
+                          value={selectedNodeData.triggerType || ''}
+                          onChange={(e) => updateNode(selectedNodeData.id, { triggerType: e.target.value as TriggerType })}
+                          className="w-full px-3 py-2 border rounded bg-background text-sm"
+                        >
                           {TRIGGER_TYPES.map((t) => (
                             <option key={t.value} value={t.value}>
                               {t.label}
@@ -433,14 +465,34 @@ export function WorkflowBuilder({ workflowId: _workflowId, onWorkflowSaved }: Wo
                           ))}
                         </select>
                       </div>
-                      <div>
-                        <h4 className="font-medium mb-2">Schedule</h4>
-                        <input
-                          type="text"
-                          defaultValue="0 9 * * 1-5"
-                          className="w-full px-3 py-2 border rounded bg-background"
-                        />
-                      </div>
+
+                      {selectedNodeData.triggerType === 'schedule' && (
+                        <div>
+                          <h4 className="font-medium mb-2">Cron Schedule</h4>
+                          <input
+                            type="text"
+                            value={String(selectedNodeData.config.schedule || '0 9 * * *')}
+                            onChange={(e) => updateNodeConfig(selectedNodeData.id, 'schedule', e.target.value)}
+                            placeholder="e.g. 0 9 * * 1-5"
+                            className="w-full px-3 py-2 border rounded bg-background text-sm font-mono"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Cron expression (min hour day month weekday)
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedNodeData.triggerType === 'webhook' && (
+                        <div>
+                          <h4 className="font-medium mb-2">Webhook Secret</h4>
+                          <input
+                            type="password"
+                            value={String(selectedNodeData.config.secret || '')}
+                            onChange={(e) => updateNodeConfig(selectedNodeData.id, 'secret', e.target.value)}
+                            className="w-full px-3 py-2 border rounded bg-background text-sm"
+                          />
+                        </div>
+                      )}
                     </>
                   )}
 
@@ -448,7 +500,11 @@ export function WorkflowBuilder({ workflowId: _workflowId, onWorkflowSaved }: Wo
                     <>
                       <div>
                         <h4 className="font-medium mb-2">Action Type</h4>
-                        <select className="w-full px-3 py-2 border rounded bg-background">
+                        <select
+                          value={selectedNodeData.actionType || ''}
+                          onChange={(e) => updateNode(selectedNodeData.id, { actionType: e.target.value as ActionType })}
+                          className="w-full px-3 py-2 border rounded bg-background text-sm"
+                        >
                           {ACTION_TYPES.map((t) => (
                             <option key={t.value} value={t.value}>
                               {t.label}
@@ -456,12 +512,23 @@ export function WorkflowBuilder({ workflowId: _workflowId, onWorkflowSaved }: Wo
                           ))}
                         </select>
                       </div>
+
                       <div>
-                        <h4 className="font-medium mb-2">Task Data</h4>
+                        <h4 className="font-medium mb-2">Config (JSON)</h4>
                         <textarea
                           rows={4}
-                          className="w-full px-3 py-2 border rounded bg-background resize-y"
-                          placeholder="{'name': 'New Task', 'priority': 'high'}"
+                          value={JSON.stringify(selectedNodeData.config, null, 2)}
+                          onChange={(e) => {
+                            try {
+                              const parsed = JSON.parse(e.target.value)
+                              updateNode(selectedNodeData.id, { config: parsed })
+                            } catch {
+                              // Keep typing even if JSON is invalid
+                              updateNodeConfig(selectedNodeData.id, '_raw', e.target.value)
+                              updateNode(selectedNodeData.id, { config: { _raw: e.target.value } })
+                            }
+                          }}
+                          className="w-full px-3 py-2 border rounded bg-background text-sm font-mono resize-y"
                         />
                       </div>
                     </>
@@ -471,7 +538,11 @@ export function WorkflowBuilder({ workflowId: _workflowId, onWorkflowSaved }: Wo
                     <>
                       <div>
                         <h4 className="font-medium mb-2">Condition Type</h4>
-                        <select className="w-full px-3 py-2 border rounded bg-background">
+                        <select
+                          value={selectedNodeData.conditionType || ''}
+                          onChange={(e) => updateNode(selectedNodeData.id, { conditionType: e.target.value as ConditionType })}
+                          className="w-full px-3 py-2 border rounded bg-background text-sm"
+                        >
                           {CONDITION_TYPES.map((t) => (
                             <option key={t.value} value={t.value}>
                               {t.label}
@@ -479,18 +550,28 @@ export function WorkflowBuilder({ workflowId: _workflowId, onWorkflowSaved }: Wo
                           ))}
                         </select>
                       </div>
+
                       <div>
-                        <h4 className="font-medium mb-2">Condition Config</h4>
+                        <h4 className="font-medium mb-2">Config (JSON)</h4>
                         <textarea
                           rows={4}
-                          className="w-full px-3 py-2 border rounded bg-background resize-y"
-                          placeholder="{'priority': 'high'}"
+                          value={JSON.stringify(selectedNodeData.config, null, 2)}
+                          onChange={(e) => {
+                            try {
+                              const parsed = JSON.parse(e.target.value)
+                              updateNode(selectedNodeData.id, { config: parsed })
+                            } catch {
+                              updateNodeConfig(selectedNodeData.id, '_raw', e.target.value)
+                              updateNode(selectedNodeData.id, { config: { _raw: e.target.value } })
+                            }
+                          }}
+                          className="w-full px-3 py-2 border rounded bg-background text-sm font-mono resize-y"
                         />
                       </div>
                     </>
                   )}
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 pt-2 border-t">
                     <Button
                       variant="outline"
                       size="sm"
@@ -502,7 +583,7 @@ export function WorkflowBuilder({ workflowId: _workflowId, onWorkflowSaved }: Wo
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() => saveWorkflow()}
+                      onClick={saveWorkflow}
                     >
                       <Save className="h-3.5 w-3.5 mr-1" /> Save
                     </Button>
