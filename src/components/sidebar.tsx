@@ -1,4 +1,4 @@
-import { CalendarDays, Calendar, Clock, ListTodo, Plus, BarChart2, Settings, Workflow } from 'lucide-react'
+import { CalendarDays, Calendar, Clock, ListTodo, Plus, BarChart2, Settings, Workflow, Timer, History, BarChart3, Mic, Smile, Target, Users } from 'lucide-react'
 import { getLists, getLabels, getOverdueTasks } from '@/lib/tasks'
 import { Button } from '@/components/ui/button'
 import { CreateListForm } from '@/components/create-list-form'
@@ -61,6 +61,46 @@ export async function Sidebar() {
             href="/workflows"
             icon={<Workflow className="h-4 w-4" />}
             label="Workflows"
+          />
+          <SidebarLink
+            href="/timeblock"
+            icon={<Timer className="h-4 w-4" />}
+            label="Time Blocking"
+          />
+          <SidebarLink
+            href="/analytics"
+            icon={<BarChart3 className="h-4 w-4" />}
+            label="Productivity"
+          />
+          <SidebarLink
+            href="/habits"
+            icon={<Target className="h-4 w-4" />}
+            label="Habit Builder"
+          />
+          <SidebarLink
+            href="/focus"
+            icon={<Smile className="h-4 w-4" />}
+            label="FocusBuddy"
+          />
+          <SidebarLink
+            href="/meeting"
+            icon={<Mic className="h-4 w-4" />}
+            label="Meeting Actions"
+          />
+          <SidebarLink
+            href="/standup"
+            icon={<Users className="h-4 w-4" />}
+            label="Async Standup"
+          />
+          <SidebarLink
+            href="/team-velocity"
+            icon={<BarChart3 className="h-4 w-4" />}
+            label="Team Velocity"
+          />
+          <SidebarLink
+            href="/all"
+            icon={<History className="h-4 w-4" />}
+            label="Task History"
           />
         </nav>
 
