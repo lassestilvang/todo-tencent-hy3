@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -10,25 +10,84 @@ import type { Workflow } from '@/lib/workflows/engine'
 export default function WorkflowsPage() {
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [showBuilder, setShowBuilder] = useState(false)
+  const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function loadWorkflows() {
-      try {
-        const result = await fetch('/api/workflows')
-        if (!result.ok) throw new Error('Failed to fetch')
-        const data = await result.json()
-        setWorkflows(Array.isArray(data) ? data : [])
-      } catch (err) {
-        console.error('Failed to load workflows:', err)
-        toast.error('Failed to load workflows')
-      } finally {
-        setLoading(false)
-      }
+  const loadWorkflows = useCallback(async () => {
+    try {
+      const result = await fetch('/api/workflows')
+      if (!result.ok) throw new Error('Failed to fetch')
+      const data = await result.json()
+      setWorkflows(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Failed to load workflows:', err)
+      toast.error('Failed to load workflows')
+    } finally {
+      setLoading(false)
     }
-
-    loadWorkflows()
   }, [])
+
+  useEffect(() => {
+    loadWorkflows()
+  }, [loadWorkflows])
+
+  const handleSaveWorkflow = useCallback(async (workflow: Workflow) => {
+    try {
+      const isNew = !workflows.some(w => w.id === workflow.id)
+      const res = await fetch('/api/workflows', {
+        method: isNew ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(workflow),
+      })
+      if (!res.ok) throw new Error('Failed to save')
+
+      if (isNew) {
+        setWorkflows([...workflows, workflow])
+      } else {
+        setWorkflows(workflows.map(w => w.id === workflow.id ? workflow : w))
+      }
+      setShowBuilder(false)
+      setEditingWorkflow(null)
+      toast.success(`Workflow ${isNew ? 'created' : 'updated'} successfully`)
+    } catch (err) {
+      console.error('Failed to save workflow:', err)
+      toast.error('Failed to save workflow')
+    }
+  }, [workflows])
+
+  const handleDeleteWorkflow = useCallback(async (w: Workflow) => {
+    if (!confirm(`Delete workflow "${w.name}"? This cannot be undone.`)) return
+
+    try {
+      const res = await fetch(`/api/workflows?id=${w.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete')
+
+      setWorkflows(workflows.filter(wf => wf.id !== w.id))
+      toast.success('Workflow deleted')
+    } catch (err) {
+      console.error('Failed to delete workflow:', err)
+      toast.error('Failed to delete workflow')
+    }
+  }, [workflows])
+
+  const handleExecuteWorkflow = useCallback(async (w: Workflow) => {
+    try {
+      const res = await fetch(`/api/workflows/${w.id}/execute`, { method: 'POST' })
+      if (!res.ok) throw new Error('Failed to execute')
+
+      const result = await res.json()
+      if (result.success) {
+        toast.success(`Workflow executed — ${result.results?.length || 0} steps completed`)
+        // Refresh to pick up updated runCount/lastRun
+        loadWorkflows()
+      } else {
+        toast.error(`Workflow failed: ${result.error || 'unknown error'}`)
+      }
+    } catch (err) {
+      console.error('Failed to execute workflow:', err)
+      toast.error('Failed to execute workflow')
+    }
+  }, [loadWorkflows])
 
   if (loading) {
     return (
@@ -46,7 +105,10 @@ export default function WorkflowsPage() {
         <Button
           variant="default"
           size="sm"
-          onClick={() => setShowBuilder(true)}
+          onClick={() => {
+            setEditingWorkflow(null)
+            setShowBuilder(true)
+          }}
         >
           New Workflow
         </Button>
@@ -80,6 +142,12 @@ export default function WorkflowsPage() {
                 <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
                   <div>Nodes: {w.nodes.length}</div>
                   <div>Edges: {w.edges.length}</div>
+                  {w.lastRun && (
+                    <div>Last run: {new Date(w.lastRun).toLocaleString()}</div>
+                  )}
+                  {w.runCount > 0 && (
+                    <div>Runs: {w.runCount}</div>
+                  )}
                 </div>
               </CardContent>
 
@@ -88,12 +156,24 @@ export default function WorkflowsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const idx = workflows.findIndex(wf => wf.id === w.id)
-                    if (idx > -1) {
-                      workflows.splice(idx, 1)
-                      setWorkflows([...workflows])
-                    }
+                    setEditingWorkflow(w)
+                    setShowBuilder(true)
                   }}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant={w.enabled ? 'secondary' : 'outline'}
+                  size="sm"
+                  onClick={() => handleExecuteWorkflow(w)}
+                  disabled={!w.enabled}
+                >
+                  Run
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDeleteWorkflow(w)}
                 >
                   Delete
                 </Button>
@@ -109,7 +189,7 @@ export default function WorkflowsPage() {
           <Card className="max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                Workflow Builder
+                Workflow Builder: {editingWorkflow ? 'Edit' : 'New'}
                 <button
                   onClick={() => setShowBuilder(false)}
                   className="ml-auto p-1 rounded-md hover:bg-muted"
@@ -122,11 +202,8 @@ export default function WorkflowsPage() {
             </CardHeader>
             <CardContent>
               <WorkflowBuilder
-                onWorkflowSaved={(workflow) => {
-                  setWorkflows([...workflows, workflow])
-                  setShowBuilder(false)
-                  toast.success('Workflow saved')
-                }}
+                workflow={editingWorkflow ?? undefined}
+                onWorkflowSaved={handleSaveWorkflow}
               />
             </CardContent>
           </Card>
