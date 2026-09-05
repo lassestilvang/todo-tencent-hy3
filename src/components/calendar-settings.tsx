@@ -1,14 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Calendar, RefreshCw, CheckCircle, AlertCircle, ExternalLink, Trash2 } from 'lucide-react'
+import { Calendar, RefreshCw, CheckCircle, AlertCircle, ExternalLink, Trash2, Cloud, KeyRound, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { getCaldavEndpoint } from '@/lib/caldav'
 
 interface CalendarInfo {
   id: string
@@ -124,6 +126,7 @@ export function CalendarSettings() {
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -357,6 +360,254 @@ export function CalendarSettings() {
               </div>
             </div>
           </>
+        )}
+      </CardContent>
+    </Card>
+
+    {/* CalDAV Integration */}
+    <CaldavSettings />
+    </>
+  )
+}
+
+interface CaldavCredentials {
+  provider: 'icloud' | 'google' | 'fastmail' | 'custom'
+  baseUrl: string
+  username: string
+  password: string
+}
+
+function CaldavSettings() {
+  const [caldavConnected, setCaldavConnected] = useState(false)
+  const [caldavCredentials, setCaldavCredentials] = useState<CaldavCredentials>({
+    provider: 'icloud',
+    baseUrl: getCaldavEndpoint('icloud'),
+    username: '',
+    password: '',
+  })
+  const [caldavSyncStatus, setCaldavSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle')
+  const [caldavSyncResult, setCaldavSyncResult] = useState<{ synced: number; events: number; calendars: number } | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('caldav-credentials')
+      if (saved) {
+        try {
+          const creds = JSON.parse(saved)
+          setCaldavCredentials(creds)
+          setCaldavConnected(true)
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [])
+
+  function handleProviderChange(provider: 'icloud' | 'google' | 'fastmail' | 'custom') {
+    const credentials = { ...caldavCredentials, provider }
+    if (provider !== 'custom') {
+      credentials.baseUrl = getCaldavEndpoint(provider)
+    }
+    setCaldavCredentials(credentials)
+  }
+
+  function handleSaveCredentials() {
+    if (!caldavCredentials.username || !caldavCredentials.password) {
+      toast.error('Username and password are required')
+      return
+    }
+    localStorage.setItem('caldav-credentials', JSON.stringify(caldavCredentials))
+    setCaldavConnected(true)
+    toast.success('CalDAV credentials saved. Test sync below to verify.')
+  }
+
+  function handleDisconnect() {
+    localStorage.removeItem('caldav-credentials')
+    setCaldavConnected(false)
+    setCaldavCredentials({
+      provider: 'icloud',
+      baseUrl: getCaldavEndpoint('icloud'),
+      username: '',
+      password: '',
+    })
+    toast.success('CalDAV connection removed')
+  }
+
+  async function handleCaldavSync() {
+    if (!caldavConnected || !caldavCredentials.username || !caldavCredentials.password) {
+      toast.error('CalDAV credentials not configured')
+      return
+    }
+
+    setCaldavSyncStatus('syncing')
+    setCaldavSyncResult(null)
+
+    try {
+      const res = await fetch('/api/calendar/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: caldavCredentials.provider === 'custom' ? undefined : caldavCredentials.provider,
+          baseUrl: caldavCredentials.baseUrl,
+          username: caldavCredentials.username,
+          password: caldavCredentials.password,
+          daysAhead: 7,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.synced !== undefined) {
+        setCaldavSyncStatus('success')
+        setCaldavSyncResult({
+          synced: data.synced,
+          events: data.eventsTotal || 0,
+          calendars: data.calendars || 0,
+        })
+        toast.success(`Synced ${data.synced} events from ${data.calendars || 0} calendars`)
+      } else {
+        setCaldavSyncStatus('error')
+        toast.error(data.error || 'CalDAV sync failed')
+      }
+    } catch (err: any) {
+      setCaldavSyncStatus('error')
+      toast.error(`Sync failed: ${err.message}`)
+    }
+  }
+
+  const cal = caldavCredentials.provider === 'custom'
+    ? 'Custom'
+    : caldavCredentials.provider === 'icloud'
+      ? 'iCloud'
+      : caldavCredentials.provider === 'google'
+        ? 'Google'
+        : 'Fastmail'
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Cloud className="h-5 w-5 text-primary" />
+          CalDAV Integration
+        </CardTitle>
+        <CardDescription>
+          Connect to Apple iCloud, Google, Fastmail, or any CalDAV-compatible calendar
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {!caldavConnected ? (
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <Label>Provider</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {(['icloud', 'google', 'fastmail', 'custom'] as const).map((provider) => (
+                  <button
+                    key={provider}
+                    type="button"
+                    onClick={() => handleProviderChange(provider)}
+                    className={cn(
+                      'px-3 py-2 text-sm rounded-lg border transition-colors',
+                      caldavCredentials.provider === provider
+                        ? 'border-primary bg-primary/5 font-medium'
+                        : 'border-border hover:bg-muted/50',
+                    )}
+                  >
+                    {provider === 'custom' ? 'Custom' : provider === 'icloud' ? 'iCloud' : provider === 'google' ? 'Google' : 'Fastmail'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {caldavCredentials.provider === 'custom' && (
+              <div className="space-y-2">
+                <Label htmlFor="caldav-base-url">CalDAV Server URL</Label>
+                <Input
+                  id="caldav-base-url"
+                  placeholder="https://caldav.example.com/"
+                  value={caldavCredentials.baseUrl}
+                  onChange={(e) => setCaldavCredentials({ ...caldavCredentials, baseUrl: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Full CalDAV endpoint URL for your provider
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="caldav-username">Username</Label>
+              <Input
+                id="caldav-username"
+                type="text"
+                placeholder="user@icloud.com"
+                value={caldavCredentials.username}
+                onChange={(e) => setCaldavCredentials({ ...caldavCredentials, username: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="caldav-password">App-Specific Password</Label>
+              <Input
+                id="caldav-password"
+                type="password"
+                placeholder="Generated app password"
+                value={caldavCredentials.password}
+                onChange={(e) => setCaldavCredentials({ ...caldavCredentials, password: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Use an app-specific password, not your main account password.{' '}
+                <a
+                  href="https://support.apple.com/en-us/HT204397"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  How to create one for iCloud
+                </a>
+              </p>
+            </div>
+
+            <Button onClick={handleSaveCredentials} className="w-full">
+              <KeyRound className="h-4 w-4 mr-2" />
+              Save Credentials
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="h-3 w-3 rounded-full bg-green-500" />
+                <div>
+                  <p className="font-medium">Connected to {cal}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {caldavCredentials.username}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleCaldavSync} disabled={caldavSyncStatus === 'syncing'}>
+                  {caldavSyncStatus === 'syncing' && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                  Sync Now
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleDisconnect}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {caldavSyncStatus === 'success' && caldavSyncResult && (
+              <div className="text-sm text-green-600 flex items-center gap-1">
+                <CheckCircle className="h-4 w-4" />
+                Synced {caldavSyncResult.synced} tasks from {caldavSyncResult.events} events across {caldavSyncResult.calendars} calendars
+              </div>
+            )}
+
+            {caldavSyncStatus === 'error' && (
+              <div className="text-sm text-red-600 flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" />
+                Sync failed. Check credentials and server URL.
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
