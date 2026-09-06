@@ -42,6 +42,7 @@ const createTaskSchema = z.object({
     .min(1, 'Estimate must be at least 1 minute')
     .max(9999, 'Estimate is too large')
     .optional(),
+  mood: z.enum(['fun', 'grind', 'urgent', 'thinking', 'learn', 'calm']).optional(),
 })
 
 export async function createTaskAction(formData: FormData) {
@@ -83,6 +84,7 @@ export async function createTaskAction(formData: FormData) {
     parent_task_id: parentId || undefined,
     assignee_id: assigneeId || null,
     estimate: estimate || undefined,
+    mood: mood || undefined,
   })
 
   revalidatePath('/', 'layout')
@@ -99,6 +101,7 @@ export async function updateTaskAction(taskId: string, formData: FormData) {
     listId: formData.get('listId') as string,
     assigneeId: formData.get('assigneeId') as string,
     estimate: formData.get('estimate') as string,
+    mood: formData.get('mood') as string | null,
   }
 
   const result = createTaskSchema.safeParse(raw)
@@ -106,7 +109,7 @@ export async function updateTaskAction(taskId: string, formData: FormData) {
     return { success: false, errors: result.error.flatten().fieldErrors }
   }
 
-  const { name, description, date, deadline, priority, listId, assigneeId, estimate } =
+  const { name, description, date, deadline, priority, listId, assigneeId, estimate, mood } =
     result.data
 
   updateTaskInDb(taskId, {
@@ -119,6 +122,7 @@ export async function updateTaskAction(taskId: string, formData: FormData) {
     // '' means "no assignee" — clear rather than keep.
     assignee_id: assigneeId === '' ? null : assigneeId || undefined,
     estimate: estimate || undefined,
+    mood: mood || undefined,
   })
 
   revalidatePath('/', 'layout')
