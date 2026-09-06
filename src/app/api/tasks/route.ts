@@ -13,6 +13,9 @@ import {
   validationErrorResponse,
 } from '@/lib/validation'
 import { z } from 'zod'
+import type { TaskMood } from '@/types'
+
+const MOOD_VALUES: [TaskMood, ...TaskMood[]] = ['fun', 'grind', 'urgent', 'thinking', 'learn', 'calm']
 
 const createTaskSchema = z.object({
   name: z.string().min(1).max(500),
@@ -23,6 +26,7 @@ const createTaskSchema = z.object({
   list_id: z.string().optional(),
   estimate: z.coerce.number().int().positive().optional(),
   source: z.string().max(100).optional(),
+  mood: z.enum(MOOD_VALUES).optional(),
 })
 
 const updateTaskSchema = z.object({
@@ -35,6 +39,7 @@ const updateTaskSchema = z.object({
   assignee_id: z.string().nullable().optional(),
   estimate: z.coerce.number().int().positive().nullable().optional(),
   source: z.string().max(100).nullable().optional(),
+  mood: z.enum(MOOD_VALUES).nullable().optional(),
   completed: z.boolean().optional(),
 })
 
