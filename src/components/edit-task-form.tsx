@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { MoodSelector } from '@/components/mood-selector'
 import {
   updateTaskAction,
   getListsAction,
@@ -325,6 +326,9 @@ export function EditTaskForm({
         {errors?.estimate && (
           <p className="text-destructive text-xs">{errors.estimate[0]}</p>
         )}
+      </div>
+      <div className="space-y-1.5 pt-2">
+        <MoodSelector name="mood" value={task.mood ?? null} compact />
       </div>
       <div className="flex gap-3 pt-2">
         <Button
