@@ -1,4 +1,25 @@
 export type Priority = 'high' | 'medium' | 'low' | 'none'
+
+/** Emoji mood tags for affective computing on the task list. */
+export type TaskMood = 'fun' | 'grind' | 'urgent' | 'thinking' | 'learn' | 'calm'
+
+export const MOOD_EMOJI: Record<TaskMood, string> = {
+  fun: '🎉',
+  grind: '😩',
+  urgent: '🔥',
+  thinking: '🤔',
+  learn: '🧠',
+  calm: '☕',
+}
+
+export const MOOD_LABELS: Record<TaskMood, string> = {
+  fun: 'Fun',
+  grind: 'Grind',
+  urgent: 'Urgent',
+  thinking: 'Thinking',
+  learn: 'Learning',
+  calm: 'Calm',
+}
 export type RecurringType =
   | 'every_day'
   | 'every_week'
@@ -83,6 +104,8 @@ export interface Task {
   source_event_id?: string | null
   /** Origin of the task (e.g. 'browser-extension', 'voice', 'email-digest') */
   source?: string | null
+  /** Emoji mood tag for affective computing ('fun', 'grind', 'urgent', 'thinking', 'learn', 'calm') */
+  mood?: TaskMood | null
   parent_task_id: string | null
   completed: boolean
   completed_at: string | null
