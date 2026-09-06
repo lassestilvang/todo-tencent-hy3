@@ -1,5 +1,6 @@
 'use client'
 
+import { MoodSelector } from '@/components/mood-selector'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -170,6 +171,9 @@ export function CreateTaskForm({ defaultListId }: { defaultListId?: string }) {
             <p className="text-destructive text-xs">{errors.estimate[0]}</p>
           )}
         </div>
+      </div>
+      <div className="space-y-1.5">
+        <MoodSelector name="mood" compact />
       </div>
       <div className="pt-2">
         <SubmitButton />
