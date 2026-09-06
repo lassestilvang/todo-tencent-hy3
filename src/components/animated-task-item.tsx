@@ -14,6 +14,7 @@ import { handleDelete } from '@/lib/actions'
 import type { Task } from '@/types'
 import { Button } from '@/components/ui/button'
 import { PriorityIcon } from '@/components/priority-icon'
+import { MoodBadge } from '@/components/mood-selector'
 import { SelectableTaskCheckbox } from '@/components/selectable-task-checkbox'
 import { useState } from 'react'
 import {
@@ -89,6 +90,7 @@ export function AnimatedTaskItem({
                 ))}
               </div>
             )}
+            {task.mood && <MoodBadge mood={task.mood} />}
           </div>
           <div className="text-muted-foreground mt-0.5 flex items-center gap-3 text-xs">
             {task.date && (
