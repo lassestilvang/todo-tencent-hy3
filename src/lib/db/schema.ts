@@ -50,6 +50,9 @@ export const tasks = sqliteTable('tasks', {
   sourceEventId: text('source_event_id'),
   // Origin of the task (e.g. 'browser-extension', 'voice', 'email-digest').
   source: text('source'),
+  // Emoji mood tag for affective computing on the task list
+  // (e.g. 'fun', 'grind', 'urgent', 'thinking', 'learn')
+  mood: text('mood', { enum: ['fun', 'grind', 'urgent', 'thinking', 'learn', 'calm'] }),
   // Self-referential FK - use AnySQLiteColumn to break circular reference
   parentTaskId: text('parent_task_id').references(((): AnySQLiteColumn => tasks.id), { onDelete: 'cascade' }),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
