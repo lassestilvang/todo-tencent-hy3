@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
-import { exportAllData } from '@/lib/tasks'
+import { exportAllData, type ExportData } from '@/lib/tasks'
 
+/**
+ * Export all application data as JSON
+ * @returns {Promise<NextResponse>} JSON file download
+ */
 export async function GET() {
   try {
     const data = await exportAllData()
