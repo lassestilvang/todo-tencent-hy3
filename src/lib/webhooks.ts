@@ -1,4 +1,4 @@
-import { createHash, randomBytes, createHmac } from 'crypto'
+import { randomBytes, createHmac } from 'crypto'
 
 export type WebhookEvent = 'task.created' | 'task.updated' | 'task.completed' | 'task.deleted' | 'list.created' | 'list.updated' | 'list.deleted'
 
@@ -17,7 +17,7 @@ export interface Webhook {
   lastError?: string
 }
 
-export interface WebhookPayload<T = any> {
+export interface WebhookPayload<T = Record<string, unknown>> {
   event: WebhookEvent
   timestamp: string
   data: T
@@ -121,10 +121,20 @@ export function verifyWebhookSignature(
     .update(payload)
     .digest('hex')
 
-  // Use timing-safe comparison
-  return createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex') === signature
+  // Use timing-safe comparison to prevent timing attacks
+  // crypto.timingSafeEqual is Node.js API, implement manually for browser
+  try {
+    if (expectedSignature.length !== signature.length) return false
+
+    let result = 0
+    for (let i = 0; i < expectedSignature.length; i++) {
+      result |= expectedSignature.charCodeAt(i) ^ signature.charCodeAt(i)
+    }
+    return result === 0
+  } catch {
+    // If lengths don't match, it's definitely not equal
+    return false
+  }
 }
 
 function signPayload(payload: string, secret: string): string {
@@ -133,8 +143,8 @@ function signPayload(payload: string, secret: string): string {
 
 async function deliverWebhook(
   webhook: Webhook,
-  payload: WebhookPayload,
-  attempt: number = 0
+  payload: WebhookPayload<unknown>,
+  attempt = 0
 ): Promise<boolean> {
   const payloadString = JSON.stringify(payload)
   const signature = signPayload(payloadString, webhook.secret)
@@ -185,14 +195,14 @@ async function deliverWebhook(
 
 export async function triggerWebhooks(
   event: WebhookEvent,
-  data: any
+  data: unknown
 ): Promise<void> {
   const webhooks = getStoredWebhooks()
   const activeWebhooks = webhooks.filter(w => w.active && w.events.includes(event))
 
   if (activeWebhooks.length === 0) return
 
-  const payload: WebhookPayload = {
+  const payload: WebhookPayload<unknown> = {
     event,
     timestamp: new Date().toISOString(),
     data,
@@ -212,7 +222,7 @@ export async function triggerWebhooks(
 // Client-side trigger function (for use in client components)
 export async function triggerWebhooksClient(
   event: WebhookEvent,
-  data: any
+  data: Record<string, unknown>
 ): Promise<void> {
   // For client-side, we'll call the API route
   try {

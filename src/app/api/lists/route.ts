@@ -28,7 +28,7 @@ const patchListSchema = z.object({
 
 export async function GET() {
   try {
-    const lists = getLists()
+    const lists = await getLists()
     return NextResponse.json(lists)
   } catch (error) {
     console.error('Failed to fetch lists:', error)
@@ -78,7 +78,7 @@ export async function PATCH(request: Request) {
 
     if (action === 'delete') {
       // Get list before deleting for webhook
-      const lists = getLists()
+      const lists = await getLists()
       const list = lists.find(l => l.id === id)
       deleteList(id)
       if (list) {
@@ -96,7 +96,7 @@ export async function PATCH(request: Request) {
 
       updateList(id, updateData)
       // Get updated list for webhook
-      const lists = getLists()
+      const lists = await getLists()
       const updatedList = lists.find(l => l.id === id)
       if (updatedList) {
         triggerWebhooks('list.updated', updatedList)

@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify list exists
-    const lists = getLists()
+    const lists = await getLists()
     const list = lists.find(l => l.id === listId)
     if (!list) {
       return NextResponse.json({ error: 'List not found' }, { status: 404 })

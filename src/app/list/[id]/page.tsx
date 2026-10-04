@@ -9,7 +9,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
-  const lists = getLists()
+  const lists = await getLists()
   const list = lists.find((l) => l.id === id)
   if (!list) return {}
   return {
@@ -26,7 +26,7 @@ export default async function ListPage({
   searchParams: Promise<{ completed?: string }>
 }) {
   const [{ id }, { completed }] = await Promise.all([params, searchParams])
-  const lists = getLists()
+  const lists = await getLists()
   const list = lists.find((l) => l.id === id)
   if (!list) notFound()
 

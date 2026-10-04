@@ -17,6 +17,7 @@ interface ParsedTask {
   listId?: string
   estimate?: number
   recurring?: 'every_day' | 'every_week' | 'every_weekday' | 'every_month' | 'every_year' | 'custom'
+  tags?: string[]
   confidence: number
   originalInput: string
 }
@@ -54,12 +55,12 @@ const RECURRING_PATTERNS = [
 ]
 
 // Date/time patterns
-const DATE_PATTERNS: Array<{
+const DATE_PATTERNS: {
   pattern: RegExp
   days?: number
   months?: number
   endOfWeek?: boolean
-}> = [
+}[] = [
   { pattern: /\b(today)\b/i, days: 0 },
   { pattern: /\b(tomorrow|tmr)\b/i, days: 1 },
   { pattern: /\b(day after tomorrow)\b/i, days: 2 },
@@ -113,6 +114,8 @@ export function parseNaturalLanguage(input: string, options?: {
     workingInput = workingInput.replace(pattern, '').trim()
   }
 
+  result.tags = tags
+
   // Map list references to actual list IDs if lists provided
   if (options?.lists && listRefs.length > 0) {
     for (const ref of listRefs) {
@@ -138,16 +141,7 @@ export function parseNaturalLanguage(input: string, options?: {
     workingInput = workingInput.replace(ESTIMATE_PATTERN, '').trim()
   }
 
-  // Extract recurring pattern
-  for (const { pattern, recurring } of RECURRING_PATTERNS) {
-    if (pattern.test(workingInput)) {
-      result.recurring = recurring
-      workingInput = workingInput.replace(pattern, '').trim()
-      break
-    }
-  }
-
-  // Extract deadline (by ...)
+  // Extract deadline (by ...) - BEFORE recurring to catch "by Friday" before "Friday" is consumed as recurring
   const deadlineMatch = workingInput.match(DEADLINE_PATTERN)
   if (deadlineMatch) {
     const deadlineStr = deadlineMatch[1].trim()
@@ -156,6 +150,15 @@ export function parseNaturalLanguage(input: string, options?: {
       result.deadline = parsedDate
     }
     workingInput = workingInput.replace(DEADLINE_PATTERN, '').trim()
+  }
+
+  // Extract recurring pattern
+  for (const { pattern, recurring } of RECURRING_PATTERNS) {
+    if (pattern.test(workingInput)) {
+      result.recurring = recurring
+      workingInput = workingInput.replace(pattern, '').trim()
+      break
+    }
   }
 
   // Extract date references
@@ -282,17 +285,23 @@ function parseRelativeDate(str: string): string | null {
   try {
     const parsed = parse(str, 'MMM d, yyyy', new Date())
     if (isValid(parsed)) return formatDate(parsed)
-  } catch {}
+  } catch (e) {
+    console.error("Failed to parse date:", e)
+  }
 
   try {
     const parsed = parse(str, 'MMMM d, yyyy', new Date())
     if (isValid(parsed)) return formatDate(parsed)
-  } catch {}
+  } catch (e) {
+    console.error("Failed to parse date:", e)
+  }
 
   try {
     const parsed = parse(str, 'yyyy-MM-dd', new Date())
     if (isValid(parsed)) return formatDate(parsed)
-  } catch {}
+  } catch (e) {
+    console.error("Failed to parse date:", e)
+  }
 
   return null
 }

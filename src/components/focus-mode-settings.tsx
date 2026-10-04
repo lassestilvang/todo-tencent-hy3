@@ -34,7 +34,10 @@ function loadSettings() {
     if (saved) {
       try {
         return { ...defaultSettings, ...JSON.parse(saved) }
-      } catch {}
+      } catch (e) {
+        console.error("Failed to parse focus mode settings:", e)
+        return defaultSettings
+      }
     }
   }
   return defaultSettings

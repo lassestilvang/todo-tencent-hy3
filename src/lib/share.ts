@@ -22,7 +22,7 @@ export interface SharedListData {
     color: string
     emoji: string
   }
-  tasks: Array<{
+  tasks: {
     id: string
     name: string
     description?: string | null
@@ -32,7 +32,7 @@ export interface SharedListData {
     priority?: string
     completed: boolean
     position: number
-  }>
+  }[]
   shareInfo: {
     permission: SharePermission
     expiresAt?: number
@@ -67,7 +67,22 @@ export function hashPassword(password: string): string {
 }
 
 export function verifyPassword(password: string, hash: string): boolean {
-  return hashPassword(password) === hash
+  const passwordHash = hashPassword(password)
+
+  // Use timing-safe comparison to prevent timing attacks
+  // crypto.timingSafeEqual is Node.js API, implement manually for browser
+  try {
+    if (passwordHash.length !== hash.length) return false
+
+    let result = 0
+    for (let i = 0; i < passwordHash.length; i++) {
+      result |= passwordHash.charCodeAt(i) ^ hash.charCodeAt(i)
+    }
+    return result === 0
+  } catch {
+    // If lengths don't match, it's definitely not equal
+    return false
+  }
 }
 
 export function createShareLink(

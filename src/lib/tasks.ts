@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db'
-import { eq, and, or, isNull, desc, asc, sql, inArray } from 'drizzle-orm'
+import { and, eq, isNull, or, desc, asc, sql, inArray } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   lists,
@@ -18,24 +18,112 @@ import type {
   TaskAttachment,
   TaskReminder,
   TaskLog,
+  TaskLabel,
 } from '@/types'
-import { generateId, isDateBeforeToday, formatTime } from './utils'
+import { generateId } from './utils'
 import { parseNaturalLanguage, validateParsedTask } from './nlp'
 
-// Schema object with only table definitions (not inferred types)
-const dbSchema = {
-  lists,
-  labels,
-  tasks,
-  taskLabels,
-  taskAttachments,
-  taskReminders,
-  taskLogs,
-  taskDependencies,
-} as const
+// Task Templates
+export interface TaskTemplate {
+  id: string
+  name: string
+  description?: string
+  priority?: 'high' | 'medium' | 'low' | 'none'
+  estimate?: number
+  recurring?: 'every_day' | 'every_week' | 'every_weekday' | 'every_month' | 'every_year' | 'custom'
+  listId?: string
+  tags?: string[]
+  createdAt: number
+  updatedAt: number
+}
+
+const TEMPLATES_KEY = 'task-templates'
+
+function getStoredTemplates(): TaskTemplate[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const stored = localStorage.getItem(TEMPLATES_KEY)
+    return stored ? JSON.parse(stored) : []
+  } catch {
+    return []
+  }
+}
+
+function saveTemplates(templates: TaskTemplate[]): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates))
+}
+
+export function getTemplates(): TaskTemplate[] {
+  return getStoredTemplates()
+}
+
+export function getTemplate(id: string): TaskTemplate | null {
+  return getStoredTemplates().find(t => t.id === id) || null
+}
+
+export function createTemplate(data: Omit<TaskTemplate, 'id' | 'createdAt' | 'updatedAt'>): TaskTemplate {
+  const templates = getStoredTemplates()
+  const template: TaskTemplate = {
+    ...data,
+    id: generateId(),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  }
+  templates.push(template)
+  saveTemplates(templates)
+  return template
+}
+
+export function updateTemplate(id: string, data: Partial<Omit<TaskTemplate, 'id' | 'createdAt'>>): TaskTemplate | null {
+  const templates = getStoredTemplates()
+  const index = templates.findIndex(t => t.id === id)
+  if (index === -1) return null
+
+  templates[index] = {
+    ...templates[index],
+    ...data,
+    updatedAt: Date.now(),
+  }
+  saveTemplates(templates)
+  return templates[index]
+}
+
+export function deleteTemplate(id: string): boolean {
+  const templates = getStoredTemplates()
+  const index = templates.findIndex(t => t.id === id)
+  if (index === -1) return false
+  templates.splice(index, 1)
+  saveTemplates(templates)
+  return true
+}
+
+export function createTaskFromTemplate(templateId: string, overrides?: Partial<Task>): Task | null {
+  const template = getTemplate(templateId)
+  if (!template) return null
+
+  return createTask({
+    name: template.name,
+    description: template.description,
+    priority: template.priority,
+    estimate: template.estimate,
+    recurring: template.recurring,
+    list_id: template.listId,
+    ...overrides,
+  })
+}
 
 // Database instance type (better-sqlite3 for both production and tests)
-type DatabaseInstance = BetterSQLite3Database<typeof dbSchema>
+type DatabaseInstance = BetterSQLite3Database<{
+  lists: typeof lists
+  labels: typeof labels
+  tasks: typeof tasks
+  taskLabels: typeof taskLabels
+  taskAttachments: typeof taskAttachments
+  taskReminders: typeof taskReminders
+  taskLogs: typeof taskLogs
+  taskDependencies: typeof taskDependencies
+}>
 
 // Database instance can be overridden for testing
 let dbInstanceOverride: DatabaseInstance | null = null
@@ -55,14 +143,23 @@ function getDatabase(): DatabaseInstance {
 
   try {
     return getDb() as unknown as DatabaseInstance
-  } catch {
-    // Return a mock database that returns empty results for build-time rendering
-    return createMockDatabase() as unknown as DatabaseInstance
+  } catch (error) {
+    // In production, throw the error instead of silently failing
+    // Only return mock DB during actual build/prerendering
+    if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
+      // We're in a build context, safe to use mock
+      return createMockDatabase() as unknown as DatabaseInstance
+    }
+
+    // In development or runtime, throw the error to make issues visible
+    console.error('Database connection failed:', error)
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`Database connection failed: ${message}`)
   }
 }
 
 // Mock database for build-time prerendering
-function createMockDatabase(): any {
+function createMockDatabase() {
   const emptyArray = () => []
   const emptyObject = () => undefined
 
@@ -224,7 +321,6 @@ async function buildTaskRelations(
     if (!subTasksMap.has(sub.parentTaskId!)) subTasksMap.set(sub.parentTaskId!, [])
     subTasksMap.get(sub.parentTaskId!)!.push(sub)
   }
-  const allTasksMap = new Map(taskRows.map(t => [t.id, t]))
 
   // Recursively build task with relations
   function buildTask(taskRow: typeof tasks.$inferSelect): Task {
@@ -252,18 +348,36 @@ async function buildTaskRelations(
   return taskRows.map(buildTask)
 }
 
-export function getLists(): List[] {
+export async function getLists(): Promise<List[]> {
     const db = getDatabase()
+
   const allLists = db.select().from(lists).all()
-  const allTasks = db.select().from(tasks).all()
+
+  // Use efficient COUNT queries instead of loading all tasks
+  const [allTasksCountResult, incompleteTasksCountResult] = await Promise.all([
+    db.select({ count: sql`count(*)` }).from(tasks).all(),
+    db.select({ count: sql`count(*)` }).from(tasks)
+      .where(eq(tasks.completed, false))
+      .all(),
+  ])
+
+  const totalCount = Number(allTasksCountResult?.[0]?.count ?? 0)
+  const incompleteCount = Number(incompleteTasksCountResult?.[0]?.count ?? 0)
 
   return allLists
     .map((l) => {
-      const listTasks = allTasks.filter((t) => t.listId === l.id)
+      // Per-list counts require a per-list query
+      const listTotalResult = db.select({ count: sql`count(*)` })
+        .from(tasks).where(eq(tasks.listId, l.id)).all()
+      const listIncompleteResult = db.select({ count: sql`count(*)` })
+        .from(tasks)
+        .where(and(eq(tasks.listId, l.id), eq(tasks.completed, false)))
+        .all()
+
       return {
         ...mapListRow(l),
-        task_count: listTasks.length,
-        incomplete_count: listTasks.filter((t) => !t.completed).length,
+        task_count: Number(listTotalResult?.[0]?.count ?? 0),
+        incomplete_count: Number(listIncompleteResult?.[0]?.count ?? 0),
       }
     })
     .sort((a: List, b: List) => {
@@ -347,7 +461,7 @@ export async function getTasks(options?: {
 }): Promise<Task[]> {
     const db = getDatabase()
 
-  let whereConditions = [isNull(tasks.parentTaskId)]
+  const whereConditions = [isNull(tasks.parentTaskId)]
 
   if (options?.listId) {
     whereConditions.push(eq(tasks.listId, options.listId))
@@ -462,11 +576,15 @@ export function createTask(data: Partial<Task>): Task {
   db.insert(tasks).values(taskData).run()
   logTaskAction(id, 'created', `Task "${data.name}" created`)
 
-  // Return task with relations
+  // Return task with relations - get list directly from DB
   const task = mapTaskRow(taskData)
+  const list = task.list_id
+    ? db.select().from(lists).where(eq(lists.id, task.list_id)).get()
+    : undefined
+
   return {
     ...task,
-    list: task.list_id ? getLists().find((l) => l.id === task.list_id) : undefined,
+    list: list ? mapListRow(list) : undefined,
     labels: [],
     sub_tasks: [],
     attachments: [],
@@ -475,9 +593,8 @@ export function createTask(data: Partial<Task>): Task {
   }
 }
 
-export function createTaskFromNaturalLanguage(input: string): Task | null {
-  const db = getDatabase()
-  const allLists = getLists()
+export async function createTaskFromNaturalLanguage(input: string): Promise<Task | null> {
+  const allLists = await getLists()
 
   // Parse the natural language input
   const parsed = parseNaturalLanguage(input, { lists: allLists })
@@ -539,7 +656,7 @@ export function updateTask(id: string, data: Partial<Task>): void {
 
   if (oldTask) {
     const changes = Object.keys(data).filter(
-      (k: string) => data[k as keyof Task] !== (oldTask as any)[k as keyof typeof oldTask]
+      (k: string) => data[k as keyof Task] !== (oldTask as typeof tasks.$inferSelect)[k as keyof typeof tasks.$inferSelect]
     )
     if (changes.length > 0) {
       logTaskAction(id, 'updated', `Updated: ${changes.join(', ')}`)
@@ -970,5 +1087,265 @@ export function canCompleteTask(taskId: string): { canComplete: boolean; blockin
   return {
     canComplete: blocking.length === 0,
     blockingTasks: blocking.map((b) => mapTaskRow(b.tasks)),
+  }
+}
+
+// Data Export/Import
+export interface ExportData {
+  version: number
+  exportedAt: string
+  lists: List[]
+  labels: Label[]
+  tasks: Task[]
+  taskLabels: TaskLabel[]
+  taskAttachments: TaskAttachment[]
+  taskReminders: TaskReminder[]
+  taskDependencies: { id: string; blocking_task_id: string; blocked_task_id: string; type: string; created_at: string }[]
+  taskLogs: TaskLog[]
+}
+
+export async function exportAllData(): Promise<ExportData> {
+  const db = getDatabase()
+
+  const listRows = db.select().from(lists).all()
+  const labelRows = db.select().from(labels).all()
+  const taskRows = db.select().from(tasks).all()
+  const taskLabelRows = db.select().from(taskLabels).all()
+  const taskAttachmentRows = db.select().from(taskAttachments).all()
+  const taskReminderRows = db.select().from(taskReminders).all()
+  const taskDependencyRows = db.select().from(taskDependencies).all()
+  const taskLogRows = db.select().from(taskLogs).all()
+
+  // Build full task objects with relations
+  const fullTasks = await buildTaskRelations(taskRows)
+
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    lists: listRows.map(l => ({
+      id: l.id,
+      name: l.name,
+      color: l.color,
+      emoji: l.emoji,
+      created_at: l.createdAt,
+      updated_at: l.updatedAt,
+      task_count: 0, // TODO: Calculate from tasks
+      incomplete_count: 0, // TODO: Calculate from tasks
+    })),
+    labels: labelRows.map(l => ({
+      id: l.id,
+      name: l.name,
+      color: l.color,
+      icon: l.icon,
+      created_at: l.createdAt,
+    })),
+    tasks: fullTasks,
+    taskLabels: taskLabelRows.map(tl => ({
+      task_id: tl.taskId,
+      label_id: tl.labelId,
+    })),
+    taskAttachments: taskAttachmentRows.map(ta => ({
+      id: ta.id,
+      task_id: ta.taskId,
+      file_name: ta.fileName,
+      file_path: ta.filePath,
+      file_size: ta.fileSize,
+      mime_type: ta.mimeType,
+      created_at: ta.createdAt,
+    })),
+    taskReminders: taskReminderRows.map(tr => ({
+      id: tr.id,
+      task_id: tr.taskId,
+      reminder_time: tr.reminderTime,
+      sent: tr.sent,
+      created_at: tr.createdAt,
+    })),
+    taskDependencies: taskDependencyRows.map(td => ({
+      id: td.id,
+      blocking_task_id: td.blockingTaskId,
+      blocked_task_id: td.blockedTaskId,
+      type: td.type,
+      created_at: td.createdAt,
+    })),
+    taskLogs: taskLogRows.map(tl => ({
+      id: tl.id,
+      task_id: tl.taskId,
+      action: tl.action,
+      details: tl.details,
+      created_at: tl.createdAt,
+    })),
+  }
+}
+
+export async function importAllData(data: ExportData, options?: { merge?: boolean; onConflict?: 'skip' | 'replace' }): Promise<{ success: boolean; errors: string[] }> {
+  const db = getDatabase()
+  const errors: string[] = []
+  const { merge = true, onConflict = 'skip' } = options || {}
+
+  try {
+    // Import lists
+    for (const list of data.lists) {
+      const existing = db.select().from(lists).where(eq(lists.id, list.id)).get()
+      if (existing) {
+        if (onConflict === 'replace') {
+          db.update(lists).set({
+            name: list.name,
+            color: list.color,
+            emoji: list.emoji,
+            updatedAt: new Date().toISOString(),
+          }).where(eq(lists.id, list.id)).run()
+        }
+      } else {
+        db.insert(lists).values({
+          id: list.id,
+          name: list.name,
+          color: list.color,
+          emoji: list.emoji,
+          createdAt: list.created_at || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }).run()
+      }
+    }
+
+    // Import labels
+    for (const label of data.labels) {
+      const existing = db.select().from(labels).where(eq(labels.id, label.id)).get()
+      if (existing) {
+        if (onConflict === 'replace') {
+          db.update(labels).set({
+            name: label.name,
+            color: label.color,
+            icon: label.icon,
+          }).where(eq(labels.id, label.id)).run()
+        }
+      } else {
+        db.insert(labels).values({
+          id: label.id,
+          name: label.name,
+          color: label.color,
+          icon: label.icon,
+          createdAt: label.created_at || new Date().toISOString(),
+        }).run()
+      }
+    }
+
+    // Import tasks
+    for (const task of data.tasks) {
+      const existing = db.select().from(tasks).where(eq(tasks.id, task.id)).get()
+      if (existing) {
+        if (onConflict === 'replace') {
+          db.update(tasks).set({
+            name: task.name,
+            description: task.description,
+            date: task.date,
+            deadline: task.deadline,
+            estimate: task.estimate,
+            actualTime: task.actual_time || 0,
+            priority: task.priority,
+            recurring: task.recurring,
+            listId: task.list_id,
+            parentTaskId: task.parent_task_id,
+            completed: task.completed,
+            completedAt: task.completed_at,
+            position: task.position || 0,
+            createdAt: task.created_at,
+            updatedAt: new Date().toISOString(),
+          }).where(eq(tasks.id, task.id)).run()
+        }
+      } else {
+        db.insert(tasks).values({
+          id: task.id,
+          name: task.name,
+          description: task.description,
+          date: task.date,
+          deadline: task.deadline,
+          estimate: task.estimate,
+          actualTime: task.actual_time || 0,
+          priority: task.priority,
+          recurring: task.recurring,
+          listId: task.list_id,
+          parentTaskId: task.parent_task_id,
+          completed: task.completed,
+          completedAt: task.completed_at,
+          position: task.position || 0,
+          createdAt: task.created_at,
+          updatedAt: task.created_at,
+        }).run()
+      }
+    }
+
+    // Import task labels
+    for (const tl of data.taskLabels) {
+      const existing = db.select().from(taskLabels).where(and(eq(taskLabels.taskId, tl.task_id), eq(taskLabels.labelId, tl.label_id))).get()
+      if (!existing) {
+        db.insert(taskLabels).values({
+          taskId: tl.task_id,
+          labelId: tl.label_id,
+        }).run()
+      }
+    }
+
+    // Import task attachments
+    for (const ta of data.taskAttachments) {
+      const existing = db.select().from(taskAttachments).where(eq(taskAttachments.id, ta.id)).get()
+      if (!existing) {
+        db.insert(taskAttachments).values({
+          id: ta.id,
+          taskId: ta.task_id,
+          fileName: ta.file_name,
+          filePath: '/tmp/' + ta.id, // Generate a path
+          fileSize: ta.file_size,
+          mimeType: ta.mime_type,
+          createdAt: ta.created_at,
+        }).run()
+      }
+    }
+
+    // Import task reminders
+    for (const tr of data.taskReminders) {
+      const existing = db.select().from(taskReminders).where(eq(taskReminders.id, tr.id)).get()
+      if (!existing) {
+        db.insert(taskReminders).values({
+          id: tr.id,
+          taskId: tr.task_id,
+          reminderTime: tr.reminder_time,
+          sent: tr.sent,
+          createdAt: tr.created_at,
+        }).run()
+      }
+    }
+
+    // Import task dependencies
+    for (const td of data.taskDependencies) {
+      const existing = db.select().from(taskDependencies).where(eq(taskDependencies.id, td.id)).get()
+      if (!existing) {
+        db.insert(taskDependencies).values({
+          id: td.id,
+          blockingTaskId: td.blocking_task_id,
+          blockedTaskId: td.blocked_task_id,
+          type: td.type as 'blocks' | 'relates' | 'duplicates',
+          createdAt: td.created_at,
+        }).run()
+      }
+    }
+
+    // Import task logs
+    for (const tl of data.taskLogs) {
+      const existing = db.select().from(taskLogs).where(eq(taskLogs.id, tl.id)).get()
+      if (!existing) {
+        db.insert(taskLogs).values({
+          id: tl.id,
+          taskId: tl.task_id,
+          action: tl.action,
+          details: tl.details,
+          createdAt: tl.created_at,
+        }).run()
+      }
+    }
+
+    return { success: true, errors: [] }
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : 'Unknown error during import')
+    return { success: false, errors }
   }
 }

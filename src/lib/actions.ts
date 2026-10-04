@@ -187,7 +187,7 @@ export async function toggleTaskLabelAction(
     }
   } catch (error) {
     console.error('Failed to toggle task label:', error)
-    throw new Error('Failed to update task label')
+    throw new Error('Failed to update task label', { cause: error })
   }
   revalidatePath('/', 'layout')
 }
@@ -198,7 +198,7 @@ export async function handleToggle(taskId: string) {
     toggleTaskComplete(taskId)
   } catch (error) {
     console.error('Failed to toggle task:', error)
-    throw new Error('Failed to update task')
+    throw new Error('Failed to toggle task', { cause: error })
   }
   revalidatePath('/', 'layout')
 }
@@ -209,7 +209,7 @@ export async function handleDelete(taskId: string) {
     deleteTask(taskId)
   } catch (error) {
     console.error('Failed to delete task:', error)
-    throw new Error('Failed to delete task')
+    throw new Error('Failed to delete task', { cause: error })
   }
   revalidatePath('/', 'layout')
 }
@@ -224,7 +224,7 @@ export async function handleClearCompleted() {
     clearCompletedTasks()
   } catch (error) {
     console.error('Failed to clear completed tasks:', error)
-    throw new Error('Failed to clear completed tasks')
+    throw new Error('Failed to clear completed tasks', { cause: error })
   }
   revalidatePath('/', 'layout')
 }

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 
+// Simple API key authentication
+const API_KEY = process.env.PUSH_API_KEY
+
 interface SendNotificationRequest {
   subscription: {
     endpoint: string
@@ -15,7 +18,7 @@ interface SendNotificationRequest {
     icon?: string
     badge?: string
     data?: Record<string, unknown>
-    actions?: Array<{ action: string; title: string; icon?: string }>
+    actions?: { action: string; title: string; icon?: string }[]
     tag?: string
     requireInteraction?: boolean
     silent?: boolean
@@ -36,6 +39,16 @@ if (vapidPublicKey && vapidPrivateKey) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate with API key
+    const authHeader = request.headers.get('authorization') || ''
+    const providedKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+    if (!API_KEY || providedKey !== API_KEY) {
+      return NextResponse.json(
+        { error: 'Unauthorized - invalid or missing API key' },
+        { status: 401 }
+      )
+    }
+
     const { subscription, payload } = await request.json() as SendNotificationRequest
 
     if (!subscription || !subscription.endpoint) {

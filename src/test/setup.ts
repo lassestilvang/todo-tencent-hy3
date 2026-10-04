@@ -15,10 +15,10 @@ Object.defineProperty(window, 'matchMedia', {
 })
 
 // Mock @/lib/db before any tests run - must be done before importing @/lib/tasks
-jest.mock('@/lib/db', () => {
-  const { drizzle } = require('drizzle-orm/better-sqlite3')
-  const Database = require('better-sqlite3')
-  const schema = require('@/lib/db/schema')
+jest.mock('@/lib/db', async () => {
+  const { drizzle } = await import('drizzle-orm/better-sqlite3')
+  const Database = (await import('better-sqlite3')).default
+  const schema = await import('@/lib/db/schema')
 
   const sqlite = new Database(':memory:')
   sqlite.pragma('journal_mode = WAL')
@@ -45,10 +45,10 @@ jest.mock('@/lib/db', () => {
   }
 })
 
-jest.mock('@/lib/db/index', () => {
-  const { drizzle } = require('drizzle-orm/better-sqlite3')
-  const Database = require('better-sqlite3')
-  const schema = require('@/lib/db/schema')
+jest.mock('@/lib/db/index', async () => {
+  const { drizzle } = await import('drizzle-orm/better-sqlite3')
+  const Database = (await import('better-sqlite3')).default
+  const schema = await import('@/lib/db/schema')
 
   const sqlite = new Database(':memory:')
   sqlite.pragma('journal_mode = WAL')

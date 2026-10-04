@@ -304,7 +304,10 @@ function loadNotificationSetting(id: string, defaultEnabled: boolean) {
     if (saved !== null) {
       try {
         return JSON.parse(saved)
-      } catch {}
+      } catch (e) {
+        console.error(`Failed to parse notification setting ${id}:`, e)
+        return defaultEnabled
+      }
     }
   }
   return defaultEnabled

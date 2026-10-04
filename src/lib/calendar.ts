@@ -13,10 +13,10 @@ export interface CalendarEvent {
     timeZone?: string
   }
   location?: string
-  attendees?: Array<{ email: string; displayName?: string }>
+  attendees?: { email: string; displayName?: string }[]
   reminders?: {
     useDefault: boolean
-    overrides?: Array<{ method: 'email' | 'popup'; minutes: number }>
+    overrides?: { method: 'email' | 'popup'; minutes: number }[]
   }
   recurrence?: string[]
   htmlLink?: string

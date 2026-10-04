@@ -1,26 +1,130 @@
 import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
+import react from "eslint-plugin-react";
+import reactHooks from "eslint-plugin-react-hooks";
 
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  {
-    rules: {
-      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
-      "@typescript-eslint/no-explicit-any": "error",
-    },
-  },
-  // Override default ignores of eslint-config-next.
+const globals = {
+  console: "readonly",
+  process: "readonly",
+  self: "readonly",
+  global: "readonly",
+  window: "readonly",
+  document: "readonly",
+  navigator: "readonly",
+  localStorage: "readonly",
+  sessionStorage: "readonly",
+  fetch: "readonly",
+  Notification: "readonly",
+  Alert: "readonly",
+  Confirm: "readonly",
+  Prompt: "readonly",
+  Math: "readonly",
+  JSON: "readonly",
+  encodeURI: "readonly",
+  encodeURIComponent: "readonly",
+  decodeURI: "readonly",
+  decodeURIComponent: "readonly",
+  isNaN: "readonly",
+  isFinite: "readonly",
+  parseFloat: "readonly",
+  parseInt: "readonly",
+  escape: "readonly",
+  unescape: "readonly",
+  TypeError: "readonly",
+  SyntaxError: "readonly",
+  RangeError: "readonly",
+  Promise: "readonly",
+  AbortController: "readonly",
+  AbortSignal: "readonly",
+  Atomics: "readonly",
+  Intl: "readonly",
+  Reflect: "readonly",
+  Proxy: "readonly",
+  Map: "readonly",
+  Set: "readonly",
+  WeakMap: "readonly",
+  WeakSet: "readonly",
+  Array: "readonly",
+  Object: "readonly",
+  Function: "readonly",
+  Boolean: "readonly",
+  String: "readonly",
+  Number: "readonly",
+  Date: "readonly",
+  RegExp: "readonly",
+  URLSearchParams: "readonly",
+  crypto: "readonly",
+  TextEncoder: "readonly",
+  TextDecoder: "readonly",
+  FormData: "readonly",
+  Headers: "readonly",
+  Request: "readonly",
+  Response: "readonly",
+  URL: "readonly",
+  DOMException: "readonly",
+  WorkersGlobalScope: "readonly",
+  BroadcastChannel: "readonly",
+  FileReader: "readonly",
+  Blob: "readonly",
+  atob: "readonly",
+  btoa: "readonly",
+  performance: "readonly",
+  setTimeout: "readonly",
+  clearTimeout: "readonly",
+  setInterval: "readonly",
+  clearInterval: "readonly",
+  requestAnimationFrame: "readonly",
+  Image: "readonly",
+  Audio: "readonly",
+  HTMLMediaElement: "readonly",
+  module: "readonly",
+  require: "readonly",
+  __dirname: "readonly",
+  __filename: "readonly",
+  exports: "readonly",
+};
+
+export default defineConfig([
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Generated coverage report output
     "coverage/**",
   ]),
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  ...tseslint.configs.stylistic,
+  {
+    files: ["**/*.{js,jsx,ts,tsx,mjs,cjs}"],
+    plugins: {
+      react,
+      "react-hooks": reactHooks,
+    },
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      globals,
+    },
+    settings: {
+      react: {
+        version: "detect",
+      },
+    },
+    rules: {
+      ...react.configs.recommended.rules,
+      ...reactHooks.configs.recommended.rules,
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-explicit-any": "error",
+      "react/react-in-jsx-scope": "off",
+      "react/prop-types": "off",
+    },
+  },
 ]);
-
-export default eslintConfig;

@@ -118,29 +118,29 @@ describe('Task CRUD operations', () => {
 })
 
 describe('List operations', () => {
-  it('gets lists with task counts', () => {
-    const lists = getLists()
+  it('gets lists with task counts', async () => {
+    const lists = await getLists()
     expect(lists).toHaveLength(1)
     expect(lists[0].id).toBe('inbox')
     expect(lists[0].task_count).toBe(0)
     expect(lists[0].incomplete_count).toBe(0)
   })
 
-  it('creates a new list', () => {
+  it('creates a new list', async () => {
     const list = createList('Test List', '#ff0000', '🧪')
     expect(list.id).toBeDefined()
     expect(list.name).toBe('Test List')
     expect(list.color).toBe('#ff0000')
     expect(list.emoji).toBe('🧪')
 
-    const lists = getLists()
+    const lists = await getLists()
     expect(lists).toHaveLength(2)
   })
 
-  it('deletes a list', () => {
+  it('deletes a list', async () => {
     const list = createList('To Delete', '#000000', '🗑️')
     deleteList(list.id)
-    const lists = getLists()
+    const lists = await getLists()
     expect(lists.find(l => l.id === list.id)).toBeUndefined()
   })
 })

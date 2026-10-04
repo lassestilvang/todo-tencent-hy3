@@ -43,7 +43,7 @@ export async function GET(
       )
     }
 
-    const lists = getLists()
+    const lists = await getLists()
     const list = lists.find(l => l.id === validation.link?.listId)
     if (!list) {
       return NextResponse.json({ error: 'List not found' }, { status: 404 })

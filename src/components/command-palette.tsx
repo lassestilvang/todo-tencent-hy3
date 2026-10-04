@@ -15,7 +15,7 @@ interface CommandPaletteProps {
 export function CommandPalette({ isOpen, onClose, onTaskCreated }: CommandPaletteProps) {
   const [input, setInput] = useState('')
   const [parsed, setParsed] = useState<ReturnType<typeof parseNaturalLanguage> | null>(null)
-  const [lists, setLists] = useState<Array<{ id: string; name: string }>>([])
+  const [lists, setLists] = useState<{ id: string; name: string }[]>([])
   const [showPreview, setShowPreview] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const mountedRef = useRef(true)

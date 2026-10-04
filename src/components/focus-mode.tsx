@@ -66,6 +66,7 @@ const defaultSettings = {
   pomodoroDuration: 25,
   shortBreakDuration: 5,
   longBreakDuration: 15,
+  sessionsUntilLongBreak: 4,
   autoStartBreaks: true,
   autoStartPomodoros: false,
   soundEnabled: true,
@@ -79,7 +80,10 @@ function loadSettings() {
     if (saved) {
       try {
         return { ...defaultSettings, ...JSON.parse(saved) }
-      } catch {}
+      } catch (e) {
+        console.error("Failed to parse focus mode settings:", e)
+        return defaultSettings
+      }
     }
   }
   return defaultSettings
@@ -91,7 +95,10 @@ function loadStats() {
     if (saved) {
       try {
         return JSON.parse(saved)
-      } catch {}
+      } catch (e) {
+        console.error("Failed to parse focus mode stats:", e)
+        return null
+      }
     }
   }
   return { sessionsCompleted: 0, totalFocusTime: 0 }
@@ -101,16 +108,27 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
   const [mode, setMode] = useState<TimerMode>('pomodoro')
   const [status, setStatus] = useState<TimerStatus>('idle')
   const [timeRemaining, setTimeRemaining] = useState(DURATIONS.pomodoro)
-  const [sessionsCompleted, setSessionsCompleted] = useState(() => loadStats().sessionsCompleted)
-  const [totalFocusTime, setTotalFocusTime] = useState(() => loadStats().totalFocusTime)
   const [settings, setSettings] = useState(loadSettings)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
+  // Load stats from localStorage with useEffect
+  const [sessionsCompleted, setSessionsCompletedState] = useState(0)
+  const [totalFocusTime, setTotalFocusTimeState] = useState(0)
+
+  // Load initial stats from localStorage
+  useEffect(() => {
+    const stats = loadStats()
+    setSessionsCompletedState(stats.sessionsCompleted || 0)
+    setTotalFocusTimeState(stats.totalFocusTime || 0)
+  }, [])
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const audioRef = useRef<{ play: () => Promise<void>; gainNode?: GainNode } | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const settingsRef = useRef(settings)
   const handleTimerCompleteRef = useRef<() => void | undefined>(undefined)
+  const startTimeRef = useRef<number | null>(null)
+  const durationRef = useRef<number>(DURATIONS.pomodoro)
 
   // Keep refs in sync
   useEffect(() => {
@@ -153,13 +171,14 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
 
   // Timer logic - defined before useKeyPress hooks
   const tick = useCallback(() => {
-    setTimeRemaining((prev) => {
-      if (prev <= 1) {
-        handleTimerCompleteRef.current?.()
-        return 0
-      }
-      return prev - 1
-    })
+    if (startTimeRef.current === null) return
+    const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000)
+    const remaining = Math.max(0, durationRef.current - elapsed)
+
+    setTimeRemaining(remaining)
+    if (remaining <= 0) {
+      handleTimerCompleteRef.current?.()
+    }
   }, [])
 
   const pauseTimer = useCallback(() => {
@@ -168,17 +187,23 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
       clearInterval(intervalRef.current)
       intervalRef.current = null
     }
+    startTimeRef.current = null
   }, [])
 
   const startTimer = useCallback(() => {
     setStatus('running')
+    startTimeRef.current = Date.now()
+    // Update immediately then every second
+    tick()
     intervalRef.current = setInterval(tick, 1000)
   }, [tick])
 
   const resetTimer = useCallback(() => {
     pauseTimer()
     setStatus('idle')
-    setTimeRemaining(DURATIONS[mode] * (mode === 'pomodoro' ? settings.pomodoroDuration / 25 : 1))
+    startTimeRef.current = null
+    durationRef.current = DURATIONS[mode] * (mode === 'pomodoro' ? settings.pomodoroDuration / 25 : 1)
+    setTimeRemaining(durationRef.current)
   }, [mode, settings, pauseTimer])
 
   const handleTimerComplete = useCallback(() => {
@@ -186,7 +211,9 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
 
     // Play sound
     if (settingsRef.current.soundEnabled && audioRef.current) {
-      audioRef.current.play().catch(() => {})
+      audioRef.current.play().catch((e) => {
+        console.error("Failed to play audio:", e)
+      })
     }
 
     // Show notification
@@ -204,11 +231,11 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
     toast.success(`${MODE_LABELS[mode]} complete!`)
 
     if (mode === 'pomodoro') {
-      setSessionsCompleted((prev: number) => prev + 1)
-      setTotalFocusTime((prev: number) => prev + settingsRef.current.pomodoroDuration * 60)
+      setSessionsCompletedState((prev: number) => prev + 1)
+      setTotalFocusTimeState((prev: number) => prev + settingsRef.current.pomodoroDuration * 60)
 
       // Determine next break
-      const nextMode = sessionsCompleted + 1 >= 4 ? 'longBreak' : 'shortBreak'
+      const nextMode = (sessionsCompleted + 1) >= (settingsRef.current.sessionsUntilLongBreak || 4) ? 'longBreak' : 'shortBreak'
       setMode(nextMode)
 
       if (settingsRef.current.autoStartBreaks) {
@@ -253,15 +280,15 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
   // Save settings
   useEffect(() => {
     localStorage.setItem('focus-mode-settings', JSON.stringify(settings))
-    // Update durations based on settings
-    const newDurations = {
+    // Update duration ref based on settings
+    durationRef.current = {
       pomodoro: settings.pomodoroDuration * 60,
       shortBreak: settings.shortBreakDuration * 60,
       longBreak: settings.longBreakDuration * 60,
-    }
+    }[mode]
     if (status === 'idle') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setTimeRemaining(newDurations[mode])
+      setTimeRemaining(durationRef.current)
     }
   }, [settings, status, mode])
 
@@ -269,7 +296,7 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
   useEffect(() => {
     localStorage.setItem(
       'focus-mode-stats',
-      JSON.stringify({ sessionsCompleted, totalFocusTime })
+      JSON.stringify({ sessionsCompleted: sessionsCompleted, totalFocusTime })
     )
   }, [sessionsCompleted, totalFocusTime])
 
@@ -482,13 +509,14 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
               <div className="space-y-2">
                 <Label>Sessions until Long Break</Label>
                 <Select
-                  value="4"
-                  onValueChange={() => {}}
-                  disabled
+                  value={String(settings.sessionsUntilLongBreak || 4)}
+                  onValueChange={(v) => setSettings((s: typeof settings) => ({ ...s, sessionsUntilLongBreak: Number(v) }))}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="4">4 sessions (fixed)</SelectItem>
+                    {[2, 3, 4, 5].map((s) => (
+                      <SelectItem key={s} value={String(s)}>{s} sessions</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
