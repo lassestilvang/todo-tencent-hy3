@@ -1,0 +1,718 @@
+openapi: 3.0.0
+info:
+  title: TaskFlow API
+  description: REST API for TaskFlow todo application
+  version: 1.0.0
+  contact:
+    name: TaskFlow Team
+    email: support@taskflow.app
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+  - url: https://api.taskflow.app
+    description: Production server
+paths:
+  /export:
+    get:
+      summary: Export all application data
+      description: Download complete application data as JSON backup
+      responses:
+        '200':
+          description: JSON file download
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: integer
+                    example: 1
+                  exportedAt:
+                    type: string
+                    format: date-time
+                    example: 2026-10-04T14:10:56.296Z
+                  lists:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/List'
+                  labels:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Label'
+                  tasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+                  taskLabels:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskLabel'
+                  taskAttachments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskAttachment'
+                  taskReminders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskReminder'
+                  taskDependencies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskDependency'
+                  taskLogs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskLog'
+        '500':
+          description: Export failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to export data
+  /import:
+    post:
+      summary: Import application data
+      description: Restore application data from JSON backup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportData'
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Import successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: No file provided
+        '500':
+          description: Import failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  errors:
+                    type: array
+                    items:
+                      type: string
+  /templates:
+    get:
+      summary: Get all task templates
+      responses:
+        '200':
+          description: List of templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskTemplate'
+    post:
+      summary: Create a new task template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTemplate'
+      responses:
+        '201':
+          description: Template created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  template:
+                    $ref: '#/components/schemas/TaskTemplate'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Name is required
+  /templates/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Get a specific template
+      responses:
+        '200':
+          description: Template details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTemplate'
+        '404':
+          description: Template not found
+    put:
+      summary: Update a template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTemplate'
+      responses:
+        '200':
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTemplate'
+        '404':
+          description: Template not found
+    delete:
+      summary: Delete a template
+      responses:
+        '200':
+          description: Template deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '404':
+          description: Template not found
+  /tasks:
+    get:
+      summary: Get tasks with optional filters
+      parameters:
+        - name: listId
+          in: query
+          schema:
+            type: string
+        - name: labelId
+          in: query
+          schema:
+            type: string
+        - name: view
+          in: query
+          schema:
+            type: string
+            enum: [today, next7, upcoming, all]
+        - name: completed
+          in: query
+          schema:
+            type: boolean
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+    post:
+      summary: Create a new task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewTask'
+      responses:
+        '200':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+  /tasks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Get a specific task
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+    put:
+      summary: Update a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartialTask'
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+    delete:
+      summary: Delete a task
+      responses:
+        '200':
+          description: Task deleted
+  /push/send:
+    post:
+      summary: Send push notification
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                endpoint:
+                  type: string
+                  format: uri
+                keys:
+                  type: object
+                  properties:
+                    p256dh:
+                      type: string
+                    auth:
+                      type: string
+                payload:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                    body:
+                      type: string
+                    icon:
+                      type: string
+                    data:
+                      type: object
+      responses:
+        '200':
+          description: Notification sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '401':
+          description: Unauthorized - Invalid API key
+        '400':
+          description: Invalid request
+  components:
+    schemas:
+      List:
+        type: object
+        properties:
+          id:
+            type: string
+            example: inbox
+          name:
+            type: string
+            example: Inbox
+          color:
+            type: string
+            example: '#6366f1'
+          emoji:
+            type: string
+            example: 📥
+          created_at:
+            type: string
+            format: date-time
+          updated_at:
+            type: string
+            format: date-time
+          task_count:
+            type: integer
+            example: 5
+          incomplete_count:
+            type: integer
+            example: 3
+      Label:
+        type: object
+        properties:
+          id:
+            type: string
+            example: work
+          name:
+            type: string
+            example: Work
+          color:
+            type: string
+            example: '#10b981'
+          icon:
+            type: string
+            example: 🏷️
+          created_at:
+            type: string
+            format: date-time
+      Task:
+        type: object
+        properties:
+          id:
+            type: string
+            example: task-123
+          name:
+            type: string
+            example: Complete project proposal
+          description:
+            type: string
+            nullable: true
+            example: Finish the Q4 project proposal document
+          date:
+            type: string
+            format: date
+            nullable: true
+            example: 2026-10-15
+          deadline:
+            type: string
+            format: date-time
+            nullable: true
+            example: 2026-10-14T17:00:00Z
+          estimate:
+            type: integer
+            nullable: true
+            example: 120
+          actual_time:
+            type: integer
+            example: 0
+          priority:
+            type: string
+            enum: [high, medium, low, none]
+            example: high
+          recurring:
+            type: string
+            enum: [every_day, every_week, every_weekday, every_month, every_year, custom]
+            nullable: true
+          list_id:
+            type: string
+            nullable: true
+          parent_task_id:
+            type: string
+            nullable: true
+          completed:
+            type: boolean
+            example: false
+          completed_at:
+            type: string
+            format: date-time
+            nullable: true
+          position:
+            type: integer
+            example: 0
+          created_at:
+            type: string
+            format: date-time
+          updated_at:
+            type: string
+            format: date-time
+          labels:
+            type: array
+            items:
+              $ref: '#/components/schemas/Label'
+          sub_tasks:
+            type: array
+            items:
+              $ref: '#/components/schemas/Task'
+          attachments:
+            type: array
+            items:
+              $ref: '#/components/schemas/TaskAttachment'
+          reminders:
+            type: array
+            items:
+              $ref: '#/components/schemas/TaskReminder'
+          logs:
+            type: array
+            items:
+              $ref: '#/components/schemas/TaskLog'
+          list:
+            $ref: '#/components/schemas/List'
+      NewTask:
+        type: object
+        required:
+          - name
+        properties:
+          name:
+            type: string
+            example: Complete project proposal
+          description:
+            type: string
+            nullable: true
+          date:
+            type: string
+            format: date
+            nullable: true
+          deadline:
+            type: string
+            format: date-time
+            nullable: true
+          estimate:
+            type: integer
+            nullable: true
+          priority:
+            type: string
+            enum: [high, medium, low, none]
+            default: none
+          recurring:
+            type: string
+            enum: [every_day, every_week, every_weekday, every_month, every_year, custom]
+            nullable: true
+          list_id:
+            type: string
+            nullable: true
+          parent_task_id:
+            type: string
+            nullable: true
+          completed:
+            type: boolean
+            default: false
+          completed_at:
+            type: string
+            format: date-time
+            nullable: true
+          position:
+            type: integer
+            default: 0
+      PartialTask:
+        type: object
+        properties:
+          name:
+            type: string
+          description:
+            type: string
+            nullable: true
+          date:
+            type: string
+            format: date
+            nullable: true
+          deadline:
+            type: string
+            format: date-time
+            nullable: true
+          estimate:
+            type: integer
+            nullable: true
+          priority:
+            type: string
+            enum: [high, medium, low, none]
+          recurring:
+            type: string
+            enum: [every_day, every_week, every_weekday, every_month, every_year, custom]
+            nullable: true
+          list_id:
+            type: string
+          parent_task_id:
+            type: string
+          completed:
+            type: boolean
+          completed_at:
+            type: string
+            format: date-time
+            nullable: true
+          position:
+            type: integer
+      TaskLabel:
+        type: object
+        properties:
+          taskId:
+            type: string
+          labelId:
+            type: string
+      TaskAttachment:
+        type: object
+        properties:
+          id:
+            type: string
+          taskId:
+            type: string
+          fileName:
+            type: string
+          filePath:
+            type: string
+          fileSize:
+            type: integer
+          mimeType:
+            type: string
+            nullable: true
+          createdAt:
+            type: string
+            format: date-time
+      TaskReminder:
+        type: object
+        properties:
+          id:
+            type: string
+          taskId:
+            type: string
+          reminderTime:
+            type: string
+            format: date-time
+          sent:
+            type: boolean
+          createdAt:
+            type: string
+            format: date-time
+      TaskDependency:
+        type: object
+        properties:
+          id:
+            type: string
+          blockingTaskId:
+            type: string
+          blockedTaskId:
+            type: string
+          type:
+            type: string
+            enum: [blocks, relates, duplicates]
+          createdAt:
+            type: string
+            format: date-time
+      TaskLog:
+        type: object
+        properties:
+          id:
+            type: string
+          taskId:
+            type: string
+          action:
+            type: string
+          details:
+            type: string
+            nullable: true
+          createdAt:
+            type: string
+            format: date-time
+      ExportData:
+        type: object
+        properties:
+          version:
+            type: integer
+            example: 1
+          exportedAt:
+            type: string
+            format: date-time
+          lists:
+            type: array
+            items:
+              $ref: '#/components/schemas/List'
+          labels:
+            type: array
+            items:
+              $ref: '#/components/schemas/Label'
+          tasks:
+            type: array
+            items:
+              $ref: '#/components/schemas/Task'
+          taskLabels:
+            type: array
+            items:
+              $ref: '#/components/schemas/TaskLabel'
+          taskAttachments:
+            type: array
+            items:
+              $ref: '#/components/schemas/TaskAttachment'
+          taskReminders:
+            type: array
+            items:
+              $ref: '#/components/schemas/TaskReminder'
+          taskDependencies:
+            type: array
+            items:
+              $ref: '#/components/schemas/TaskDependency'
+          taskLogs:
+            type: array
+            items:
+              $ref: '#/components/schemas/TaskLog'
+      TaskTemplate:
+        type: object
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+            example: Weekly Review
+          description:
+            type: string
+            nullable: true
+          priority:
+            type: string
+            enum: [high, medium, low, none]
+            nullable: true
+          estimate:
+            type: integer
+            nullable: true
+          recurring:
+            type: string
+            enum: [every_day, every_week, every_weekday, every_month, every_year, custom]
+            nullable: true
+          listId:
+            type: string
+            nullable: true
+          tags:
+            type: array
+            items:
+              type: string
+          createdAt:
+            type: string
+            format: date-time
+          updatedAt:
+            type: string
+            format: date-time
+    securitySchemes:
+      bearerAuth:
+        type: http
+        scheme: bearer
+        bearerFormat: JWT
