@@ -21,6 +21,10 @@ import { QuickActions } from '@/components/quick-actions'
 import { MoodHeatmap } from '@/components/mood-heatmap'
 import { findDeadlineThrash, type DeadlineEscapeHatch } from '@/lib/deadline-escape-hatch'
 import { DeadlineEscapeHatchSummaryCard } from '@/components/deadline-escape-hatch-summary-card'
+import {
+  MilestoneProgress,
+  CompletionMilestoneCelebration,
+} from '@/components/completion-milestone-celebration'
 import { FilterPresets } from '@/components/filter-presets'
 
 import { formatTime } from '@/lib/utils'
@@ -119,6 +123,7 @@ export function TaskListView({
             <div className="flex items-center gap-1">
               <ToggleCompletedButton />
               {tasks.some((t) => t.completed) && <ClearCompletedButton />}
+            <MilestoneProgress tasks={tasks} />
             </div>
           </div>
         </div>
@@ -159,6 +164,7 @@ export function TaskListView({
           )}
         </div>
       </div>
+      <CompletionMilestoneCelebration tasks={tasks} />
     </div>
   )
 }
