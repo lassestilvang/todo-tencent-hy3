@@ -1,6 +1,7 @@
 # TaskFlow Enhancement Implementation Plan
 
 ## Overview
+
 Implementing all proposed features to transform TaskFlow into an AI-powered productivity platform.
 
 > **Status note:** AI/ML features are implemented as heuristic engines (hash-based
@@ -12,6 +13,7 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 ## Phase 1: Foundation & AI Infrastructure (Week 1)
 
 ### 1.1 AI/ML Infrastructure Setup
+
 - [ ] Add AI dependencies (transformers.js, onnxruntime-web, or similar) — deferred; heuristic implementations used instead
 - [x] Create AI service layer (`src/lib/ai/`) — `index.ts`, `task-prioritizer.ts`, `embeddings.ts`, `patterns.ts`
 - [x] Implement local models for task scoring — weighted multi-factor engine, no runtime model
@@ -19,6 +21,7 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 - [x] Create model training/update pipeline — `patterns.ts` learns from task logs; export/import included
 
 ### 1.2 Enhanced Analytics Dashboard
+
 - [x] Add productivity trend analysis — `lib/analytics/trends.ts`, `components/analytics/productivity-trends.tsx`, `/analytics` page
 - [x] Implement focus time tracking — sessions logged to `focus-mode-history` (completed + abandoned with elapsed minutes) and aggregated on `/analytics` via `components/analytics/focus-analytics.tsx`
 - [x] Add habit formation metrics — `lib/focus/habit-metrics.ts`: completion rate, current/longest streak, average session, 7-day breakdown
@@ -26,12 +29,14 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 - [x] Add predictive analytics — `predictFutureStats` + `generateInsights`
 
 ### 1.3 Smart Suggestions Enhancement
+
 - [x] Improve suggestion algorithm with ML — pattern-based (recurring scheduling, common list/priority)
 - [x] Add context-aware suggestions — time-of-day aware suggestions
 - [x] Implement suggestion acceptance tracking — `acceptSuggestion`/`isSuggestionAccepted` log accepts (with type + timestamp) to `taskflow_accepted_suggestions`, separate from the dismissal log
 - [x] Add suggestion feedback loop — `applyFeedbackLoop` in `generateSmartSuggestions` drops a suggestion type after 3 interactions when its acceptance rate falls below 25%; stats via `getSuggestionFeedbackStats`
 
 ### 1.4 Performance Optimizations
+
 - [ ] Implement React Query for server state — SWR already in use; React Query deliberately not added
 - [x] Edge caching — edge-cache policy in `src/proxy.ts`: every API response carries `Cache-Control: no-store` (task data is private per user and mutates constantly, so it must never sit in a shared/edge cache); hashed static assets are already immutable-cached by Next.js
 - [x] Optimize bundle size — the keyboard-opened `SearchDialog`, `KeyboardShortcutsDialog`, and `CommandPalette` (the heaviest: NLP + server actions) are `next/dynamic` (`ssr: false`) in `SearchWrapper`, gated on their open state so their chunks load on first use instead of every page load; `CreateTaskForm` stays static (already in the bundle via `task-list`/`today-client`)
@@ -40,6 +45,7 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 ## Phase 2: Core AI Features (Week 2)
 
 ### 2.1 AI Task Prioritization System
+
 - [x] Multi-factor scoring engine — 7 weighted factors (deadline, effort, dependencies, energy, project phase, history, priority tag)
 - [ ] Machine learning model integration — heuristic scoring; no trained model
 - [x] Contextual awareness (time, energy, project phase) — `UserContext` (energy level, available time, focus mode, work hours)
@@ -47,18 +53,21 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 - [x] UI for AI recommendations — `components/ai/ai-recommendations.tsx`, `components/ai/smart-scheduler.tsx`
 
 ### 2.2 Enhanced Command Palette
+
 - [x] AI-powered command suggestions — `suggestCommands` in `lib/command-palette.ts` blends time-of-day/day-of-week affinity (20%) with learned usage (frequency 45% + recency 35%); shown as "Suggested for you" when the palette opens
 - [x] Command history with learning — `recordCommandUsage`/`loadCommandHistory` log runs to `taskflow_command_history` (count + timestamp, 50-entry cap); "Recent" section and per-command `n×` counts, ranking learns from frequency and recency
 - [x] Shortcut customization — `lib/shortcuts.ts` (parse/format/match combos, localStorage-backed `saveShortcut`/`loadShortcuts`/`resetShortcuts`); `KeyboardShortcuts` honors the custom bindings; the shortcuts dialog has a click-to-record editor and reset-to-defaults
 - [x] Natural language commands — `parseCommandInput` enters command mode on `>` prefix or imperative verbs ("go to analytics", "show completed"); fuzzy `searchCommands` over titles + keywords; arrow-key navigation, Enter to run, Tab to complete; commands navigate, open dialogs, or clear completed tasks
 
 ### 2.3 Quick Actions Panel
+
 - [x] Common task operations — `components/quick-actions.tsx` panel (New task / Search) mounted on `/today`; bulk selection wired into every task list via `components/task-rows.tsx` (selection mode, select-all, per-row checkboxes through `AnimatedTaskItem`)
 - [x] Bulk action buttons — `BulkOperationsToolbar` now reachable from `TaskRows`: delete, move, priority, date (`lib/quick-actions.ts` `resolveBulkDate` presets: today/tomorrow/next-week/clear), label add/remove, complete/uncomplete, with per-action toasts
 - [x] Context-aware suggestions — `deriveQuickActions` in `lib/quick-actions.ts` over `TaskSnapshot`s: clear completed (destructive), review/reschedule overdue (date or deadline before today), finish high-priority due (≤ today), plan unplanned high-priority (no date); each carries a count badge and navigation href where it is not a mutation
 - [x] Keyboard shortcuts — panel footer lists the four customizable combos (`lib/shortcuts.ts`) as they are currently bound; global handler (`components/keyboard-shortcuts.tsx`) honors custom bindings most-specific-first
 
 ### 2.4 Advanced Filters
+
 - [x] AI-powered filtering — `lib/ai/semantic-filter.ts` ranks tasks by hash-embedding similarity to a query (calibrated threshold 0.25, substring bonus 0.3, optional base `TaskFilter`); `/search` has an Exact/AI mode toggle and `components/semantic-search-results.tsx` shows the relevance score per task
 - [x] Saved filter presets — `lib/filter-presets.ts` (matching predicate mirroring `getTasks`, URL round-tripping, localStorage CRUD with name-replace + 20-preset cap); `components/filter-presets.tsx` on `/all` saves the current view and re-applies presets via query params; `getTasks`/`TaskList` gained a `priority` filter
 - [x] Filter sharing capabilities — shareable-link copy (current view as `/all` URL), JSON export (download) and import (paste, validated + merged by name, 20-preset cap) in the presets menu; `exportFilterPresets`/`parseImportedPresets`/`mergeFilterPresets`/`replaceFilterPresets` in `lib/filter-presets.ts`
@@ -67,6 +76,7 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 ## Phase 3: Advanced Features (Week 3)
 
 ### 3.1 Smart Calendar Integration
+
 - [x] Google Calendar API integration — hand-rolled REST (`lib/calendar.ts`), OAuth flow (`/api/auth/google`), token refresh (`lib/calendar/tokens.ts`)
 - [x] Apple Calendar (CalDAV) support — `lib/caldav.ts` (hand-rolled XML/iCal parser, basic-auth, no native deps); `caldavEventToTask` converter; wired into `POST /api/calendar/sync` with provider auto-detection (`getCaldavEndpoint` for icloud/google/fastmail).
 - [x] Bidirectional sync — push (TaskFlow → Calendar) plus optional pull (`?pull=true`): imports unlinked Google events as tasks linked via `source_event_id`, so the next sync updates the source event instead of duplicating it; orchestration in `src/lib/calendar/sync.ts` (conflict resolutions and pulled imports are awaited, so a failed write is caught and reported in `errors[]` rather than surfacing as an unhandled rejection)
@@ -75,6 +85,7 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 - [x] Calendar event search — `searchEvents` in `lib/calendar.ts` (Google `q` parameter, single events, time-ordered)
 
 ### 3.2 Workflow Automation Builder
+
 - [x] Visual workflow editor — `components/workflows/workflow-builder.tsx`, `/workflows` page
 - [x] Trigger system (time, event, condition) — schedule, task_created/completed/updated, deadline_approaching, webhook
 - [x] Action library (create task, notify, webhook, etc.) — create/update task, notification, webhook, email, list, label, priority, deadline, activity log, connector message
@@ -83,13 +94,15 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 - [x] Workflow templates — `WORKFLOW_TEMPLATES` (Daily Review Reminder, Overdue Task Escalation, Task Completion Follow-up) selectable from the builder's template dropdown
 
 ### 3.3 Enhanced Collaboration
-- [x] Real-time collaborative editing — dependency-free SSE channel instead of socket.io: `logActivity` (the funnel for all workspace events — member changes, invitations, comments, workspace creation) publishes to `lib/collaboration/activity-stream.ts`, which broadcasts to subscribers; `GET /api/workspaces/[workspaceId]/events` streams them as `data: <json>` frames with a 25s heartbeat comment, `lib/use-workspace-events.ts` opens the EventSource (reconnects natively, closes on workspace switch), and `components/workspace-activity-feed.tsx` consumes it on `TaskDetail` (loads recent events via the activity API, prepends stream events live, dedupes by id, closes on unmount). Shared-cursor/typing sync (true collaborative *editing*) is not implemented — event-level real time is
+
+- [x] Real-time collaborative editing — dependency-free SSE channel instead of socket.io: `logActivity` (the funnel for all workspace events — member changes, invitations, comments, workspace creation) publishes to `lib/collaboration/activity-stream.ts`, which broadcasts to subscribers; `GET /api/workspaces/[workspaceId]/events` streams them as `data: <json>` frames with a 25s heartbeat comment, `lib/use-workspace-events.ts` opens the EventSource (reconnects natively, closes on workspace switch), and `components/workspace-activity-feed.tsx` consumes it on `TaskDetail` (loads recent events via the activity API, prepends stream events live, dedupes by id, closes on unmount). Shared-cursor/typing sync (true collaborative _editing_) is not implemented — event-level real time is
 - [x] Presence indicators — per-device presence (no login in this app): `lib/collaboration/presence.ts` registry with 60s TTL, `POST /api/presence` heartbeat (15s) + `GET /api/presence` list (10s poll, reaped before answering) via `lib/use-workspace-presence.ts`, rendered by `components/task-presence.tsx` on `TaskDetail` under the assignee badge (green pulse, count, initial avatars)
 - [x] Inline threaded comments — task comments via `/api/workspaces/[workspaceId]/comments?taskId=` (create/read/update/delete, author-only edits, @mention extraction)
 - [x] Task assignment with notifications — `assignee_id` on tasks (FK to `workspace_members`, migrations 0005/0006); assignee resolved onto every task read (`buildTaskRelations`); assignment picker in `EditTaskForm` and assignee badge on `TaskDetail`; assigning through `updateTask` pushes a notification to the assignee's devices (`lib/collaboration/assignment.ts` pure helpers + `lib/collaboration/notifier.ts` server-side web-push delivery, fail-safe when VAPID is unconfigured); `getAllMembers` store + `getMembersAction` expose the roster; viewers may not assign (`canAssignTask`)
 - [x] Activity feed improvements — workspace activity log (27 event types, trimmed to 1000 per workspace, `/api/workspaces/[workspaceId]/activity`)
 
 ### 3.4 Advanced Focus Mode
+
 - [x] AI-selected optimal focus times — `suggestOptimalTime` in smart-scheduler
 - [x] Adaptive Pomodoro — `lib/focus/adaptive-pomodoro.ts` adapts the focus duration one step (15–60 min ladder) after 4 sessions: ≥80% completion lengthens, ≤40% shortens; abandoned (reset mid-session) pomodoros counted in `focus-mode-stats`, completion rate shown in the stats grid
 - [x] Background task management — due-reminder delivery: `getDueReminders`/`processDueReminders` in `lib/tasks.ts` sweep for reminders whose time has come (incomplete tasks only, unsent only) and mark them sent with a `reminder_sent` task-log entry; `GET /api/reminders` exposes the sweep and `SearchWrapper` polls it every minute, surfacing due reminders as toasts (failed sweeps retry on the next tick)
@@ -99,28 +112,33 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 ## Phase 4: Polish & Integration (Week 4)
 
 ### 4.1 Knowledge Base & Learning
+
 - [x] User pattern learning — `getUserPatterns`/`updatePatterns`/`getPatternInsights`
 - [x] Template suggestions from history — `lib/template-suggestions.ts` flags one-off tasks created ≥3 times (recurring and already-templated names excluded), surfaced on `/today` with create-template and dismiss actions via `/api/templates`
 - [x] Deadline Escape Hatch — `lib/deadline-escape-hatch.ts` detects 3+ deadline pushes from task logs, surfaces intervention cards on task detail (`DeadlineEscapeHatchCard`) and task list AI widgets (`DeadlineEscapeHatchSummaryCard`); integrated into `generateSmartSuggestions` as `deadline_escape` type with decompose/template/renegotiate actions
 - [x] Completion Milestones — cumulative completion tracking (10/50/100/1000) with confetti celebration + toast on milestone crossing, progress bar in the task list header (`MilestoneProgress`); `CompletionMilestoneCelebration` renders inside `TaskListView` so it works on all views
 - [x] Cognitive Load Budget — 8th factor in task-prioritizer.ts, measures subtasks/dependencies/attachments/labels/description length, de-prioritizes heavy tasks and surfaces peak-energy scheduling recommendations; 5 tests added
 - [x] Task Autopsy — post-mortem analysis for stalled tasks (`lib/task-autopsy.ts`); detects deadline thrashing, repeated reopening, update churn, long stalls, overestimation, and no recent progress; surfaces findings + recommendations (decompose, archive, mark complete, template, renegotiate) via `TaskAutopsyCard` on the task detail page; 17 tests
+- [x] Focus Mode DND Bubble — global focus mode store (`lib/focus-mode-store.ts`) with sessionStorage persistence + custom event; `FocusDndBubble` component in the root layout shows a persistent DND indicator with session timer when focus mode is active; monkey-patches sonner toast methods to suppress non-critical toasts during focus sessions; FocusMode dialog calls `enterFocusMode`/`exitFocusMode` on mount/unmount; 10 tests
 - [x] Optimal categorization prediction — `analyzeTaskNaming` suggests categories from naming patterns
 - [x] Completion time prediction — `predictCompletionTime` (category average → calibrated estimate → raw estimate → default), used by the smart scheduler to plan against learned durations
 
 ### 4.2 Offline Capabilities
+
 - [ ] IndexedDB fallback — deferred; needs the `idb` dependency and a client-side data store mirroring the server schema (the mutation queue below covers the write slice; reads still need the network, and the `/offline` page covers the "you are offline" UX)
 - [x] Offline queue for mutations — `lib/offline-queue.ts` (localStorage-backed, 100-entry cap, oldest dropped when storage is full): every mutation in `lib/tasks-client.ts` (create/update/toggle/delete task, create list, create label) goes through `sendOrQueue`, which queues when `navigator.onLine` is false or the fetch rejects with a network `TypeError`, answering with a synthetic `202 Accepted`; `SearchWrapper` drains on the `online` event, on mount, and every 30s (tab-asleep safety), replaying in order and toasting "N queued changes synced" — delivered mutations are dropped, server-rejected ones stay queued, and a network drop mid-drain keeps the rest
 - [ ] Conflict resolution on sync — deferred; the queue replays in order and server-rejected mutations stay queued (fail-safe, last-write-wins via server validation), but true conflict merge (OT/CRDT) is not implemented (calendar sync already resolves task/event conflicts server-side)
 - [ ] Progressive enhancement — deferred; follows from the IndexedDB fallback
 
 ### 4.3 Security Hardening
+
 - [x] Rate limiting on API endpoints — `src/proxy.ts` (Next.js 16 proxy) + `src/lib/rate-limit.ts`: default 120 req/min per IP, stricter per-path limits (push 30/min per API key, OAuth 10/min, share 30/min, webhook trigger 60/min); 429 + `Retry-After`/`X-RateLimit-*` headers, documented in `openapi.yaml`
 - [x] CSRF protection — `src/proxy.ts`: state-changing requests (non-GET/HEAD/OPTIONS) must carry a same-site `Origin` (or matching `Referer` fallback; absent pair = non-browser caller like curl/integrations, allowed). Rejects with 403 before rate limiting so forgeries consume no budget. Exempts endpoints for non-browser callers (`/api/webhooks/trigger`, `/api/push/send`)
 - [x] Request validation — centralized in `src/lib/validation.ts` (`parseJsonBody` + `validationErrorResponse`): uniform 400 shape `{ error: 'Invalid request data', details }` with zod-formatted field errors; adopted by the tasks route (POST/PATCH) as the reference implementation (a proxy can't know per-route schemas, so centralization = shared helpers + uniform response)
 - [x] Audit logging — workspace activity feed + task logs API (`/api/task-logs`)
 
 ### 4.4 Testing & Documentation
+
 - [x] Comprehensive test coverage — 630 tests across 46 suites (above + caldav, cursors, focus-session-log-server)
 - [x] API documentation updates — `openapi.yaml`: 52 schemas, 39 paths (all 39 route files, validated 1:1 against the filesystem); task schemas carry `assignee_id`/`assignee`, shared `ValidationError` response (uniform 400 shape), `/reminders` sweep route, `/presence` heartbeat + list, `/workspaces/{workspaceId}/events` SSE stream, `/calendar/events/import` single-event import, `/workflows/connectors` server-side delivery (fail-closed on unknown/unconfigured connectors), proxy security note in `info.description`
 - [x] User guide updates — README added (features, workspace activity/presence/reminder endpoints)
@@ -238,5 +256,5 @@ Deliberately not added (heuristic/hand-rolled equivalents in the tree):
 - [x] Calendar sync bidirectional with < 5s latency — measured: a full sync cycle over 10k tasks and 100 events (conflict detection, calendar-win resolution, push, pull/import) completes in ~1.4s with the Google API mocked to instant responses, well under the 5s ceiling; end-to-end latency is dominated by Google's network round-trips, which TaskFlow cannot bound
 - [x] Workflow execution < 100ms overhead — measured: a 10-node workflow × 100 runs stays under the ceiling (benchmark in `src/test/performance.test.ts`); the engine runs client-side with no server round-trip except webhooks/connectors
 - [ ] Offline mode fully functional — partial (see 4.2): mutations queue offline and replay on reconnect; reads and the IndexedDB data mirror are still deferred
-- [x] Real-time collaboration < 100ms latency — measured: server-side delivery (event published → SSE frame on the wire) is well under 100ms, asserted in `src/test/events-route.test.ts`; collaborative *editing* sync (cursors/typing) is not implemented — see 3.3
+- [x] Real-time collaboration < 100ms latency — measured: server-side delivery (event published → SSE frame on the wire) is well under 100ms, asserted in `src/test/events-route.test.ts`; collaborative _editing_ sync (cursors/typing) is not implemented — see 3.3
 - [x] Bundle size increase < 100KB gzipped — initial JS reduced: keyboard-opened dialogs (search, shortcuts, command palette incl. NLP + server actions) code-split out of every page's initial bundle

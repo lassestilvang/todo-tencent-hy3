@@ -39,6 +39,7 @@ import {
   POMODORO_DURATION_STEPS,
 } from '@/lib/focus/adaptive-pomodoro'
 import { recordFocusSession } from '@/lib/focus/session-log'
+import { enterFocusMode, exitFocusMode } from '@/lib/focus-mode-store'
 import { toISODate } from '@/lib/focus/habit-metrics'
 import { toast } from 'sonner'
 
@@ -88,7 +89,7 @@ function loadSettings() {
       try {
         return { ...defaultSettings, ...JSON.parse(saved) }
       } catch (e) {
-        console.error("Failed to parse focus mode settings:", e)
+        console.error('Failed to parse focus mode settings:', e)
         return defaultSettings
       }
     }
@@ -103,7 +104,7 @@ function loadStats() {
       try {
         return JSON.parse(saved)
       } catch (e) {
-        console.error("Failed to parse focus mode stats:", e)
+        console.error('Failed to parse focus mode stats:', e)
         return null
       }
     }
@@ -112,6 +113,12 @@ function loadStats() {
 }
 
 export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
+  // Signal focus mode to the global DND store
+  useEffect(() => {
+    enterFocusMode()
+    return () => exitFocusMode()
+  }, [])
+
   const [mode, setMode] = useState<TimerMode>('pomodoro')
   const [status, setStatus] = useState<TimerStatus>('idle')
   const [timeRemaining, setTimeRemaining] = useState(DURATIONS.pomodoro)
@@ -119,14 +126,23 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   // Stats are read from localStorage exactly once. A lazy initializer avoids the
-// setState-in-effect cascade that an effect on mount would cause.
+  // setState-in-effect cascade that an effect on mount would cause.
   const [initialStats] = useState(loadStats)
-  const [sessionsCompleted, setSessionsCompletedState] = useState(initialStats.sessionsCompleted || 0)
-  const [totalFocusTime, setTotalFocusTimeState] = useState(initialStats.totalFocusTime || 0)
-  const [sessionsAbandoned, setSessionsAbandonedState] = useState(initialStats.sessionsAbandoned || 0)
+  const [sessionsCompleted, setSessionsCompletedState] = useState(
+    initialStats.sessionsCompleted || 0
+  )
+  const [totalFocusTime, setTotalFocusTimeState] = useState(
+    initialStats.totalFocusTime || 0
+  )
+  const [sessionsAbandoned, setSessionsAbandonedState] = useState(
+    initialStats.sessionsAbandoned || 0
+  )
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const audioRef = useRef<{ play: () => Promise<void>; gainNode?: GainNode } | null>(null)
+  const audioRef = useRef<{
+    play: () => Promise<void>
+    gainNode?: GainNode
+  } | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const settingsRef = useRef(settings)
   const handleTimerCompleteRef = useRef<() => void | undefined>(undefined)
@@ -140,7 +156,10 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
 
   // Initialize audio with generated tone using Web Audio API
   useEffect(() => {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext
     const audioContext = new AudioContextClass()
     audioContextRef.current = audioContext
 
@@ -205,7 +224,9 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
     pauseTimer()
     setStatus('idle')
     startTimeRef.current = null
-    durationRef.current = DURATIONS[mode] * (mode === 'pomodoro' ? settings.pomodoroDuration / 25 : 1)
+    durationRef.current =
+      DURATIONS[mode] *
+      (mode === 'pomodoro' ? settings.pomodoroDuration / 25 : 1)
     setTimeRemaining(durationRef.current)
   }, [mode, settings, pauseTimer])
 
@@ -216,9 +237,10 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
       setSessionsAbandonedState((prev: number) => prev + 1)
       // Minutes spent so far; a paused session has no start
       // reference, so it logs as zero.
-      const elapsedMinutes = startTimeRef.current !== null
-        ? Math.floor((Date.now() - startTimeRef.current) / 60000)
-        : 0
+      const elapsedMinutes =
+        startTimeRef.current !== null
+          ? Math.floor((Date.now() - startTimeRef.current) / 60000)
+          : 0
       recordFocusSession({
         date: toISODate(new Date()),
         durationMinutes: elapsedMinutes,
@@ -234,7 +256,7 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
     // Play sound
     if (settingsRef.current.soundEnabled && audioRef.current) {
       audioRef.current.play().catch((e) => {
-        console.error("Failed to play audio:", e)
+        console.error('Failed to play audio:', e)
       })
     }
 
@@ -255,7 +277,9 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
     if (mode === 'pomodoro') {
       const completed = sessionsCompleted + 1
       setSessionsCompletedState(completed)
-      setTotalFocusTimeState((prev: number) => prev + settingsRef.current.pomodoroDuration * 60)
+      setTotalFocusTimeState(
+        (prev: number) => prev + settingsRef.current.pomodoroDuration * 60
+      )
 
       // Log the session for the habit metrics and focus analytics.
       recordFocusSession({
@@ -271,16 +295,26 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
         pomodoroDuration: settingsRef.current.pomodoroDuration,
       })
       if (adaptation.changed) {
-        setSettings((s: typeof settings) => ({ ...s, pomodoroDuration: adaptation.pomodoroDuration }))
-        toast.info(`Focus duration adapted to ${adaptation.pomodoroDuration} min`, {
-          description: adaptation.reason === 'improving'
-            ? 'Sessions keep finishing — trying a longer focus block'
-            : 'Sessions keep being abandoned — trying a shorter focus block',
-        })
+        setSettings((s: typeof settings) => ({
+          ...s,
+          pomodoroDuration: adaptation.pomodoroDuration,
+        }))
+        toast.info(
+          `Focus duration adapted to ${adaptation.pomodoroDuration} min`,
+          {
+            description:
+              adaptation.reason === 'improving'
+                ? 'Sessions keep finishing — trying a longer focus block'
+                : 'Sessions keep being abandoned — trying a shorter focus block',
+          }
+        )
       }
 
       // Determine next break
-      const nextMode = completed >= (settingsRef.current.sessionsUntilLongBreak || 4) ? 'longBreak' : 'shortBreak'
+      const nextMode =
+        completed >= (settingsRef.current.sessionsUntilLongBreak || 4)
+          ? 'longBreak'
+          : 'shortBreak'
       setMode(nextMode)
 
       if (settingsRef.current.autoStartBreaks) {
@@ -300,10 +334,13 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
     handleTimerCompleteRef.current = handleTimerComplete
   }, [handleTimerComplete])
 
-  const handleModeChange = useCallback((newMode: TimerMode) => {
-    setMode(newMode)
-    resetTimer()
-  }, [resetTimer])
+  const handleModeChange = useCallback(
+    (newMode: TimerMode) => {
+      setMode(newMode)
+      resetTimer()
+    },
+    [resetTimer]
+  )
 
   // Keyboard shortcuts
   useKeyPress(['Space'], () => {
@@ -351,7 +388,9 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
   // Update audio volume when settings change
   useEffect(() => {
     if (audioRef.current?.gainNode) {
-      audioRef.current.gainNode.gain.value = settingsRef.current.soundEnabled ? settingsRef.current.volume * 0.3 : 0
+      audioRef.current.gainNode.gain.value = settingsRef.current.soundEnabled
+        ? settingsRef.current.volume * 0.3
+        : 0
     }
   }, [settings.volume, settings.soundEnabled])
 
@@ -361,16 +400,24 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  const progress = 1 - timeRemaining / (DURATIONS[mode] * (mode === 'pomodoro' ? settings.pomodoroDuration / 25 : 1))
+  const progress =
+    1 -
+    timeRemaining /
+      (DURATIONS[mode] *
+        (mode === 'pomodoro' ? settings.pomodoroDuration / 25 : 1))
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-h-[90vh] max-w-md overflow-hidden">
         <DialogHeader className="pb-4">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl">Focus Mode</DialogTitle>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => setIsSettingsOpen(true)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsSettingsOpen(true)}
+              >
                 <Settings className="h-4 w-4" />
               </Button>
               <Button variant="ghost" size="icon" onClick={onClose}>
@@ -384,12 +431,12 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
         </DialogHeader>
 
         {/* Mode Selector */}
-        <div className="flex gap-2 mb-6">
+        <div className="mb-6 flex gap-2">
           {(['pomodoro', 'shortBreak', 'longBreak'] as TimerMode[]).map((m) => (
             <Button
               key={m}
               variant={mode === m ? 'default' : 'outline'}
-              className="flex-1 flex items-center gap-2"
+              className="flex flex-1 items-center gap-2"
               onClick={() => handleModeChange(m)}
             >
               {MODE_ICONS[m]}
@@ -400,7 +447,7 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
 
         {/* Timer Display */}
         <div className="relative mb-6">
-          <svg className="w-48 h-48 mx-auto -rotate-90" viewBox="0 0 100 100">
+          <svg className="mx-auto h-48 w-48 -rotate-90" viewBox="0 0 100 100">
             <circle
               cx="50"
               cy="50"
@@ -429,14 +476,14 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-5xl font-mono tabular-nums">
+            <span className="font-mono text-5xl tabular-nums">
               {formatTime(timeRemaining)}
             </span>
           </div>
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-center gap-4 mb-6">
+        <div className="mb-6 flex items-center justify-center gap-4">
           <Button
             variant="outline"
             size="icon"
@@ -461,7 +508,12 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
             variant="outline"
             size="icon"
             onClick={() => {
-              const nextMode = mode === 'pomodoro' ? 'shortBreak' : mode === 'shortBreak' ? 'longBreak' : 'pomodoro'
+              const nextMode =
+                mode === 'pomodoro'
+                  ? 'shortBreak'
+                  : mode === 'shortBreak'
+                    ? 'longBreak'
+                    : 'pomodoro'
               handleModeChange(nextMode)
             }}
           >
@@ -470,42 +522,55 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-muted/50 rounded-lg">
+        <div className="bg-muted/50 mb-6 grid grid-cols-3 gap-4 rounded-lg p-4">
           <div className="text-center">
             <p className="text-2xl font-bold">{sessionsCompleted}</p>
-            <p className="text-xs text-muted-foreground">Sessions</p>
+            <p className="text-muted-foreground text-xs">Sessions</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold">
               {Math.floor(totalFocusTime / 60)}m
             </p>
-            <p className="text-xs text-muted-foreground">Focus Time</p>
+            <p className="text-muted-foreground text-xs">Focus Time</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold">
               {sessionsCompleted + sessionsAbandoned > 0
                 ? Math.round(
-                    (sessionsCompleted / (sessionsCompleted + sessionsAbandoned)) * 100
+                    (sessionsCompleted /
+                      (sessionsCompleted + sessionsAbandoned)) *
+                      100
                   )
                 : 100}
               %
             </p>
-            <p className="text-xs text-muted-foreground">Completion</p>
+            <p className="text-muted-foreground text-xs">Completion</p>
           </div>
         </div>
 
         {/* Volume Control */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="mb-4 flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSettings((s: typeof settings) => ({ ...s, soundEnabled: !s.soundEnabled }))}
+            onClick={() =>
+              setSettings((s: typeof settings) => ({
+                ...s,
+                soundEnabled: !s.soundEnabled,
+              }))
+            }
           >
-            {settings.soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            {settings.soundEnabled ? (
+              <Volume2 className="h-4 w-4" />
+            ) : (
+              <VolumeX className="h-4 w-4" />
+            )}
           </Button>
           <Slider
             value={[settings.volume * 100]}
-            onValueChange={([v]: number[]) => setSettings((s: typeof settings) => ({ ...s, volume: v / 100 }))}
+            onValueChange={([v]: number[]) =>
+              setSettings((s: typeof settings) => ({ ...s, volume: v / 100 }))
+            }
             max={100}
             step={10}
             className="flex-1"
@@ -528,29 +593,48 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
                 <Label>Focus Duration (min)</Label>
                 <Select
                   value={String(settings.pomodoroDuration)}
-                  onValueChange={(v) => setSettings((s: typeof settings) => ({ ...s, pomodoroDuration: Number(v) }))}
+                  onValueChange={(v) =>
+                    setSettings((s: typeof settings) => ({
+                      ...s,
+                      pomodoroDuration: Number(v),
+                    }))
+                  }
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {POMODORO_DURATION_STEPS.map((d) => (
-                      <SelectItem key={d} value={String(d)}>{d} minutes</SelectItem>
+                      <SelectItem key={d} value={String(d)}>
+                        {d} minutes
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  Adapts automatically after {MIN_SESSIONS_FOR_ADJUSTMENT} sessions
+                <p className="text-muted-foreground text-xs">
+                  Adapts automatically after {MIN_SESSIONS_FOR_ADJUSTMENT}{' '}
+                  sessions
                 </p>
               </div>
               <div className="space-y-2">
                 <Label>Short Break (min)</Label>
                 <Select
                   value={String(settings.shortBreakDuration)}
-                  onValueChange={(v) => setSettings((s: typeof settings) => ({ ...s, shortBreakDuration: Number(v) }))}
+                  onValueChange={(v) =>
+                    setSettings((s: typeof settings) => ({
+                      ...s,
+                      shortBreakDuration: Number(v),
+                    }))
+                  }
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {[3, 5, 10, 15].map((d) => (
-                      <SelectItem key={d} value={String(d)}>{d} minutes</SelectItem>
+                      <SelectItem key={d} value={String(d)}>
+                        {d} minutes
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -559,12 +643,21 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
                 <Label>Long Break (min)</Label>
                 <Select
                   value={String(settings.longBreakDuration)}
-                  onValueChange={(v) => setSettings((s: typeof settings) => ({ ...s, longBreakDuration: Number(v) }))}
+                  onValueChange={(v) =>
+                    setSettings((s: typeof settings) => ({
+                      ...s,
+                      longBreakDuration: Number(v),
+                    }))
+                  }
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {[10, 15, 20, 30].map((d) => (
-                      <SelectItem key={d} value={String(d)}>{d} minutes</SelectItem>
+                      <SelectItem key={d} value={String(d)}>
+                        {d} minutes
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -573,12 +666,21 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
                 <Label>Sessions until Long Break</Label>
                 <Select
                   value={String(settings.sessionsUntilLongBreak || 4)}
-                  onValueChange={(v) => setSettings((s: typeof settings) => ({ ...s, sessionsUntilLongBreak: Number(v) }))}
+                  onValueChange={(v) =>
+                    setSettings((s: typeof settings) => ({
+                      ...s,
+                      sessionsUntilLongBreak: Number(v),
+                    }))
+                  }
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {[2, 3, 4, 5].map((s) => (
-                      <SelectItem key={s} value={String(s)}>{s} sessions</SelectItem>
+                      <SelectItem key={s} value={String(s)}>
+                        {s} sessions
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -589,41 +691,69 @@ export function FocusMode({ _taskId, taskName, onClose }: FocusModeProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Auto-start breaks</p>
-                  <p className="text-sm text-muted-foreground">Automatically start break after focus session</p>
+                  <p className="text-muted-foreground text-sm">
+                    Automatically start break after focus session
+                  </p>
                 </div>
                 <Switch
                   checked={settings.autoStartBreaks}
-                  onCheckedChange={(c: boolean) => setSettings((s: typeof settings) => ({ ...s, autoStartBreaks: c }))}
+                  onCheckedChange={(c: boolean) =>
+                    setSettings((s: typeof settings) => ({
+                      ...s,
+                      autoStartBreaks: c,
+                    }))
+                  }
                 />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Auto-start focus sessions</p>
-                  <p className="text-sm text-muted-foreground">Automatically start next focus after break</p>
+                  <p className="text-muted-foreground text-sm">
+                    Automatically start next focus after break
+                  </p>
                 </div>
                 <Switch
                   checked={settings.autoStartPomodoros}
-                  onCheckedChange={(c: boolean) => setSettings((s: typeof settings) => ({ ...s, autoStartPomodoros: c }))}
+                  onCheckedChange={(c: boolean) =>
+                    setSettings((s: typeof settings) => ({
+                      ...s,
+                      autoStartPomodoros: c,
+                    }))
+                  }
                 />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Sound notifications</p>
-                  <p className="text-sm text-muted-foreground">Play sound when timer completes</p>
+                  <p className="text-muted-foreground text-sm">
+                    Play sound when timer completes
+                  </p>
                 </div>
                 <Switch
                   checked={settings.soundEnabled}
-                  onCheckedChange={(c: boolean) => setSettings((s: typeof settings) => ({ ...s, soundEnabled: c }))}
+                  onCheckedChange={(c: boolean) =>
+                    setSettings((s: typeof settings) => ({
+                      ...s,
+                      soundEnabled: c,
+                    }))
+                  }
                 />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Browser notifications</p>
-                  <p className="text-sm text-muted-foreground">Show system notification when timer completes</p>
+                  <p className="text-muted-foreground text-sm">
+                    Show system notification when timer completes
+                  </p>
                 </div>
                 <Switch
                   checked={settings.notificationsEnabled}
-                  onCheckedChange={(c: boolean) => setSettings((s: typeof settings) => ({ ...s, notificationsEnabled: c }))}
+                  onCheckedChange={(c: boolean) =>
+                    setSettings((s: typeof settings) => ({
+                      ...s,
+                      notificationsEnabled: c,
+                    }))
+                  }
                 />
               </div>
             </div>

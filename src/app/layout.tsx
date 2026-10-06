@@ -8,6 +8,7 @@ import { SidebarLayout } from '@/components/sidebar-layout'
 import { Toaster } from 'sonner'
 import NextTopLoader from 'nextjs-toploader'
 import { PWAManifest } from '@/components/pwa-manifest'
+import { FocusDndBubble } from '@/components/focus-dnd-bubble'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -21,8 +22,16 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'TaskFlow - Daily Task Planner',
-  description: 'A modern, professional daily task planner with analytics and focus mode',
-  keywords: ['task planner', 'daily tasks', 'productivity', 'todo app', 'pomodoro', 'analytics'],
+  description:
+    'A modern, professional daily task planner with analytics and focus mode',
+  keywords: [
+    'task planner',
+    'daily tasks',
+    'productivity',
+    'todo app',
+    'pomodoro',
+    'analytics',
+  ],
   authors: [{ name: 'TaskFlow Team' }],
   robots: { index: true, follow: true },
   icons: {
@@ -32,14 +41,16 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'TaskFlow - Daily Task Planner',
-    description: 'A modern, professional daily task planner with analytics and focus mode',
+    description:
+      'A modern, professional daily task planner with analytics and focus mode',
     type: 'website',
     locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'TaskFlow - Daily Task Planner',
-    description: 'A modern, professional daily task planner with analytics and focus mode',
+    description:
+      'A modern, professional daily task planner with analytics and focus mode',
   },
   manifest: '/manifest.json',
   appleWebApp: {
@@ -75,6 +86,7 @@ export default function RootLayout({
           </SearchWrapper>
           <Toaster richColors position="top-right" />
           <PWAManifest />
+          <FocusDndBubble />
         </ThemeProvider>
       </body>
     </html>
