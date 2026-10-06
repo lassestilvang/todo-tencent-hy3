@@ -24,6 +24,7 @@ import { TaskPresence } from '@/components/task-presence'
 import { WorkspaceActivityFeed } from '@/components/workspace-activity-feed'
 import { SimilarTasks } from '@/components/similar-tasks'
 import { DeadlineEscapeHatchCard } from '@/components/deadline-escape-hatch-card'
+import { TaskAutopsyCard } from '@/components/task-autopsy-card'
 import {
   cn,
   formatDisplayDate,
@@ -177,6 +178,9 @@ export function TaskDetail({ task }: { task: Task }) {
 
         {/* Deadline Escape Hatch — warn about deadline thrashing */}
         <DeadlineEscapeHatchCard task={task} />
+
+        {/* Task Autopsy — post-mortem analysis for stalled tasks */}
+        <TaskAutopsyCard task={task} />
 
         {task.description && (
           <div className="text-muted-foreground bg-accent/25 border-border/10 flex gap-3 rounded-xl border p-4">
