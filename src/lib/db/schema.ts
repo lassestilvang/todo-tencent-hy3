@@ -48,6 +48,8 @@ export const tasks = sqliteTable('tasks', {
   // External calendar event ID this task was imported from (e.g. Google).
   // Lets sync update the source event instead of creating a duplicate.
   sourceEventId: text('source_event_id'),
+  // Origin of the task (e.g. 'browser-extension', 'voice', 'email-digest').
+  source: text('source'),
   // Self-referential FK - use AnySQLiteColumn to break circular reference
   parentTaskId: text('parent_task_id').references(((): AnySQLiteColumn => tasks.id), { onDelete: 'cascade' }),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),

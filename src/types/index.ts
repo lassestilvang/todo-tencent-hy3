@@ -81,6 +81,8 @@ export interface Task {
   assignee_id?: string | null
   /** External calendar event ID this task was imported from, if any */
   source_event_id?: string | null
+  /** Origin of the task (e.g. 'browser-extension', 'voice', 'email-digest') */
+  source?: string | null
   parent_task_id: string | null
   completed: boolean
   completed_at: string | null

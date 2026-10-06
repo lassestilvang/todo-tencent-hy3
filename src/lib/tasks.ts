@@ -263,6 +263,7 @@ function mapTaskRow(row: typeof tasks.$inferSelect): Task {
     list_id: row.listId,
     assignee_id: row.assigneeId,
     source_event_id: row.sourceEventId,
+    source: row.source,
     parent_task_id: row.parentTaskId,
     completed: row.completed,
     completed_at: row.completedAt,
@@ -635,6 +636,7 @@ export function createTask(data: Partial<Task>): Task {
     listId: data.list_id || null,
     assigneeId: data.assignee_id || null,
     sourceEventId: data.source_event_id || null,
+    source: data.source || null,
     parentTaskId: data.parent_task_id || null,
     completed: data.completed || false,
     completedAt: null,
@@ -719,6 +721,7 @@ export function updateTask(id: string, data: Partial<Task>): void {
   if (data.assignee_id !== undefined) {
     updateData.assigneeId = data.assignee_id
   }
+  if (data.source !== undefined) updateData.source = data.source
   if (data.parent_task_id !== undefined) updateData.parentTaskId = data.parent_task_id
   if (data.completed !== undefined) {
     updateData.completed = data.completed

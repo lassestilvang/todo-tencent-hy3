@@ -75,7 +75,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Handle static assets with cache-first
-  event.respondWith(handleStaticRequest(request))
+  event.respondWith(handleStaticRequest(request, event))
 })
 
 /** Network-first with cache fallback and staleness check. */
@@ -117,7 +117,7 @@ async function handleApiRequest(request) {
 }
 
 /** Cache-first with network fallback. */
-async function handleStaticRequest(request) {
+async function handleStaticRequest(request, event) {
   const cache = await caches.open(STATIC_CACHE)
   const cached = await cache.match(request)
 
@@ -151,7 +151,8 @@ self.addEventListener('sync', (event) => {
 })
 
 async function drainOfflineQueue() {
-  const client = await self.clients.get(self.clients.matchAll({ type: 'window' })[0])
+  const clients = await self.clients.matchAll({ type: 'window' })
+  const client = clients[0]
   if (client) {
     client.postMessage({ type: 'drain-offline-queue' })
   }

@@ -22,6 +22,7 @@ const createTaskSchema = z.object({
   priority: z.enum(['high', 'medium', 'low', 'none']).optional(),
   list_id: z.string().optional(),
   estimate: z.coerce.number().int().positive().optional(),
+  source: z.string().max(100).optional(),
 })
 
 const updateTaskSchema = z.object({
@@ -33,6 +34,7 @@ const updateTaskSchema = z.object({
   list_id: z.string().nullable().optional(),
   assignee_id: z.string().nullable().optional(),
   estimate: z.coerce.number().int().positive().nullable().optional(),
+  source: z.string().max(100).nullable().optional(),
   completed: z.boolean().optional(),
 })
 

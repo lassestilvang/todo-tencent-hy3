@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const deadlineInput = document.getElementById('task-deadline')
   const estimateInput = document.getElementById('task-estimate')
   const addBtn = document.getElementById('add-btn')
+  const syncBtn = document.getElementById('sync-btn')
   const openBtn = document.getElementById('open-btn')
   const statusEl = document.getElementById('status')
 
@@ -115,6 +116,32 @@ document.addEventListener('DOMContentLoaded', function () {
     const baseUrl = (settings && settings.taskflowUrl) || 'http://localhost:3000'
     chrome.tabs.create({ url: baseUrl })
   })
+
+  // Sync queued tasks button
+  if (syncBtn) {
+    syncBtn.addEventListener('click', function () {
+      syncBtn.disabled = true
+      syncBtn.textContent = 'Syncing...'
+
+      chrome.runtime
+        .sendMessage({ type: 'TASKFLOW_SYNC_NOW' })
+        .then(function (response) {
+          showStatus(
+            'Synced ' +
+              (response?.synced || 0) +
+              ' task(s)' +
+              (response?.failed ? ', ' + response.failed + ' failed' : '')
+          )
+        })
+        .catch(function () {
+          showStatus('Sync failed', true)
+        })
+        .finally(function () {
+          syncBtn.disabled = false
+          syncBtn.textContent = 'Sync now'
+        })
+    })
+  }
 
   // Allow Enter key to submit (Shift+Enter for newline)
   taskInput.addEventListener('keydown', function (e) {

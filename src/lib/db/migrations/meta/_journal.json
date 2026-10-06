@@ -50,6 +50,13 @@
       "when": 1791248429334,
       "tag": "0006_add_task_assignee_index",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1796217600000,
+      "tag": "0007_add_task_source",
+      "breakpoints": true
     }
   ]
 }

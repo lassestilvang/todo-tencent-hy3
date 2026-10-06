@@ -32,6 +32,16 @@
         sendResponse({ received: true })
         return true
       }
+
+      if (message.type === 'TASKFLOW_REFRESH') {
+        // Tell the TaskFlow app to refresh its cached data
+        var refreshEvent = new CustomEvent('taskflow-refresh', {
+          detail: message.payload,
+        })
+        document.dispatchEvent(refreshEvent)
+        sendResponse({ received: true })
+        return true
+      }
     })
 
     // Also listen for the extension's keyboard shortcut

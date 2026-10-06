@@ -94,6 +94,22 @@ body {
   background: var(--primary-hover);
 }
 
+.sync-btn {
+  flex: 1;
+  background: var(--surface);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.sync-btn:hover {
+  background: var(--primary);
+  color: var(--surface);
+}
+
 .open-btn {
   flex: 1;
   background: var(--surface);

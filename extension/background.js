@@ -42,28 +42,49 @@ function sendMessageToTaskflow(message) {
 
 /**
  * Add text as a new task via the TaskFlow API.
- * Falls back to messaging the open tab if available.
+ * POSTs directly to the API so the task is created immediately,
+ * even if no TaskFlow tab is open. Falls back to
+ * chrome.storage.local only when the network/API is unavailable,
+ * and queues a sync for the next online window.
  */
 async function addTask(taskText) {
+  // Load the configured TaskFlow URL
+  const { taskflowUrl } = await chrome.storage.sync.get({
+    taskflowUrl: 'http://localhost:3000',
+  })
+
+  const taskData = {
+    name: taskText,
+    source: 'browser-extension',
+  }
+
   try {
-    // Try to send to the open TaskFlow tab first (real-time update)
-    if (taskflowTabId) {
-      sendMessageToTaskflow({
-        type: 'TASKFLOW_ADD_TASK',
-        payload: { text: taskText },
-      })
+    const response = await fetch(`${taskflowUrl}/api/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(taskData),
+    })
+
+    if (response.ok) {
+      // Notify the open TaskFlow tab (if any) so it refreshes its SWR cache
+      if (taskflowTabId) {
+        sendMessageToTaskflow({ type: 'TASKFLOW_REFRESH', payload: {} })
+      }
+      return
     }
 
-    // Also sync to storage for persistence
+    throw new Error('HTTP ' + response.status)
+  } catch (error) {
+    console.warn('Extension API add failed, queueing for sync:', error)
+    // Queue the task locally for background sync
     const { tasks = [] } = await chrome.storage.local.get('tasks')
     tasks.push({
-      text: taskText,
+      name: taskText,
+      source: 'browser-extension',
       createdAt: new Date().toISOString(),
       synced: false,
     })
     await chrome.storage.local.set({ tasks })
-  } catch (error) {
-    console.error('Failed to add task:', error)
   }
 }
 
@@ -128,10 +149,9 @@ chrome.commands.onCommand.addListener((command) => {
 // Listen for messages from popup or content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'TASKFLOW_SYNC') {
-    // Sync stored tasks to the TaskFlow web app
-    chrome.storage.local.get('tasks').then(({ tasks = [] }) => {
-      const unsynced = tasks.filter((t) => !t.synced)
-      sendResponse({ unsynced, total: tasks.length })
+    // POST any queued (unsynced) tasks to the API
+    syncQueuedTasks().then((result) => {
+      sendResponse(result)
     })
     return true // Keep message channel open for async response
   }
@@ -139,6 +159,71 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'TASKFLOW_SET_TAB') {
     taskflowTabId = sender.tab?.id
     sendResponse({ success: true })
+    return true
+  }
+})
+
+/**
+ * POST all locally-queued (unsynced) tasks to the TaskFlow API.
+ * Successfully-synced tasks are marked and removed from local storage.
+ */
+async function syncQueuedTasks() {
+  const { taskflowUrl } = await chrome.storage.sync.get({
+    taskflowUrl: 'http://localhost:3000',
+  })
+
+  const { tasks = [] } = await chrome.storage.local.get('tasks')
+  const unsynced = tasks.filter((t) => !t.synced)
+
+  let syncedCount = 0
+  let failedCount = 0
+
+  for (const task of unsynced) {
+    try {
+      const response = await fetch(`${taskflowUrl}/api/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: task.name || task.text,
+          source: task.source || 'browser-extension',
+        }),
+      })
+
+      if (response.ok) {
+        task.synced = true
+        syncedCount++
+      } else {
+        failedCount++
+      }
+    } catch (error) {
+      failedCount++
+    }
+  }
+
+  await chrome.storage.local.set({ tasks })
+
+  // Notify the open TaskFlow tab so it refreshes its cache
+  if (taskflowTabId && syncedCount > 0) {
+    sendMessageToTaskflow({
+      type: 'TASKFLOW_REFRESH',
+      payload: { count: syncedCount },
+    })
+  }
+
+  return { synced: syncedCount, failed: failedCount, total: tasks.length }
+}
+
+// Attempt to sync queued tasks when the extension starts up
+chrome.runtime.onStartup.addListener(() => {
+  syncQueuedTasks().catch(() => {})
+})
+
+// Also expose a sync trigger the popup can call directly
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'TASKFLOW_SYNC_NOW') {
+    syncQueuedTasks().then((result) => {
+      sendResponse(result)
+    })
     return true
   }
 })

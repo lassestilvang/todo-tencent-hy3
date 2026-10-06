@@ -4,7 +4,7 @@ import { setDbInstanceForTesting } from '@/lib/tasks'
 // Set up test database before importing tasks module
 setDbInstanceForTesting(testDb)
 
-import { getTasks, createTask, getTask, toggleTaskComplete, deleteTask, getLists, createList, getLabels, createLabel, updateLabel, deleteList, deleteLabel, getTaskDependencies, addTaskDependency, removeTaskDependency, canCompleteTask } from '@/lib/tasks'
+import { getTasks, createTask, getTask, updateTask, toggleTaskComplete, deleteTask, getLists, createList, getLabels, createLabel, updateLabel, deleteList, deleteLabel, getTaskDependencies, addTaskDependency, removeTaskDependency, canCompleteTask } from '@/lib/tasks'
 
 beforeAll(() => {
   runTestMigrations()
@@ -71,6 +71,37 @@ describe('getTasks function', () => {
 
     expect(result[0].priority).toBe('high')
     expect(result[1].priority).toBe('medium')
+  })
+})
+
+describe('Task source tracking', () => {
+  it('stores the source field when creating a task', async () => {
+    const task = await createTask({
+      name: 'From Extension',
+      source: 'browser-extension',
+    })
+
+    expect(task.source).toBe('browser-extension')
+
+    const retrieved = await getTask(task.id)
+    expect(retrieved!.source).toBe('browser-extension')
+  })
+
+  it('updates the source field via updateTask', async () => {
+    const task = await createTask({ name: 'Task' })
+
+    updateTask(task.id, { source: 'voice' })
+
+    const retrieved = await getTask(task.id)
+    expect(retrieved!.source).toBe('voice')
+  })
+
+  it('defaults source to null when not provided', async () => {
+    const task = await createTask({ name: 'Plain Task' })
+    expect(task.source).toBe(null)
+
+    const retrieved = await getTask(task.id)
+    expect(retrieved!.source).toBe(null)
   })
 })
 
