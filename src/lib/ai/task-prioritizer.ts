@@ -30,6 +30,8 @@ interface PriorityFactors {
   projectPhase: number
   historicalPattern: number
   priorityTag: number
+  /** New 8th factor: cognitive load budget */
+  cognitiveLoad: number
 }
 
 /**
@@ -53,6 +55,7 @@ const DEFAULT_WEIGHTS: PriorityFactors = {
   projectPhase: 10,
   historicalPattern: 5,
   priorityTag: 5,
+  cognitiveLoad: 5,
 }
 
 /**
@@ -71,6 +74,7 @@ export async function calculateTaskPriority(
     projectPhase: calculateProjectPhase(task),
     historicalPattern: await calculateHistoricalPattern(task, context),
     priorityTag: calculatePriorityTag(task),
+    cognitiveLoad: calculateCognitiveLoad(task),
   }
 
   // Calculate weighted score
@@ -245,6 +249,46 @@ async function calculateHistoricalPattern(task: Task, context: UserContext): Pro
  * Calculate priority tag score (0-100)
  * User-set priority tags get weighted scores
  */
+/**
+ * Calculate cognitive load budget score (0-100).
+ * Lower score = higher cognitive load = more mental overhead.
+ *
+ * Heavy tasks (many subtasks, dependencies, attachments, labels, long
+ * descriptions) consume more working memory and context-switching budget.
+ * Light tasks are good candidates for quick-scheduling between heavier work.
+ *
+ * Each dimension is capped individually so no single factor dominates.
+ */
+function calculateCognitiveLoad(task: Task): number {
+  let load = 0
+
+  // Subtasks: each one adds mental tracking overhead
+  const subCount = task.sub_tasks?.length ?? 0
+  load += Math.min(subCount * 15, 60) // cap at 4 subs (60)
+
+  // Dependencies: blocked/blocking tasks add graph-traversal overhead
+  const depCount = 0 // dependencies are queried separately; estimate from sub_tasks
+  // If the task has subtasks, it's likely part of a dependency graph
+  if (task.parent_task_id) {
+    load += 20
+  }
+
+  // Attachments: external context to load/reconcile
+  const attachCount = task.attachments?.length ?? 0
+  load += Math.min(attachCount * 5, 25) // cap at 5 attachments
+
+  // Labels: each label is a context-switch cue
+  const labelCount = task.labels?.length ?? 0
+  load += Math.min(labelCount * 5, 25) // cap at 5 labels
+
+  // Description length: longer text = more to parse/retain
+  const wordCount = task.description ? task.description.split(/\s+/).length : 0
+  load += Math.min(wordCount / 20, 10) // cap at 200 words
+
+  // Invert: lower load = higher score (good for slotting into tight gaps)
+  return Math.round(100 - Math.min(load, 100))
+}
+
 function calculatePriorityTag(task: Task): number {
   switch (task.priority) {
     case 'high':
@@ -287,6 +331,12 @@ function generateRecommendations(
 
   if (task.sub_tasks && task.sub_tasks.length > 0) {
     recommendations.push('Parent task - consider breaking into smaller steps')
+  }
+
+  if (factors.cognitiveLoad < 40) {
+    recommendations.push('High cognitive load - schedule during peak energy hours')
+  } else if (factors.cognitiveLoad > 80) {
+    recommendations.push('Lightweight task - good for filling gaps between heavy work')
   }
 
   return recommendations

@@ -64,6 +64,96 @@ describe('AI Task Prioritizer', () => {
 
       expect(result.factors).toHaveProperty('dependencies')
     })
+
+    it('should include cognitive load in priority factors', async () => {
+      const result = await calculateTaskPriority(mockTask, mockContext)
+
+      expect(result.factors).toHaveProperty('cognitiveLoad')
+      expect(result.factors.cognitiveLoad).toBeGreaterThanOrEqual(0)
+      expect(result.factors.cognitiveLoad).toBeLessThanOrEqual(100)
+    })
+
+    it('should give higher cognitive load score for lightweight tasks', async () => {
+      const lightTask: Task = {
+        ...mockTask,
+        id: 'light-task',
+        description: null,
+        sub_tasks: undefined,
+        labels: undefined,
+        attachments: undefined,
+      }
+
+      const heavyTask: Task = {
+        ...mockTask,
+        id: 'heavy-task',
+        description: 'A very long description that contains many words and requires significant context to understand fully and process correctly',
+        sub_tasks: [
+          { ...mockTask, id: 'sub1', name: 'Subtask 1' },
+          { ...mockTask, id: 'sub2', name: 'Subtask 2' },
+          { ...mockTask, id: 'sub3', name: 'Subtask 3' },
+        ],
+        labels: [
+          { id: 'l1', name: 'urgent', color: '#ff0000', icon: '!' },
+          { id: 'l2', name: 'backend', color: '#0000ff', icon: '💻' },
+        ],
+        attachments: [
+          { id: 'a1', file_name: 'spec.pdf', file_size: 1000, file_type: 'pdf', url: 'http://x' },
+        ],
+        parent_task_id: 'parent-1',
+      }
+
+      const lightResult = await calculateTaskPriority(lightTask, mockContext)
+      const heavyResult = await calculateTaskPriority(heavyTask, mockContext)
+
+      expect(lightResult.factors.cognitiveLoad).toBeGreaterThan(
+        heavyResult.factors.cognitiveLoad
+      )
+    })
+
+    it('should add recommendation for high cognitive load tasks', async () => {
+      const heavyTask: Task = {
+        ...mockTask,
+        id: 'heavy-task',
+        description:
+          'A very long description that contains many words and requires significant context to understand fully and process correctly and then some more text to be really long and detailed',
+        sub_tasks: [
+          { ...mockTask, id: 'sub1', name: 'Subtask 1' },
+          { ...mockTask, id: 'sub2', name: 'Subtask 2' },
+          { ...mockTask, id: 'sub3', name: 'Subtask 3' },
+        ],
+        labels: [
+          { id: 'l1', name: 'urgent', color: '#ff0000', icon: '!' },
+          { id: 'l2', name: 'backend', color: '#0000ff', icon: '💻' },
+        ],
+        attachments: [
+          { id: 'a1', file_name: 'spec.pdf', file_size: 1000, file_type: 'pdf', url: 'http://x' },
+        ],
+        parent_task_id: 'parent-1',
+      }
+
+      const result = await calculateTaskPriority(heavyTask, mockContext)
+
+      expect(result.recommendations).toContain(
+        'High cognitive load - schedule during peak energy hours'
+      )
+    })
+
+    it('should add recommendation for lightweight tasks', async () => {
+      const lightTask: Task = {
+        ...mockTask,
+        id: 'light-task',
+        description: null,
+        sub_tasks: undefined,
+        labels: undefined,
+        attachments: undefined,
+      }
+
+      const result = await calculateTaskPriority(lightTask, mockContext)
+
+      expect(result.recommendations).toContain(
+        'Lightweight task - good for filling gaps between heavy work'
+      )
+    })
   })
 })
 

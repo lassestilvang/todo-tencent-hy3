@@ -103,6 +103,7 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 - [x] Template suggestions from history — `lib/template-suggestions.ts` flags one-off tasks created ≥3 times (recurring and already-templated names excluded), surfaced on `/today` with create-template and dismiss actions via `/api/templates`
 - [x] Deadline Escape Hatch — `lib/deadline-escape-hatch.ts` detects 3+ deadline pushes from task logs, surfaces intervention cards on task detail (`DeadlineEscapeHatchCard`) and task list AI widgets (`DeadlineEscapeHatchSummaryCard`); integrated into `generateSmartSuggestions` as `deadline_escape` type with decompose/template/renegotiate actions
 - [x] Completion Milestones — cumulative completion tracking (10/50/100/1000) with confetti celebration + toast on milestone crossing, progress bar in the task list header (`MilestoneProgress`); `CompletionMilestoneCelebration` renders inside `TaskListView` so it works on all views
+- [x] Cognitive Load Budget — 8th factor in task-prioritizer.ts, measures subtasks/dependencies/attachments/labels/description length, de-prioritizes heavy tasks and surfaces peak-energy scheduling recommendations; 5 tests added
 - [x] Optimal categorization prediction — `analyzeTaskNaming` suggests categories from naming patterns
 - [x] Completion time prediction — `predictCompletionTime` (category average → calibrated estimate → raw estimate → default), used by the smart scheduler to plan against learned durations
 
