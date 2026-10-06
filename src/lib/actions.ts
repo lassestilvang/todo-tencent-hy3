@@ -72,6 +72,7 @@ export async function createTaskAction(formData: FormData) {
     parentId,
     assigneeId,
     estimate,
+    mood,
   } = result.data
 
   createTask({

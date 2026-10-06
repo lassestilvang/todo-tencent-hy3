@@ -2,10 +2,22 @@ import type { Task, List } from '@/types'
 import { suggestOptimalTime } from '@/lib/ai/task-prioritizer'
 import type { UserContext } from '@/lib/ai/task-prioritizer'
 import { semanticSimilarity } from '@/lib/ai/embeddings'
+import { checkDeadlineEscapeHatch } from '@/lib/deadline-escape-hatch'
 
 export interface Suggestion {
   id: string
-  type: 'schedule' | 'reschedule' | 'priority' | 'list' | 'breakdown' | 'habit' | 'batch' | 'delegate' | 'energy' | 'decompose'
+  type:
+    | 'schedule'
+    | 'reschedule'
+    | 'priority'
+    | 'list'
+    | 'breakdown'
+    | 'habit'
+    | 'batch'
+    | 'delegate'
+    | 'energy'
+    | 'decompose'
+    | 'deadline_escape'
   title: string
   description: string
   action: {
@@ -167,6 +179,10 @@ export function generateSmartSuggestions(
   // 6. Original suggestions (cont preserved)
   const originalSuggestions = generateOriginalSmartSuggestions(tasks, lists, incompleteTasks)
   suggestions.push(...originalSuggestions)
+
+  // 7. Deadline Escape Hatch — detect deadline thrash (3+ pushes)
+  const escapeHatchSuggestions = generateDeadlineEscapeSuggestions(incompleteTasks)
+  suggestions.push(...escapeHatchSuggestions)
 
   // Feedback loop: drop suggestion types the user keeps
   // dismissing without accepting.
@@ -529,6 +545,45 @@ function generateDecompositionSuggestions(
 
   return suggestions
 }
+
+/**
+ * Generate Deadline Escape Hatch suggestions.
+ *
+ * Checks each incomplete task for deadline thrash (3+ deadline pushes)
+ * and surfaces an intervention suggestion when the threshold is met.
+ */
+function generateDeadlineEscapeSuggestions(tasks: Task[]): Suggestion[] {
+  const suggestions: Suggestion[] = []
+
+  for (const task of tasks) {
+    const hutch = checkDeadlineEscapeHatch(task)
+    if (!hutch.triggered) continue
+
+    suggestions.push({
+      id: `deadline-escape-${task.id}`,
+      type: 'deadline_escape',
+      title: `Deadline pushed ${hutch.pushCount} times`,
+      description: hutch.reason,
+      action: {
+        label: hutch.suggestion === 'decompose' ? 'Break Down' : 'Intervene',
+        type: 'navigate',
+        payload: {
+          taskId: task.id,
+          suggestion: hutch.suggestion,
+          pushCount: hutch.pushCount,
+        },
+      },
+      priority: 'high',
+      dismissible: true,
+      confidence: 0.9,
+      aiReason: `Detected ${hutch.pushCount} deadline changes — escape hatch threshold (${DEADLINE_PUSH_THRESHOLD}) reached`,
+    })
+  }
+
+  return suggestions
+}
+
+const DEADLINE_PUSH_THRESHOLD = 3
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date)

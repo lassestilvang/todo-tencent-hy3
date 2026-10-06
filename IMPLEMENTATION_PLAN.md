@@ -101,6 +101,7 @@ Implementing all proposed features to transform TaskFlow into an AI-powered prod
 ### 4.1 Knowledge Base & Learning
 - [x] User pattern learning — `getUserPatterns`/`updatePatterns`/`getPatternInsights`
 - [x] Template suggestions from history — `lib/template-suggestions.ts` flags one-off tasks created ≥3 times (recurring and already-templated names excluded), surfaced on `/today` with create-template and dismiss actions via `/api/templates`
+- [x] Deadline Escape Hatch — `lib/deadline-escape-hatch.ts` detects 3+ deadline pushes from task logs, surfaces intervention cards on task detail (`DeadlineEscapeHatchCard`) and task list AI widgets (`DeadlineEscapeHatchSummaryCard`); integrated into `generateSmartSuggestions` as `deadline_escape` type with decompose/template/renegotiate actions
 - [x] Optimal categorization prediction — `analyzeTaskNaming` suggests categories from naming patterns
 - [x] Completion time prediction — `predictCompletionTime` (category average → calibrated estimate → raw estimate → default), used by the smart scheduler to plan against learned durations
 

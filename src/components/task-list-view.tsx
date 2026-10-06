@@ -18,6 +18,9 @@ import { ToggleCompletedButton } from '@/components/toggle-completed-button'
 import { SmartSuggestions } from '@/components/smart-suggestions'
 import { TemplateSuggestions } from '@/components/template-suggestions'
 import { QuickActions } from '@/components/quick-actions'
+import { MoodHeatmap } from '@/components/mood-heatmap'
+import { findDeadlineThrash, type DeadlineEscapeHatch } from '@/lib/deadline-escape-hatch'
+import { DeadlineEscapeHatchSummaryCard } from '@/components/deadline-escape-hatch-summary-card'
 import { FilterPresets } from '@/components/filter-presets'
 
 import { formatTime } from '@/lib/utils'
@@ -124,8 +127,16 @@ export function TaskListView({
           {aiWidgets && (
             <>
               <SmartSuggestions tasks={tasks} lists={lists} />
+              <MoodHeatmap tasks={tasks} />
               <TemplateSuggestions tasks={tasks} />
               <QuickActions tasks={tasks} view={view ?? 'all'} />
+              {findDeadlineThrash(tasks).map(({ task, hutch }) => (
+                <DeadlineEscapeHatchSummaryCard
+                  key={task.id}
+                  task={task}
+                  hutch={hutch}
+                />
+              ))}
             </>
           )}
           {view === 'all' && (

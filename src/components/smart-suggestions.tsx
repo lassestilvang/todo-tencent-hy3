@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { X, ChevronRight, AlertTriangle, Zap, ListTodo, Calendar, GitBranch, Target, Layers } from 'lucide-react'
+import { X, ChevronRight, AlertTriangle, Zap, ListTodo, Calendar, GitBranch, Target, Layers, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -24,6 +24,7 @@ const ICONS: Record<Suggestion['type'], React.ReactNode> = {
   delegate: <AlertTriangle className="h-5 w-5 text-orange-500" />,
   energy: <Target className="h-5 w-5 text-amber-500" />,
   decompose: <GitBranch className="h-5 w-5 text-indigo-500" />,
+  deadline_escape: <BarChart3 className="h-5 w-5 text-red-500" />,
 }
 
 function computeSuggestions(tasks: Task[], lists: List[]) {
